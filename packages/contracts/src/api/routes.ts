@@ -30,6 +30,24 @@ import {
 } from "./admin-merchants.js";
 import { errorResponseSchema, pageQuerySchema, uuidSchema } from "./common.js";
 import {
+  adminCancellationListResponseSchema,
+  adminCancellationQuerySchema,
+  adminCancellationResponseSchema,
+  adminCancelOrderRequestSchema,
+  adminCancelOrderResponseSchema,
+  arrivalResponseSchema,
+  cancelRequestSchema,
+  cancelResponseSchema,
+  declineCancellationRequestSchema,
+  merchantOrderListResponseSchema,
+  merchantOrderQuerySchema,
+  merchantOrderResponseSchema,
+  orderUpdatedEventSchema,
+  receiptResponseSchema,
+  transitionRequestSchema,
+  versionedRequestSchema,
+} from "./fulfillment.js";
+import {
   branchMenuResponseSchema,
   branchSearchQuerySchema,
   favoriteListResponseSchema,
@@ -147,8 +165,14 @@ export interface RouteContract {
   body?: z.ZodType;
   /** Raw (non-JSON) request body, with the accepted media types. */
   rawBody?: readonly string[];
-  /** Success status and body: a JSON schema, or `binary` for a file download. */
-  success: { status: number; schema: z.ZodType } | { status: number; binary: true };
+  /**
+   * Success status and body: a JSON schema, `binary` for a file download, or `eventStream`
+   * for server-sent events whose `data` lines match the schema.
+   */
+  success:
+    | { status: number; schema: z.ZodType }
+    | { status: number; binary: true }
+    | { status: number; eventStream: z.ZodType };
   /** Error statuses this route can return, besides 500. */
   errors: number[];
 }
@@ -1026,6 +1050,155 @@ export const apiRoutes = [
     access: { kind: "admin", roles: ["finance_maker", "finance_checker"] as const },
     success: { status: 200, schema: trialBalanceResponseSchema },
     errors: [401, 403],
+  },
+  // ── Phase 8: fulfilment ──────────────────────────────────────────────────
+  {
+    method: "get",
+    path: "/v1/merchant/orders",
+    operationId: "merchantListOrders",
+    summary: "A branch's order queue (received to ready, oldest first) or orders of one status",
+    tag: "Fulfilment",
+    access: { kind: "merchant", note: "owner, or manager or barista assigned to the branch" },
+    query: merchantOrderQuerySchema,
+    success: { status: 200, schema: merchantOrderListResponseSchema },
+    errors: [400, 401, 403, 404],
+  },
+  {
+    method: "get",
+    path: "/v1/merchant/orders/{id}",
+    operationId: "merchantGetOrder",
+    summary: "One order with operational data only (no customer contact or payment data)",
+    tag: "Fulfilment",
+    access: { kind: "merchant", note: "owner, or manager or barista assigned to the branch" },
+    params: idParams,
+    success: { status: 200, schema: merchantOrderResponseSchema },
+    errors: [400, 401, 403, 404],
+  },
+  {
+    method: "post",
+    path: "/v1/merchant/orders/{id}/transition",
+    operationId: "merchantTransitionOrder",
+    summary:
+      "Accept, reject, start, mark ready or complete (with the handoff code); stale versions 409",
+    tag: "Fulfilment",
+    access: { kind: "merchant", note: "owner, or manager or barista assigned to the branch" },
+    idempotent: true,
+    params: idParams,
+    body: transitionRequestSchema,
+    success: { status: 200, schema: merchantOrderResponseSchema },
+    errors: [400, 401, 403, 404, 409, 422, 429],
+  },
+  {
+    method: "post",
+    path: "/v1/merchant/orders/{id}/ack-arrival",
+    operationId: "merchantAcknowledgeArrival",
+    summary: "Acknowledge a curbside check-in; repeating returns the same acknowledgement",
+    tag: "Fulfilment",
+    access: { kind: "merchant", note: "owner, or manager or barista assigned to the branch" },
+    idempotent: true,
+    params: idParams,
+    body: versionedRequestSchema,
+    success: { status: 200, schema: merchantOrderResponseSchema },
+    errors: [400, 401, 403, 404, 409, 422],
+  },
+  {
+    method: "get",
+    path: "/v1/merchant/branches/{id}/order-events",
+    operationId: "merchantBranchOrderEvents",
+    summary:
+      "Live order updates for a branch (server-sent events, no personal data); refetch on each",
+    tag: "Fulfilment",
+    access: { kind: "merchant", note: "owner, or manager or barista assigned to the branch" },
+    params: idParams,
+    success: { status: 200, eventStream: orderUpdatedEventSchema },
+    errors: [400, 401, 403, 404],
+  },
+  {
+    method: "post",
+    path: "/v1/orders/{id}/arrival",
+    operationId: "checkInArrival",
+    summary: "Curbside check-in after the branch accepts; repeating returns the same arrival",
+    tag: "Orders",
+    access: { kind: "signed_in" },
+    idempotent: true,
+    params: idParams,
+    body: versionedRequestSchema,
+    success: { status: 200, schema: arrivalResponseSchema },
+    errors: [400, 401, 403, 404, 409, 422],
+  },
+  {
+    method: "post",
+    path: "/v1/orders/{id}/cancel-requests",
+    operationId: "requestCancellation",
+    summary:
+      "Ask to cancel: before acceptance the order is cancelled and refunded; after, support reviews it",
+    tag: "Orders",
+    access: { kind: "signed_in" },
+    idempotent: true,
+    params: idParams,
+    body: cancelRequestSchema,
+    success: { status: 201, schema: cancelResponseSchema },
+    errors: [400, 401, 403, 404, 409],
+  },
+  {
+    method: "get",
+    path: "/v1/orders/{id}/receipt",
+    operationId: "getReceipt",
+    summary: "Receipt from the order's immutable snapshots (sandbox, not a tax invoice)",
+    tag: "Orders",
+    access: { kind: "signed_in" },
+    params: idParams,
+    success: { status: 200, schema: receiptResponseSchema },
+    errors: [400, 401, 403, 404, 409],
+  },
+  {
+    method: "get",
+    path: "/v1/orders/{id}/events",
+    operationId: "orderEvents",
+    summary: "Live updates for one of the customer's orders (server-sent events); refetch on each",
+    tag: "Orders",
+    access: { kind: "signed_in" },
+    params: idParams,
+    success: { status: 200, eventStream: orderUpdatedEventSchema },
+    errors: [400, 401, 403, 404],
+  },
+  {
+    method: "post",
+    path: "/v1/admin/orders/{id}/cancel",
+    operationId: "adminCancelOrder",
+    summary:
+      "Cancel an order with a reason; refunded automatically only before acceptance, otherwise by finance",
+    tag: "Admin operations",
+    access: { kind: "admin", roles: ["operations"] },
+    idempotent: true,
+    params: idParams,
+    body: adminCancelOrderRequestSchema,
+    success: { status: 200, schema: adminCancelOrderResponseSchema },
+    errors: [400, 401, 403, 404, 409],
+  },
+  {
+    method: "get",
+    path: "/v1/admin/cancellation-requests",
+    operationId: "adminListCancellationRequests",
+    summary: "Customer cancellation requests, for example those waiting for review",
+    tag: "Admin operations",
+    access: { kind: "admin", roles: ["operations", "support"] as const },
+    query: adminCancellationQuerySchema,
+    success: { status: 200, schema: adminCancellationListResponseSchema },
+    errors: [400, 401, 403],
+  },
+  {
+    method: "post",
+    path: "/v1/admin/cancellation-requests/{id}/decline",
+    operationId: "adminDeclineCancellationRequest",
+    summary: "Decline a cancellation request with a reason; the order continues",
+    tag: "Admin operations",
+    access: { kind: "admin", roles: ["operations"] },
+    idempotent: true,
+    params: idParams,
+    body: declineCancellationRequestSchema,
+    success: { status: 200, schema: adminCancellationResponseSchema },
+    errors: [400, 401, 403, 404, 409],
   },
 ] as const satisfies readonly RouteContract[];
 

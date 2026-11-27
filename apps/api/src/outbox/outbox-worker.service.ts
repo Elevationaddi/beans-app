@@ -9,7 +9,10 @@ import { type Job, Worker } from "bullmq";
 import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
 import { FILE_SCAN_TOPIC, FilesService } from "../files/files.service.js";
+import { parseSignal, RealtimeService } from "../realtime/realtime.service.js";
 import { queueForTopic, redisConnection } from "./outbox-relay.service.js";
+
+export const ORDER_UPDATED_TOPIC = "order.updated";
 
 interface OutboxJobData {
   aggregateId: string;
@@ -28,13 +31,22 @@ export class OutboxWorkerService implements OnApplicationBootstrap, OnModuleDest
   constructor(
     @Inject(ENV) private readonly env: Env,
     @Inject(FilesService) private readonly files: FilesService,
+    @Inject(RealtimeService) private readonly realtime: RealtimeService,
   ) {}
 
   /** Topic → handler. Each topic's domain queue gets one worker. */
   private handlers(): Record<string, (job: Job<OutboxJobData>) => Promise<void>> {
     return {
       [FILE_SCAN_TOPIC]: (job) => this.files.scan(job.data.aggregateId),
+      [ORDER_UPDATED_TOPIC]: (job) => this.publishOrderUpdate(job.data.payload),
     };
+  }
+
+  /** Committed order change → live streams. Re-publishing is harmless (clients refetch). */
+  async publishOrderUpdate(payload: unknown): Promise<void> {
+    const signal = parseSignal(payload);
+    if (!signal) throw new Error("order.updated payload is missing fields");
+    await this.realtime.publish(signal);
   }
 
   onApplicationBootstrap(): void {

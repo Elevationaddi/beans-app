@@ -3,6 +3,7 @@ export * from "./admin-finance.js";
 export * from "./admin-merchants.js";
 export * from "./common.js";
 export * from "./discovery.js";
+export * from "./fulfillment.js";
 export * from "./me.js";
 export * from "./merchant-applications.js";
 export * from "./merchant-branches.js";

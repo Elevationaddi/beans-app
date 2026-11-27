@@ -230,7 +230,14 @@ export class CheckoutService {
         topic: "order.updated",
         aggregateId: order.id,
         dedupeKey: `order:${order.id}:v1`,
-        payload: { orderId: order.id, branchId: branch.id, status: "pending_payment", version: 1 },
+        payload: {
+          orderId: order.id,
+          branchId: branch.id,
+          userId: order.userId,
+          status: "pending_payment",
+          version: 1,
+          occurredAt: order.createdAt.toISOString(),
+        },
       });
       return order.id;
     });

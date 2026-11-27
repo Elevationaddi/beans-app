@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { FinanceModule } from "../finance/finance.module.js";
+import { FulfillmentModule } from "../fulfillment/fulfillment.module.js";
 import { OrderingModule } from "../ordering/ordering.module.js";
 import { PaymentsModule } from "../payments/payments.module.js";
 import { PaymentSweepService } from "./payment-sweep.service.js";
@@ -8,7 +9,7 @@ import { PaymentWebhooksController } from "./payment-webhooks.controller.js";
 
 /** Provider webhooks and the background payment sweep. */
 @Module({
-  imports: [PaymentsModule, OrderingModule, FinanceModule],
+  imports: [PaymentsModule, OrderingModule, FinanceModule, FulfillmentModule],
   controllers: [PaymentWebhooksController],
   providers: [PaymentWebhookService, PaymentSweepService],
   exports: [PaymentWebhookService, PaymentSweepService],

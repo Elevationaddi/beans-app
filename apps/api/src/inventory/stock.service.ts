@@ -36,4 +36,16 @@ export class StockService {
         AND stock_on_hand IS NOT NULL AND stock_reserved >= ${quantity}::int`;
     return updated === 1;
   }
+
+  /** Held units leave stock for good: the order was handed over (or made and then cancelled). */
+  async consume(tx: Db, branchId: string, productId: string, quantity: number): Promise<boolean> {
+    const updated = await tx.$executeRaw`
+      UPDATE branch_products
+      SET stock_reserved = stock_reserved - ${quantity}::int,
+          stock_on_hand = stock_on_hand - ${quantity}::int, updated_at = now()
+      WHERE branch_id = ${branchId}::uuid AND product_id = ${productId}::uuid
+        AND stock_on_hand IS NOT NULL AND stock_reserved >= ${quantity}::int
+        AND stock_on_hand >= ${quantity}::int`;
+    return updated === 1;
+  }
 }

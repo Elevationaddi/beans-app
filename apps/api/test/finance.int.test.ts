@@ -140,10 +140,18 @@ describe("phase 7: webhooks, ledger, refunds, reconciliation and payouts (sandbo
     return { person, quote, result, payment };
   }
 
-  /** Marks an order completed and posts the completion journal (phase 8 will do this). */
+  /**
+   * Walks an order through the staff steps to completed (the database only allows the state
+   * machine's steps) and posts the completion journal, as the phase 8 handoff does.
+   */
   async function complete(orderId: string) {
     await world.prisma.$transaction(async (tx) => {
-      await tx.order.update({ where: { id: orderId }, data: { status: "completed" } });
+      for (const status of ["accepted", "preparing", "ready", "completed"] as const) {
+        await tx.order.update({
+          where: { id: orderId },
+          data: { status, version: { increment: 1 } },
+        });
+      }
       await ledger.postCompletion(tx, orderId);
     });
   }
