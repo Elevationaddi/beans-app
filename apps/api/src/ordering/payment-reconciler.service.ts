@@ -1,6 +1,8 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../database/prisma.service.js";
 import type { OrderStatus, Prisma } from "../generated/prisma/client.js";
+import { LedgerService } from "../finance/ledger.service.js";
+import { RefundService } from "../finance/refund.service.js";
 import { StockService } from "../inventory/stock.service.js";
 import { OutboxService } from "../outbox/outbox.service.js";
 import {
@@ -38,20 +40,22 @@ export class PaymentReconciler {
     @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
     @Inject(StockService) private readonly stock: StockService,
     @Inject(OutboxService) private readonly outbox: OutboxService,
+    @Inject(LedgerService) private readonly ledger: LedgerService,
+    @Inject(RefundService) private readonly refunds: RefundService,
   ) {}
 
   /** Records a provider answer for one attempt. Safe to call repeatedly. */
   async apply(paymentId: string, result: ProviderPayment): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
+    const lateRefundId = await this.prisma.$transaction(async (tx): Promise<string | null> => {
       const payment = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
       const order = await this.lockOrder(tx, payment.orderId);
       const current = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
-      if (current.status !== "pending") return; // already final: nothing to do
+      if (current.status !== "pending") return null; // already final: nothing to do
 
       if (result.amountFils !== current.amountFils || result.currency !== current.currency) {
         // Never commit an order on a mismatched amount; leave it pending for review.
         this.logger.error(`payment ${current.id}: provider amount or currency mismatch`);
-        return;
+        return null;
       }
       if (result.status === "pending") {
         if (current.providerRef === null) {
@@ -60,7 +64,7 @@ export class PaymentReconciler {
             data: { providerRef: result.providerRef },
           });
         }
-        return;
+        return null;
       }
       await tx.payment.update({
         where: { id: current.id },
@@ -70,28 +74,26 @@ export class PaymentReconciler {
           failureCode: result.status === "failed" ? (result.failureCode ?? "declined") : null,
         },
       });
-      if (result.status === "failed") return;
+      if (result.status === "failed") return null;
 
-      // Captured.
+      // Captured: the money is with the provider whatever happens to the order.
+      await this.ledger.postCapture(tx, current);
       const reservation = await tx.reservation.findUniqueOrThrow({
         where: { id: order.reservation_id },
       });
       if (order.status === "pending_payment" && reservation.state === "held") {
         await this.commit(tx, order, reservation.slotId, current.id);
-        return;
+        return null;
       }
-      // Late capture after the hold was released (Q08): money must go back. Refunds arrive
-      // with the provider integration (phase 7); the event makes the case visible meanwhile.
+      // Late capture after the hold was released (Q08). The order cannot go back from
+      // payment_failed (docs/08 state machine), so the payment is refunded in full,
+      // automatically, and the customer notice is queued.
       this.logger.warn(
         `payment ${current.id} captured after order ${order.id} was ${order.status}`,
       );
-      await this.outbox.enqueue(tx, {
-        topic: "payment.refund_required",
-        aggregateId: order.id,
-        dedupeKey: `payment:${current.id}:refund_required`,
-        payload: { orderId: order.id, paymentId: current.id, reason: "late_capture" },
-      });
+      return this.refunds.createLateCaptureRefund(tx, current);
     });
+    if (lateRefundId) await this.refunds.submit(lateRefundId);
   }
 
   /** Asks the provider about the order's open attempt and applies the answer. */

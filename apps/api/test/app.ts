@@ -22,7 +22,7 @@ export async function createTestApp(
   }
   const moduleRef = await builder.compile();
   const app = configureApp(
-    moduleRef.createNestApplication({ logger: [...loggerLevels(env)] }),
+    moduleRef.createNestApplication({ logger: [...loggerLevels(env)], rawBody: true }),
     env,
   );
   await app.init();

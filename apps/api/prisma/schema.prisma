@@ -56,6 +56,11 @@ model User {
   quotes              Quote[]
   orders              Order[]
   orderEvents         OrderEvent[]
+  refundsRequested    Refund[]          @relation("RefundRequester")
+  refundsDecided      Refund[]          @relation("RefundDecider")
+  payoutsMade         Payout[]          @relation("PayoutMaker")
+  payoutsChecked      Payout[]          @relation("PayoutChecker")
+  exceptionsResolved  ReconciliationException[]
 
   @@map("users")
 }
@@ -119,6 +124,8 @@ model Merchant {
   uploads        Upload[]
   invitations    StaffInvitation[]
   favoritedBy    Favorite[]
+  journalLines   JournalLine[]
+  payouts        Payout[]
 
   @@index([status, submittedAt])
   @@map("merchants")
@@ -799,6 +806,7 @@ model Order {
   items       OrderItem[]
   events      OrderEvent[]
   payments    Payment[]
+  refunds     Refund[]
 
   @@index([branchId, status, createdAt])
   @@index([userId, createdAt])
@@ -865,9 +873,216 @@ model Payment {
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  refunds Refund[]
 
   @@unique([orderId, attempt])
   @@index([status, updatedAt])
   @@map("payments")
+}
+
+// ───────────────────────────── Payments and finance ─────────────────────────────
+// Phase 7. Sandbox only: the fake provider is the only adapter and live payments stay
+// blocked until decisions D02-D08 are approved. Financial history is append-only.
+
+enum WebhookEventStatus {
+  received
+  processed
+  ignored
+  failed
+}
+
+/// Durable receipt of a verified provider webhook. The raw body is never stored, only its hash.
+model PaymentWebhookEvent {
+  id            String             @id @default(uuid()) @db.Uuid
+  provider      String
+  eventId       String             @map("event_id")
+  type          String
+  providerRef   String?            @map("provider_ref")
+  payloadSha256 String             @map("payload_sha256")
+  status        WebhookEventStatus @default(received)
+  attempts      Int                @default(0)
+  lastError     String?            @map("last_error")
+  receivedAt    DateTime           @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt   DateTime?          @map("processed_at") @db.Timestamptz(6)
+
+  @@unique([provider, eventId])
+  @@index([status, receivedAt])
+  @@map("payment_webhook_events")
+}
+
+enum RefundKind {
+  /// Requested by a finance maker, approved by a different finance checker.
+  manual
+  /// Automatic full refund of a payment captured after its hold expired (Q08).
+  late_capture
+}
+
+enum RefundStatus {
+  requested
+  approved
+  rejected
+  submitted
+  succeeded
+  failed
+}
+
+model Refund {
+  id             String       @id @default(uuid()) @db.Uuid
+  paymentId      String       @map("payment_id") @db.Uuid
+  orderId        String       @map("order_id") @db.Uuid
+  kind           RefundKind
+  amountFils     BigInt       @map("amount_fils")
+  currency       String       @db.Char(3)
+  reason         String
+  status         RefundStatus @default(requested)
+  requestedById  String?      @map("requested_by") @db.Uuid
+  /// The checker who approved or rejected it.
+  decidedById    String?      @map("decided_by") @db.Uuid
+  decisionReason String?      @map("decision_reason")
+  providerKey    String       @unique @map("provider_key")
+  providerRef    String?      @unique @map("provider_ref")
+  failureCode    String?      @map("failure_code")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payment     Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  requestedBy User?   @relation("RefundRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  decidedBy   User?   @relation("RefundDecider", fields: [decidedById], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@index([status, createdAt])
+  @@map("refunds")
+}
+
+/// One balanced posting. Balance is checked by the service and again by a deferred
+/// database trigger at commit. Append-only.
+model JournalTransaction {
+  id         String   @id @default(uuid()) @db.Uuid
+  sourceType String   @map("source_type")
+  sourceId   String   @map("source_id") @db.Uuid
+  eventType  String   @map("event_type")
+  currency   String   @default("AED") @db.Char(3)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  lines JournalLine[]
+
+  @@unique([sourceType, sourceId, eventType])
+  @@index([createdAt])
+  @@map("journal_transactions")
+}
+
+model JournalLine {
+  id          String   @id @default(uuid()) @db.Uuid
+  journalId   String   @map("journal_id") @db.Uuid
+  accountCode String   @map("account_code")
+  merchantId  String?  @map("merchant_id") @db.Uuid
+  debitFils   BigInt   @default(0) @map("debit_fils")
+  creditFils  BigInt   @default(0) @map("credit_fils")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  journal     JournalTransaction @relation(fields: [journalId], references: [id], onDelete: Restrict)
+  merchant    Merchant?          @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  allocations PayoutAllocation[]
+
+  @@index([journalId])
+  @@index([accountCode, merchantId, createdAt])
+  @@map("journal_lines")
+}
+
+enum PayoutStatus {
+  pending_approval
+  approved
+  rejected
+  submitted
+  paid
+  failed
+}
+
+/// Sandbox payout simulation (D04 not approved). Maker and checker must differ.
+model Payout {
+  id             String       @id @default(uuid()) @db.Uuid
+  merchantId     String       @map("merchant_id") @db.Uuid
+  amountFils     BigInt       @map("amount_fils")
+  currency       String       @default("AED") @db.Char(3)
+  periodEnd      DateTime     @map("period_end") @db.Timestamptz(6)
+  status         PayoutStatus @default(pending_approval)
+  makerId        String       @map("maker_id") @db.Uuid
+  checkerId      String?      @map("checker_id") @db.Uuid
+  decisionReason String?      @map("decision_reason")
+  providerKey    String       @unique @map("provider_key")
+  providerRef    String?      @unique @map("provider_ref")
+  failureCode    String?      @map("failure_code")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  merchant    Merchant           @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  maker       User               @relation("PayoutMaker", fields: [makerId], references: [id], onDelete: Restrict)
+  checker     User?              @relation("PayoutChecker", fields: [checkerId], references: [id], onDelete: Restrict)
+  allocations PayoutAllocation[]
+
+  @@index([merchantId, status])
+  @@map("payouts")
+}
+
+/// Which merchant earnings (journal credit lines) a payout covers. Immutable; allocations of
+/// rejected or failed payouts no longer count, so the earnings become available again.
+model PayoutAllocation {
+  id            String @id @default(uuid()) @db.Uuid
+  payoutId      String @map("payout_id") @db.Uuid
+  journalLineId String @map("journal_line_id") @db.Uuid
+  amountFils    BigInt @map("amount_fils")
+
+  payout      Payout      @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  journalLine JournalLine @relation(fields: [journalLineId], references: [id], onDelete: Restrict)
+
+  @@unique([payoutId, journalLineId])
+  @@index([journalLineId])
+  @@map("payout_allocations")
+}
+
+model ReconciliationRun {
+  id          String   @id @default(uuid()) @db.Uuid
+  periodStart DateTime @map("period_start") @db.Timestamptz(6)
+  periodEnd   DateTime @map("period_end") @db.Timestamptz(6)
+  startedById String?  @map("started_by") @db.Uuid
+  matched     Int
+  mismatched  Int
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  exceptions ReconciliationException[]
+
+  @@index([createdAt])
+  @@map("reconciliation_runs")
+}
+
+enum ReconciliationExceptionStatus {
+  open
+  resolved
+}
+
+/// A difference between our records and the provider statement. Open exceptions block
+/// payouts for the merchant (or all payouts when no merchant is known).
+model ReconciliationException {
+  id               String                        @id @default(uuid()) @db.Uuid
+  runId            String                        @map("run_id") @db.Uuid
+  kind             String
+  objectType       String                        @map("object_type")
+  localId          String?                       @map("local_id") @db.Uuid
+  providerRef      String?                       @map("provider_ref")
+  merchantId       String?                       @map("merchant_id") @db.Uuid
+  expected         Json
+  actual           Json
+  status           ReconciliationExceptionStatus @default(open)
+  resolvedById     String?                       @map("resolved_by") @db.Uuid
+  resolutionReason String?                       @map("resolution_reason")
+  resolvedAt       DateTime?                     @map("resolved_at") @db.Timestamptz(6)
+  createdAt        DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  run        ReconciliationRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  resolvedBy User?             @relation(fields: [resolvedById], references: [id], onDelete: Restrict)
+
+  @@index([status, merchantId])
+  @@map("reconciliation_exceptions")
 }

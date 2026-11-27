@@ -1,4 +1,5 @@
 export * from "./admin-audit.js";
+export * from "./admin-finance.js";
 export * from "./admin-merchants.js";
 export * from "./common.js";
 export * from "./discovery.js";
