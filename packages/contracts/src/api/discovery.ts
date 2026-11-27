@@ -153,7 +153,14 @@ export const publicSlotsResponseSchema = dataEnvelope(
     timezone: z.string(),
     availability: branchAvailabilitySchema,
     /** Future slots only; capacity is shown as available or not, never as counts. */
-    slots: z.array(z.object({ startsAt: z.iso.datetime(), available: z.boolean() })),
+    slots: z.array(
+      z.object({
+        /** Send as slotId when asking for a quote. */
+        id: uuidSchema,
+        startsAt: z.iso.datetime(),
+        available: z.boolean(),
+      }),
+    ),
   }),
 );
 

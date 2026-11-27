@@ -13,6 +13,7 @@ import { IdempotencyModule } from "./idempotency/idempotency.module.js";
 import { MeModule } from "./me/me.module.js";
 import { MerchantModule } from "./merchant/merchant.module.js";
 import { OnboardingModule } from "./onboarding/onboarding.module.js";
+import { OrderingModule } from "./ordering/ordering.module.js";
 import { OutboxModule } from "./outbox/outbox.module.js";
 import { RedisModule } from "./redis/redis.module.js";
 import { StaffModule } from "./staff/staff.module.js";
@@ -40,6 +41,7 @@ export class AppModule {
         CatalogModule,
         StaffModule,
         DiscoveryModule,
+        OrderingModule,
         OnboardingModule,
         AdminModule,
       ],

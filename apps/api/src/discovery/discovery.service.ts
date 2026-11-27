@@ -65,6 +65,68 @@ export function availabilityOf(row: ScheduleRows, now = new Date()): BranchAvail
 
 const fils = (value: bigint) => value.toString();
 
+type Db = Prisma.TransactionClient | PrismaService;
+
+export interface ResolvedLine {
+  product: MenuProduct;
+  options: { id: string; names: LocalizedText; deltaFils: bigint }[];
+  unitFils: bigint;
+  lineFils: bigint;
+}
+
+/**
+ * Validates one customized item against a branch menu and prices it (Q02). Rejects missing
+ * required options, too many choices, options from other products, and anything sold out.
+ * The client never sends a price: unit = branch price + branch option prices, in BigInt fils.
+ */
+export function resolveLine(
+  menu: BranchMenu,
+  request: { productId: string; optionIds: string[]; quantity: number },
+): ResolvedLine {
+  const product = menu.categories
+    .flatMap((c) => c.products)
+    .find((p) => p.id === request.productId);
+  if (!product) throw ApiError.notFound("Product not found on this menu");
+  if (!product.available) {
+    throw new ApiError(HttpStatus.CONFLICT, "OUT_OF_STOCK", "This item is sold out at this branch");
+  }
+
+  const optionIds = request.optionIds;
+  if (new Set(optionIds).size !== optionIds.length)
+    throw invalidItem({ optionIds: ["An option is chosen twice"] });
+  const byOption = new Map(
+    product.groups.flatMap((g) => g.options.map((o) => [o.id, { group: g, option: o }])),
+  );
+  if (optionIds.some((id) => !byOption.has(id)))
+    throw invalidItem({ optionIds: ["Not an option of this product"] });
+
+  const errors: Record<string, string[]> = {};
+  for (const group of product.groups) {
+    const chosen = optionIds.filter((id) => byOption.get(id)?.group.id === group.id).length;
+    if (chosen < group.minCount)
+      errors[`groups.${group.id}`] = [`Choose at least ${group.minCount}`];
+    else if (chosen > group.maxCount)
+      errors[`groups.${group.id}`] = [`Choose at most ${group.maxCount}`];
+  }
+  if (Object.keys(errors).length > 0) throw invalidItem(errors);
+
+  const chosen = optionIds.map((id) => {
+    const entry = byOption.get(id);
+    if (!entry) throw invalidItem({ optionIds: ["Not an option of this product"] });
+    return entry.option;
+  });
+  if (chosen.some((o) => !o.available)) {
+    throw new ApiError(
+      HttpStatus.CONFLICT,
+      "OUT_OF_STOCK",
+      "An option you chose is not available at this branch",
+    );
+  }
+  const options = chosen.map((o) => ({ id: o.id, names: o.names, deltaFils: BigInt(o.deltaFils) }));
+  const unitFils = options.reduce((sum, o) => sum + o.deltaFils, BigInt(product.priceFils));
+  return { product, options, unitFils, lineFils: unitFils * BigInt(request.quantity) };
+}
+
 function invalidItem(fieldErrors: Record<string, string[]>): ApiError {
   return new ApiError(
     HttpStatus.UNPROCESSABLE_ENTITY,
@@ -83,8 +145,8 @@ export class DiscoveryService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   /** A listed branch, or 404 (drafts, closed branches and unapproved merchants included). */
-  async listedBranch(branchId: string) {
-    const branch = await this.prisma.branch.findFirst({
+  async listedBranch(branchId: string, db: Db = this.prisma) {
+    const branch = await db.branch.findFirst({
       where: { id: branchId, ...LISTED_BRANCH },
       include: { ...scheduleInclude, merchant: { select: { brandName: true } } },
     });
@@ -92,10 +154,11 @@ export class DiscoveryService {
     return branch;
   }
 
-  async menu(branchId: string): Promise<BranchMenu> {
-    const branch = await this.listedBranch(branchId);
+  /** The menu as customers see it. Pass a transaction to read it consistently with a checkout. */
+  async menu(branchId: string, db: Db = this.prisma): Promise<BranchMenu> {
+    const branch = await this.listedBranch(branchId, db);
     const [categories, branchProducts, branchOptions] = await Promise.all([
-      this.prisma.category.findMany({
+      db.category.findMany({
         where: { merchantId: branch.merchantId, active: true },
         orderBy: [{ sort: "asc" }, { createdAt: "asc" }, { id: "asc" }],
         include: {
@@ -120,8 +183,8 @@ export class DiscoveryService {
           },
         },
       }),
-      this.prisma.branchProduct.findMany({ where: { branchId } }),
-      this.prisma.branchOption.findMany({ where: { branchId } }),
+      db.branchProduct.findMany({ where: { branchId } }),
+      db.branchOption.findMany({ where: { branchId } }),
     ]);
     const productOverride = new Map(branchProducts.map((bp) => [bp.productId, bp]));
     const optionOverride = new Map(branchOptions.map((bo) => [bo.optionId, bo]));
@@ -171,62 +234,16 @@ export class DiscoveryService {
     return { ...content, version };
   }
 
-  /**
-   * Canonical price of one customized item (Q02). Rejects missing required options, too many
-   * choices, options from other products, and anything sold out. The client never sends a price.
-   */
+  /** Canonical price of one customized item (Q02); see resolveLine. */
   async priceItem(branchId: string, request: PriceItemRequest): Promise<PricedItem> {
     const menu = await this.menu(branchId);
-    const product = menu.categories
-      .flatMap((c) => c.products)
-      .find((p) => p.id === request.productId);
-    if (!product) throw ApiError.notFound("Product not found on this menu");
-    if (!product.available) {
-      throw new ApiError(
-        HttpStatus.CONFLICT,
-        "OUT_OF_STOCK",
-        "This item is sold out at this branch",
-      );
-    }
-
-    const optionIds = request.optionIds;
-    if (new Set(optionIds).size !== optionIds.length)
-      throw invalidItem({ optionIds: ["An option is chosen twice"] });
-    const byOption = new Map(
-      product.groups.flatMap((g) => g.options.map((o) => [o.id, { group: g, option: o }])),
-    );
-    const unknown = optionIds.filter((id) => !byOption.has(id));
-    if (unknown.length > 0) throw invalidItem({ optionIds: ["Not an option of this product"] });
-
-    const errors: Record<string, string[]> = {};
-    for (const group of product.groups) {
-      const chosen = optionIds.filter((id) => byOption.get(id)?.group.id === group.id).length;
-      if (chosen < group.minCount)
-        errors[`groups.${group.id}`] = [`Choose at least ${group.minCount}`];
-      else if (chosen > group.maxCount)
-        errors[`groups.${group.id}`] = [`Choose at most ${group.maxCount}`];
-    }
-    if (Object.keys(errors).length > 0) throw invalidItem(errors);
-
-    const soldOut = optionIds.filter((id) => !byOption.get(id)?.option.available);
-    if (soldOut.length > 0) {
-      throw new ApiError(
-        HttpStatus.CONFLICT,
-        "OUT_OF_STOCK",
-        "An option you chose is not available at this branch",
-      );
-    }
-
-    const unit = optionIds.reduce(
-      (sum, id) => sum + BigInt(byOption.get(id)?.option.deltaFils ?? "0"),
-      BigInt(product.priceFils),
-    );
+    const line = resolveLine(menu, request);
     return {
-      productId: product.id,
-      optionIds,
+      productId: line.product.id,
+      optionIds: request.optionIds,
       quantity: request.quantity,
-      unitFils: unit.toString(),
-      lineFils: (unit * BigInt(request.quantity)).toString(),
+      unitFils: line.unitFils.toString(),
+      lineFils: line.lineFils.toString(),
       menuVersion: menu.version,
     };
   }

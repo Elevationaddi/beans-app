@@ -321,7 +321,7 @@ describe("customer discovery: search, branch, menu, item pricing, slots, favorit
       .expect(200);
     const data = publicSlotsResponseSchema.parse(res.body).data;
     expect(data.slots.length).toBeGreaterThan(90);
-    expect(Object.keys(data.slots[0] ?? {}).sort()).toEqual(["available", "startsAt"]);
+    expect(Object.keys(data.slots[0] ?? {}).sort()).toEqual(["available", "id", "startsAt"]);
 
     const first = await world.prisma.slot.findFirstOrThrow({
       where: { branchId: c.branch.id },
@@ -332,7 +332,11 @@ describe("customer discovery: search, branch, menu, item pricing, slots, favorit
       (await http().get(`/v1/branches/${c.branch.id}/slots?date=${date}&mode=in_store`).expect(200))
         .body,
     ).data;
-    expect(again.slots[0]).toEqual({ startsAt: first.startsAt.toISOString(), available: false });
+    expect(again.slots[0]).toEqual({
+      id: first.id,
+      startsAt: first.startsAt.toISOString(),
+      available: false,
+    });
 
     await http().get(`/v1/branches/${c.branch.id}/slots?date=${date}&mode=dine_in`).expect(422);
     await world.prisma.branch.update({ where: { id: c.branch.id }, data: { status: "paused" } });
