@@ -1,23 +1,24 @@
 # Implementation progress
 
-Status: phases 01–08 and 10 merged; phase 09 deferred (not in MVP); phase 11 implemented. The owner asked (2026-11-27) for the
+Status: phases 01–08, 10 and 11 merged; phase 09 deferred (not in MVP); phase 12 (release
+preparation) implemented and awaiting owner signoff. Nothing is deployed. The owner asked (2026-11-27) for the
 remaining phases to be built and merged without per-phase approval, with one final report.
 No production integrations or real money.
 
-| Phase | Status                 | Commit                      | Tests                                  | Blockers                                      |
-| ----- | ---------------------- | --------------------------- | -------------------------------------- | --------------------------------------------- |
-| 01    | Done (merged)          | 2db5b9c                     | 17 unit, 3 integration, all apps build | None                                          |
-| 02    | Done (merged)          | 6a8a569                     | 28 unit, 52 integration                | D12 before production sign-in                 |
-| 03    | Done (merged)          | 6d21d02                     | 32 unit, 71 integration                | Storage provider, malware scanner (D11)       |
-| 04    | Done (merged)          | 63496dc                     | 37 unit, 108 integration               | D10 (slot length), invite delivery            |
-| 05    | Done (merged)          | ad02125                     | 54 unit, 122 integration               | D12 (app sign-in), D13 before production copy |
-| 06    | Done (merged)          | 7818223                     | 62 unit, 137 integration               | D02, D06 for real pricing; D12 for app        |
-| 07    | Done (merged)          | a5bcaa3                     | 71 unit, 145 integration               | D02–D04, D06 before any live provider         |
-| 08    | Done (merged)          | 58ec117                     | 76 unit, 161 integration               | D05, D10; D12 for tablet and app screens      |
-| 09    | Deferred (not in MVP)  | —                           | —                                      | D07, D08, D14, D16 and legal review           |
-| 10    | Done (merged)          | 8e82873                     | 76 unit, 168 integration               | D11 (retention), D12 for screens              |
-| 11    | Implemented, in review | branch `phase-11-hardening` | 77 unit, 172 integration               | Staging (hosting), D15 device audit, pen test |
-| 12    | Not started            | —                           | —                                      | D01, D11, D15 and all money decisions         |
+| Phase | Status                   | Commit                    | Tests                                  | Blockers                                      |
+| ----- | ------------------------ | ------------------------- | -------------------------------------- | --------------------------------------------- |
+| 01    | Done (merged)            | 2db5b9c                   | 17 unit, 3 integration, all apps build | None                                          |
+| 02    | Done (merged)            | 6a8a569                   | 28 unit, 52 integration                | D12 before production sign-in                 |
+| 03    | Done (merged)            | 6d21d02                   | 32 unit, 71 integration                | Storage provider, malware scanner (D11)       |
+| 04    | Done (merged)            | 63496dc                   | 37 unit, 108 integration               | D10 (slot length), invite delivery            |
+| 05    | Done (merged)            | ad02125                   | 54 unit, 122 integration               | D12 (app sign-in), D13 before production copy |
+| 06    | Done (merged)            | 7818223                   | 62 unit, 137 integration               | D02, D06 for real pricing; D12 for app        |
+| 07    | Done (merged)            | a5bcaa3                   | 71 unit, 145 integration               | D02–D04, D06 before any live provider         |
+| 08    | Done (merged)            | 58ec117                   | 76 unit, 161 integration               | D05, D10; D12 for tablet and app screens      |
+| 09    | Deferred (not in MVP)    | —                         | —                                      | D07, D08, D14, D16 and legal review           |
+| 10    | Done (merged)            | 8e82873                   | 76 unit, 168 integration               | D11 (retention), D12 for screens              |
+| 11    | Done (merged)            | dec9a24                   | 77 unit, 172 integration               | Staging (hosting), D15 device audit, pen test |
+| 12    | Done, owner signoff open | branch `phase-12-release` | 83 unit, 172 integration               | Launch gates G1–G12 (docs/15)                 |
 
 ## Phase 01 — Foundation (2026-11-27)
 
@@ -991,6 +992,54 @@ No database change. Rollback: revert the commit (rate limits and headers are cod
 Staging environment and hosting (load tests, production backups, RPO/RTO), device
 accessibility audit (D15), external penetration test and SAST, step-up MFA for role and bank
 changes, and sign-in for all screens (D12).
+
+## Phase 12 — Release preparation (2026-11-27)
+
+The plan, launch gates, environments, release and migration procedure, monitoring, runbook,
+rollback, privacy and app store checklist, and pilot plan are in
+[15-release-plan.md](15-release-plan.md). Nothing was deployed and no production credential,
+live payment or real notification was enabled.
+
+### Scope completed
+
+- **Release plan** with twelve launch gates (G1–G12), each with evidence and owner.
+- **Migration safety check**: `pnpm --filter @beans/api db:check-migrations`
+  (`apps/api/src/release/migration-guard.ts`) refuses migrations that drop, rename, truncate,
+  delete, update without `WHERE`, change column types or disable triggers unless the file names
+  an approval (`-- release: destructive-approved <who, date, why>`). Runs in CI before migrations.
+  All 8 existing migrations are additive.
+- **Runbook** R1–R8 (database, Redis, provider outage, outbox backlog, branch not accepting,
+  restore, compromise, bad release), **monitoring** signals mapped to what exists today, and a
+  **rollback** table.
+- **Privacy and app store checklist** and a two-stage **pilot plan** (sandbox, then a controlled
+  live pilot only after the money decisions and written approval).
+
+### Finding
+
+The API cannot start in production mode today, by design: it refuses the fake payment provider,
+local file storage, the basic file checker and live payments. Staging therefore needs the payment
+provider's sandbox adapter (D03), object storage and a malware scanner before it can run.
+
+### Commands and actual results (local run, 2026-11-27)
+
+| Command                                            | Result                                          |
+| -------------------------------------------------- | ----------------------------------------------- |
+| `pnpm format:check`, `pnpm lint`, `pnpm typecheck` | Pass                                            |
+| `pnpm test`                                        | 83 passed: contracts 6, ui 5, api 58, mobile 14 |
+| `pnpm --filter @beans/api db:check-migrations`     | OK: 8 migrations checked, all additive          |
+| `pnpm build`                                       | Pass                                            |
+
+Integration tests were not re-run locally: no API runtime code changed since phase 11
+(172 passed); CI runs them on the pull request.
+
+### Migration and rollback
+
+No database change. Rollback: revert the commit (documents, a script and a CI step).
+
+### Completion gate
+
+Not met, as expected: the phase 12 gate needs explicit owner signoff, approved decisions, pilot
+and external review evidence. These are listed as gates G1–G12 in docs/15.
 
 ## Decision and change log
 
