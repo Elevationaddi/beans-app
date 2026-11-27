@@ -173,6 +173,51 @@ export class RefundService {
     return id;
   }
 
+  /**
+   * Automatic refund when a paid order is rejected, not accepted in time, or cancelled before
+   * acceptance (docs/08: "initiate refund"). Refunds whatever of the captured payment is not
+   * already committed to other refunds. Created in the caller's transaction (which holds the
+   * order lock); submit it after commit. Returns null when nothing is left to refund.
+   */
+  async createOrderCancelRefund(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    reason: string,
+  ): Promise<string | null> {
+    const payment = await tx.payment.findFirst({ where: { orderId, status: "captured" } });
+    if (!payment) return null;
+    const committed = await tx.refund.aggregate({
+      where: {
+        paymentId: payment.id,
+        status: { in: ["requested", "approved", "submitted", "succeeded"] },
+      },
+      _sum: { amountFils: true },
+    });
+    const amount = payment.amountFils - (committed._sum.amountFils ?? 0n);
+    if (amount <= 0n) return null;
+    const id = randomUUID();
+    await tx.refund.create({
+      data: {
+        id,
+        paymentId: payment.id,
+        orderId,
+        kind: "order_cancelled",
+        amountFils: amount,
+        currency: payment.currency,
+        reason,
+        status: "approved",
+        providerKey: `refund:${id}`,
+      },
+    });
+    await this.outbox.enqueue(tx, {
+      topic: "customer.payment_refunded",
+      aggregateId: orderId,
+      dedupeKey: `refund:${id}:customer_notice`,
+      payload: { orderId, refundId: id, reason: "order_cancelled" },
+    });
+    return id;
+  }
+
   /** Sends an approved refund to the provider (same key on every try) and applies the answer. */
   async submit(refundId: string): Promise<void> {
     const refund = await this.prisma.refund.findUniqueOrThrow({

@@ -8,6 +8,7 @@ import type { Env } from "./config/env.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { DiscoveryModule } from "./discovery/discovery.module.js";
 import { FinanceModule } from "./finance/finance.module.js";
+import { FulfillmentModule } from "./fulfillment/fulfillment.module.js";
 import { FilesModule } from "./files/files.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { IdempotencyModule } from "./idempotency/idempotency.module.js";
@@ -16,6 +17,7 @@ import { MerchantModule } from "./merchant/merchant.module.js";
 import { OnboardingModule } from "./onboarding/onboarding.module.js";
 import { OrderingModule } from "./ordering/ordering.module.js";
 import { OutboxModule } from "./outbox/outbox.module.js";
+import { RealtimeModule } from "./realtime/realtime.module.js";
 import { RedisModule } from "./redis/redis.module.js";
 import { StaffModule } from "./staff/staff.module.js";
 import { WebhooksModule } from "./webhooks/webhooks.module.js";
@@ -31,6 +33,7 @@ export class AppModule {
         ConfigModule.forRoot(env),
         DatabaseModule,
         RedisModule,
+        RealtimeModule,
         AuthModule,
         TenancyModule,
         AuditModule,
@@ -45,6 +48,7 @@ export class AppModule {
         DiscoveryModule,
         OrderingModule,
         FinanceModule,
+        FulfillmentModule,
         WebhooksModule,
         OnboardingModule,
         AdminModule,

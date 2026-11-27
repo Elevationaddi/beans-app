@@ -70,6 +70,10 @@ export const envSchema = z
     QUOTE_TTL_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
     /** How long checkout holds a slot place and stock while payment completes. Sandbox value. */
     RESERVATION_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(600),
+    /** How long a branch has to accept a received order before it is cancelled and refunded. Sandbox D10. */
+    ACCEPT_TIMEOUT_SECONDS: z.coerce.number().int().min(30).max(3600).default(120),
+    /** HMAC secret for handoff codes (32+ chars). Random per process when unset outside production. */
+    PICKUP_CODE_SECRET: z.string().min(32).optional(),
     /** Run the checkout sweep (poll pending payments, release expired holds) in this process. */
     CHECKOUT_SWEEP_ENABLED: z
       .enum(["true", "false"])
@@ -108,6 +112,7 @@ export const envSchema = z
       "API_PUBLIC_URL",
       "FILE_SIGNING_SECRET",
       "PAYMENT_WEBHOOK_SECRET",
+      "PICKUP_CODE_SECRET",
     ] as const) {
       if (!env[key]) {
         ctx.addIssue({ code: "custom", path: [key], message: "required in production" });

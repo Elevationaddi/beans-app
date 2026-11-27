@@ -9,6 +9,7 @@ import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
 import { PayoutService } from "../finance/payout.service.js";
 import { RefundService } from "../finance/refund.service.js";
+import { FulfillmentService } from "../fulfillment/fulfillment.service.js";
 import { PaymentReconciler } from "../ordering/payment-reconciler.service.js";
 import { PaymentWebhookService } from "./payment-webhook.service.js";
 
@@ -16,8 +17,8 @@ const SWEEP_INTERVAL_MS = 15_000;
 
 /**
  * Background safety net for money flows, every 15 s: retries stored webhooks, polls open
- * payment attempts, releases expired holds (after reconciling), and retries or polls
- * approved refunds and payouts. Safe on several instances: every change locks its row and
+ * payment attempts, releases expired holds (after reconciling), cancels and refunds paid
+ * orders nobody accepted in time, and retries or polls approved refunds and payouts. Safe on several instances: every change locks its row and
  * is idempotent. Enabled by CHECKOUT_SWEEP_ENABLED.
  */
 @Injectable()
@@ -32,6 +33,7 @@ export class PaymentSweepService implements OnApplicationBootstrap, OnModuleDest
     @Inject(PaymentReconciler) private readonly reconciler: PaymentReconciler,
     @Inject(RefundService) private readonly refunds: RefundService,
     @Inject(PayoutService) private readonly payouts: PayoutService,
+    @Inject(FulfillmentService) private readonly fulfillment: FulfillmentService,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -54,11 +56,12 @@ export class PaymentSweepService implements OnApplicationBootstrap, OnModuleDest
   async sweepOnce(): Promise<void> {
     const webhooks = await this.webhooks.sweep();
     const { polled, expired } = await this.reconciler.sweep();
+    const timedOut = await this.fulfillment.sweepAcceptanceTimeouts();
     const refunds = await this.refunds.sweep();
     const payouts = await this.payouts.sweep();
-    if (webhooks + polled + expired + refunds + payouts > 0) {
+    if (webhooks + polled + expired + timedOut + refunds + payouts > 0) {
       this.logger.log(
-        `webhooks ${webhooks}, payments ${polled}, expired ${expired}, refunds ${refunds}, payouts ${payouts}`,
+        `webhooks ${webhooks}, payments ${polled}, expired ${expired}, not accepted ${timedOut}, refunds ${refunds}, payouts ${payouts}`,
       );
     }
   }

@@ -302,6 +302,46 @@ export const orderEventSchema = z.object({
   at: z.iso.datetime(),
 });
 
+export const refundStatusSchema = z.enum([
+  "requested",
+  "approved",
+  "rejected",
+  "submitted",
+  "succeeded",
+  "failed",
+]);
+export const refundKindSchema = z.enum(["manual", "late_capture", "order_cancelled"]);
+
+/** Refunds of an order as the customer sees them; independent of the order status (docs/08). */
+export const orderRefundSchema = z.object({
+  id: uuidSchema,
+  kind: refundKindSchema,
+  status: refundStatusSchema,
+  amountFils: filsSchema,
+  currency: z.literal("AED"),
+  createdAt: z.iso.datetime(),
+});
+
+/** Curbside check-in by the customer and acknowledgement by staff. */
+export const arrivalSchema = z.object({
+  arrivedAt: z.iso.datetime().nullable(),
+  acknowledgedAt: z.iso.datetime().nullable(),
+});
+export type Arrival = z.infer<typeof arrivalSchema>;
+
+export const cancellationRequestStatusSchema = z.enum(["open", "approved", "declined"]);
+export const cancellationRequestSchema = z.object({
+  id: uuidSchema,
+  orderId: uuidSchema,
+  status: cancellationRequestStatusSchema,
+  /** Order status when the customer asked. */
+  orderStatus: orderStatusSchema,
+  reason: z.string(),
+  resolutionReason: z.string().nullable(),
+  createdAt: z.iso.datetime(),
+});
+export type CancellationRequestView = z.infer<typeof cancellationRequestSchema>;
+
 export const orderDetailSchema = orderSummarySchema.extend({
   version: z.number().int(),
   items: z.array(orderLineSchema),
@@ -310,6 +350,13 @@ export const orderDetailSchema = orderSummarySchema.extend({
   policyVersion: z.string(),
   payment: paymentSummarySchema.nullable(),
   timeline: z.array(orderEventSchema),
+  /** Estimated ready time once the branch accepts. */
+  etaAt: z.iso.datetime().nullable(),
+  /** Handoff code to show staff; only while the order is open (received to ready). */
+  pickupCode: z.string().nullable(),
+  arrival: arrivalSchema,
+  refunds: z.array(orderRefundSchema),
+  cancellationRequest: cancellationRequestSchema.nullable(),
 });
 export type OrderDetail = z.infer<typeof orderDetailSchema>;
 

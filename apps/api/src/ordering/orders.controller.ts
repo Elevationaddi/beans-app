@@ -18,6 +18,10 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe.js";
 import { PrismaService } from "../database/prisma.service.js";
 import type { Prisma } from "../generated/prisma/client.js";
 import { branchNames } from "./cart.service.js";
+import { PickupCodes } from "./pickup-code.js";
+
+/** The handoff code is shown only while the order can still be handed over. */
+const CODE_VISIBLE = new Set<OrderStatus>(["received", "accepted", "preparing", "ready"]);
 
 const idParams = new ZodValidationPipe(z.strictObject({ id: uuidSchema }));
 
@@ -48,7 +52,10 @@ function toSummary(row: SummaryRow): OrderSummary {
 /** The customer's own orders. Someone else's order answers 404, like a missing one. */
 @Controller("orders")
 export class OrdersController {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PickupCodes) private readonly pickupCodes: PickupCodes,
+  ) {}
 
   @Get()
   async list(
@@ -93,10 +100,13 @@ export class OrdersController {
         events: { orderBy: { seq: "asc" } },
         payments: { orderBy: { attempt: "desc" }, take: 1 },
         reservation: { select: { state: true, expiresAt: true } },
+        refunds: { orderBy: { createdAt: "asc" } },
+        cancellationRequests: { orderBy: { createdAt: "desc" }, take: 1 },
       },
     });
     if (!row) throw ApiError.notFound("Order not found");
     const payment = row.payments[0];
+    const request = row.cancellationRequests[0];
     const holdValid = row.reservation.state === "held" && row.reservation.expiresAt > new Date();
     return {
       data: {
@@ -136,6 +146,34 @@ export class OrdersController {
           toState: e.toState as OrderStatus,
           at: e.createdAt.toISOString(),
         })),
+        etaAt: row.etaAt?.toISOString() ?? null,
+        pickupCode:
+          CODE_VISIBLE.has(row.status) && row.pickupCodeHash
+            ? this.pickupCodes.codeFor(row.id)
+            : null,
+        arrival: {
+          arrivedAt: row.arrivedAt?.toISOString() ?? null,
+          acknowledgedAt: row.arrivalAckAt?.toISOString() ?? null,
+        },
+        refunds: row.refunds.map((r) => ({
+          id: r.id,
+          kind: r.kind,
+          status: r.status,
+          amountFils: r.amountFils.toString(),
+          currency: "AED" as const,
+          createdAt: r.createdAt.toISOString(),
+        })),
+        cancellationRequest: request
+          ? {
+              id: request.id,
+              orderId: request.orderId,
+              status: request.status,
+              orderStatus: request.orderStatus,
+              reason: request.reason,
+              resolutionReason: request.resolutionReason,
+              createdAt: request.createdAt.toISOString(),
+            }
+          : null,
       },
     };
   }

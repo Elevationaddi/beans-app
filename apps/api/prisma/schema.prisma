@@ -43,24 +43,27 @@ model User {
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  memberships         Membership[]
-  adminRoles          AdminRole[]
-  auditEvents         AuditEvent[]
-  uploads             Upload[]
-  policiesApproved    Policy[]          @relation("PolicyApprover")
-  invitationsSent     StaffInvitation[] @relation("InvitationInviter")
-  invitationsAccepted StaffInvitation[] @relation("InvitationAcceptor")
-  favorites           Favorite[]
-  vehicles            Vehicle[]
-  carts               Cart[]
-  quotes              Quote[]
-  orders              Order[]
-  orderEvents         OrderEvent[]
-  refundsRequested    Refund[]          @relation("RefundRequester")
-  refundsDecided      Refund[]          @relation("RefundDecider")
-  payoutsMade         Payout[]          @relation("PayoutMaker")
-  payoutsChecked      Payout[]          @relation("PayoutChecker")
-  exceptionsResolved  ReconciliationException[]
+  memberships           Membership[]
+  adminRoles            AdminRole[]
+  auditEvents           AuditEvent[]
+  uploads               Upload[]
+  policiesApproved      Policy[]                  @relation("PolicyApprover")
+  invitationsSent       StaffInvitation[]         @relation("InvitationInviter")
+  invitationsAccepted   StaffInvitation[]         @relation("InvitationAcceptor")
+  favorites             Favorite[]
+  vehicles              Vehicle[]
+  carts                 Cart[]
+  quotes                Quote[]
+  orders                Order[]
+  orderEvents           OrderEvent[]
+  refundsRequested      Refund[]                  @relation("RefundRequester")
+  refundsDecided        Refund[]                  @relation("RefundDecider")
+  payoutsMade           Payout[]                  @relation("PayoutMaker")
+  payoutsChecked        Payout[]                  @relation("PayoutChecker")
+  exceptionsResolved    ReconciliationException[]
+  arrivalsAcknowledged  Order[]                   @relation("OrderArrivalAck")
+  cancellationRequests  CancellationRequest[]     @relation("CancellationRequester")
+  cancellationsResolved CancellationRequest[]     @relation("CancellationResolver")
 
   @@map("users")
 }
@@ -425,8 +428,8 @@ model Product {
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  merchant Merchant        @relation(fields: [merchantId], references: [id], onDelete: Restrict)
-  category Category        @relation(fields: [categoryId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  merchant   Merchant        @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  category   Category        @relation(fields: [categoryId, merchantId], references: [id, merchantId], onDelete: Restrict)
   groups     ProductGroup[]
   branches   BranchProduct[]
   cartItems  CartItem[]
@@ -792,23 +795,35 @@ model Order {
   fulfillmentSnapshot Json        @map("fulfillment_snapshot")
   totals              Json
   policyVersion       String      @map("policy_version")
-  /// Set when the handoff code is issued (phase 8).
+  /// Salted hash of the handoff code, set when the order is received (docs/10).
   pickupCodeHash      String?     @map("pickup_code_hash")
+  /// Wrong handoff codes in a row; locks completion for a while at the limit.
+  pickupCodeFailures  Int         @default(0) @map("pickup_code_failures")
+  pickupCodeLockedTil DateTime?   @map("pickup_code_locked_until") @db.Timestamptz(6)
   etaAt               DateTime?   @map("eta_at") @db.Timestamptz(6)
+  /// Staff must accept before this (sandbox D10: 120 s after the order is received).
+  acceptBy            DateTime?   @map("accept_by") @db.Timestamptz(6)
+  /// Curbside check-in by the customer, then acknowledgement by staff (docs/08).
+  arrivedAt           DateTime?   @map("arrived_at") @db.Timestamptz(6)
+  arrivalAckAt        DateTime?   @map("arrival_ack_at") @db.Timestamptz(6)
+  arrivalAckById      String?     @map("arrival_ack_by") @db.Uuid
   version             Int         @default(1)
   createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user        User         @relation(fields: [userId], references: [id], onDelete: Restrict)
-  branch      Branch       @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
-  quote       Quote        @relation(fields: [quoteId], references: [id], onDelete: Restrict)
-  reservation Reservation  @relation(fields: [reservationId], references: [id], onDelete: Restrict)
-  items       OrderItem[]
-  events      OrderEvent[]
-  payments    Payment[]
-  refunds     Refund[]
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  branch               Branch                @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  quote                Quote                 @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  reservation          Reservation           @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  items                OrderItem[]
+  events               OrderEvent[]
+  payments             Payment[]
+  refunds              Refund[]
+  arrivalAckBy         User?                 @relation("OrderArrivalAck", fields: [arrivalAckById], references: [id], onDelete: Restrict)
+  cancellationRequests CancellationRequest[]
 
   @@index([branchId, status, createdAt])
+  @@index([status, acceptBy])
   @@index([userId, createdAt])
   @@map("orders")
 }
@@ -916,6 +931,8 @@ enum RefundKind {
   manual
   /// Automatic full refund of a payment captured after its hold expired (Q08).
   late_capture
+  /// Automatic refund when a paid order is rejected, times out or is cancelled before acceptance.
+  order_cancelled
 }
 
 enum RefundStatus {
@@ -1085,4 +1102,37 @@ model ReconciliationException {
 
   @@index([status, merchantId])
   @@map("reconciliation_exceptions")
+}
+
+enum CancellationRequestStatus {
+  open
+  approved
+  declined
+}
+
+/**
+ * A customer's request to cancel (D05). Before acceptance it is approved at once and the order
+ * is cancelled; after acceptance it waits for operations review and never changes the order
+ * or money by itself (Q12).
+ */
+model CancellationRequest {
+  id               String                    @id @default(uuid()) @db.Uuid
+  orderId          String                    @map("order_id") @db.Uuid
+  userId           String                    @map("user_id") @db.Uuid
+  reason           String
+  /// Order status when the customer asked.
+  orderStatus      OrderStatus               @map("order_status")
+  status           CancellationRequestStatus @default(open)
+  resolvedById     String?                   @map("resolved_by") @db.Uuid
+  resolutionReason String?                   @map("resolution_reason")
+  createdAt        DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order      Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  user       User  @relation("CancellationRequester", fields: [userId], references: [id], onDelete: Restrict)
+  resolvedBy User? @relation("CancellationResolver", fields: [resolvedById], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([status, createdAt])
+  @@map("cancellation_requests")
 }

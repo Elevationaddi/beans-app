@@ -1,22 +1,23 @@
 # Implementation progress
 
-Status: phases 01–06 merged; phase 07 implemented, awaiting owner review. No production
-integrations or real money.
+Status: phases 01–07 merged; phase 08 implemented. The owner asked (2026-11-27) for the
+remaining phases to be built and merged without per-phase approval, with one final report.
+No production integrations or real money.
 
-| Phase | Status                 | Commit                     | Tests                                  | Blockers                                      |
-| ----- | ---------------------- | -------------------------- | -------------------------------------- | --------------------------------------------- |
-| 01    | Done (merged)          | 2db5b9c                    | 17 unit, 3 integration, all apps build | None                                          |
-| 02    | Done (merged)          | 6a8a569                    | 28 unit, 52 integration                | D12 before production sign-in                 |
-| 03    | Done (merged)          | 6d21d02                    | 32 unit, 71 integration                | Storage provider, malware scanner (D11)       |
-| 04    | Done (merged)          | 63496dc                    | 37 unit, 108 integration               | D10 (slot length), invite delivery            |
-| 05    | Done (merged)          | ad02125                    | 54 unit, 122 integration               | D12 (app sign-in), D13 before production copy |
-| 06    | Done (merged)          | 7818223                    | 62 unit, 137 integration               | D02, D06 for real pricing; D12 for app        |
-| 07    | Implemented, in review | branch `phase-07-payments` | 71 unit, 145 integration               | D02–D04, D06 before any live provider         |
-| 08    | Not started            | —                          | —                                      | D05, D10                                      |
-| 09    | Deferred (not in MVP)  | —                          | —                                      | D07, D08, D14, D16                            |
-| 10    | Not started            | —                          | —                                      | See decision register                         |
-| 11    | Not started            | —                          | —                                      | See decision register                         |
-| 12    | Not started            | —                          | —                                      | D01, D11, D15 and all money decisions         |
+| Phase | Status                 | Commit                        | Tests                                  | Blockers                                      |
+| ----- | ---------------------- | ----------------------------- | -------------------------------------- | --------------------------------------------- |
+| 01    | Done (merged)          | 2db5b9c                       | 17 unit, 3 integration, all apps build | None                                          |
+| 02    | Done (merged)          | 6a8a569                       | 28 unit, 52 integration                | D12 before production sign-in                 |
+| 03    | Done (merged)          | 6d21d02                       | 32 unit, 71 integration                | Storage provider, malware scanner (D11)       |
+| 04    | Done (merged)          | 63496dc                       | 37 unit, 108 integration               | D10 (slot length), invite delivery            |
+| 05    | Done (merged)          | ad02125                       | 54 unit, 122 integration               | D12 (app sign-in), D13 before production copy |
+| 06    | Done (merged)          | 7818223                       | 62 unit, 137 integration               | D02, D06 for real pricing; D12 for app        |
+| 07    | Done (merged)          | a5bcaa3                       | 71 unit, 145 integration               | D02–D04, D06 before any live provider         |
+| 08    | Implemented, in review | branch `phase-08-fulfillment` | 76 unit, 161 integration               | D05, D10; D12 for tablet and app screens      |
+| 09    | Deferred (not in MVP)  | —                             | —                                      | D07, D08, D14, D16                            |
+| 10    | Not started            | —                             | —                                      | See decision register                         |
+| 11    | Not started            | —                             | —                                      | See decision register                         |
+| 12    | Not started            | —                             | —                                      | D01, D11, D15 and all money decisions         |
 
 ## Phase 01 — Foundation (2026-11-27)
 
@@ -779,24 +780,125 @@ revert the merge and recreate development databases.
 Phase 08: fulfillment (staff order queue, accept or reject with refund, preparation, pickup code,
 curbside arrival, completion posting).
 
+## Phase 08 — Fulfilment (2026-11-27)
+
+### Scope completed
+
+- **Branch queue** (`GET /v1/merchant/orders?branchId=`, `GET /v1/merchant/orders/:id`): the
+  live queue (received, accepted, preparing, ready; oldest first) or one status (newest first).
+  Owners see every branch; managers and baristas only their assigned branches; analysts are
+  refused (403); other branches answer 404. Staff never see unpaid orders. The view is
+  operational only: items, options, notes, pickup time, ETA, acceptance deadline, curbside car,
+  arrival, and a "cancellation requested" flag. No customer name, contact or payment data.
+- **Staff steps** (`POST /v1/merchant/orders/:id/transition`, Idempotency-Key required):
+  `accept` (ETA 1–120 minutes), `reject` (reason), `start`, `ready`, `complete` (six-digit
+  pickup code). Each step locks the order, checks `expectedVersion` (stale = 409 with the
+  current version) and the state machine (`INVALID_TRANSITION`), and writes status, timeline
+  event and outbox signal together. A database trigger enforces the same state machine, so
+  terminal orders can never move and steps cannot be skipped.
+- **Rejection and acceptance timeout (Q09)**: a rejected order, or one not accepted within
+  120 s (sandbox D10, `ACCEPT_TIMEOUT_SECONDS`), ends; its slot place and held stock are
+  released and an automatic full refund (kind `order_cancelled`) is sent to the sandbox
+  provider; the customer notice is queued. The background sweep runs the timeout check every
+  15 s, locking and re-checking each order so a tablet accepting at the same moment wins or
+  loses cleanly. An accept after the deadline is refused even before the sweep runs.
+- **Handoff**: the pickup code is derived from the order ID with a server secret
+  (`PICKUP_CODE_SECRET`) so the customer app can always show it, while the database keeps
+  only a salted hash (docs/10). Wrong codes answer 422; five in a row lock completion for five
+  minutes (429). Completion consumes the held stock and posts the completion journal
+  (commission sandbox 10%) exactly once.
+- **Curbside (Q11)**: `POST /v1/orders/:id/arrival` after acceptance only; repeats return the
+  same arrival. Staff acknowledge with `POST /v1/merchant/orders/:id/ack-arrival`; repeats
+  return the same acknowledgement. Completion never happens from location, only with the code.
+- **Cancellation (Q12, D05 sandbox)**: `POST /v1/orders/:id/cancel-requests`. Before
+  acceptance the order is cancelled and refunded at once. After acceptance an open request is
+  created for operations (one per order) and nothing else changes. Operations can decline
+  (`POST /v1/admin/cancellation-requests/:id/decline`) or cancel the order
+  (`POST /v1/admin/orders/:id/cancel`): before acceptance with an automatic refund; after
+  acceptance without one (finance refunds through maker-checker). Both are audited.
+- **Receipt** (`GET /v1/orders/:id/receipt`): from immutable snapshots only, with paid and
+  refunded amounts; marked `sandbox: true, taxInvoice: false` (D06). 409 before payment.
+- **Order detail** now includes ETA, pickup code (only while open), arrival, refunds and the
+  latest cancellation request. History uses the existing `GET /v1/orders`.
+- **Live updates (Q17)**: server-sent events at `GET /v1/merchant/branches/:id/order-events`
+  and `GET /v1/orders/:id/events`. The outbox worker publishes each committed
+  `order.updated` row to Redis pub/sub; every API instance forwards matching events as
+  `{type, orderId, version, occurredAt}` with no personal data. Clients refetch the canonical
+  order or queue on every event and after every reconnect; retried taps replay through the
+  idempotency key and stale queued taps get 409, so reconnecting never duplicates a change.
+  A heartbeat every 25 s re-checks access and ends the stream if it was removed.
+- Contracts and OpenAPI 0.7.0 (11 new routes); route registry matches the API.
+
+### Database (migration `20261127213746_fulfillment`)
+
+New table `cancellation_requests` (one open request per order, reason 3–500 characters,
+resolution reason required once decided). New order columns: `accept_by`, `arrived_at`,
+`arrival_ack_at`, `arrival_ack_by`, `pickup_code_failures`, `pickup_code_locked_until`. New
+refund kind `order_cancelled`. Trigger `orders_state_machine` (allowed status steps only,
+version must increase, arrival only once and only for curbside open orders) and
+`orders_no_delete`.
+
+### Sandbox values and open decisions (not approved)
+
+- **D10**: 120 s to accept; ETA 1–120 minutes (docs/07).
+- **D05**: customer cancellation is automatic before acceptance, support review after. No
+  no-show or forfeiture rules (none approved); no curbside pickup window enforced (not
+  specified).
+- Security defaults (not policy): six-digit code, lock after five wrong codes for five minutes.
+
+### Excluded / follow-ups
+
+- **Tablet and customer app screens** (T01–T06, C08, C09): the API is complete, but staff and
+  customers cannot sign in to the web or mobile apps until D12 and a Supabase test project
+  exist. The tablet route still says the queue is not built.
+- Reorder (`POST /orders/:id/reorder`) and support tickets (`/tickets`) belong with operations
+  (phase 10).
+- Push notifications: events are queued in the outbox; no provider is approved.
+
+### Commands and actual results (local run, 2026-11-27)
+
+| Command                                            | Result                                          |
+| -------------------------------------------------- | ----------------------------------------------- |
+| `pnpm format:check`, `pnpm lint`, `pnpm typecheck` | Pass                                            |
+| `pnpm test`                                        | 76 passed: contracts 6, ui 5, api 51, mobile 14 |
+| `pnpm test:integration`                            | 161 passed in 17 files (fulfilment 16)          |
+| `pnpm --filter @beans/api build`                   | Pass                                            |
+| `prisma migrate diff … --exit-code`                | No difference                                   |
+
+Phase gate: Q09, Q10, Q11, Q12 and Q17 each have an integration test, and one test runs a full
+order end to end (pay, accept, prepare, ready, hand over with the code, receipt).
+
+### Migration and rollback
+
+Additive. Rollback: drop the two triggers and `guard_order_transition()`, drop
+`cancellation_requests` and its enum, and drop the six new order columns. The enum value
+`order_cancelled` cannot be removed while refunds use it.
+
+### Next step
+
+Phase 09 (rewards, gifts, table QR) stays switched off: D07, D08, D14 and D16 are open.
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.
 
-| Date       | Author | Decision | Change                                                                              | Approval                           |
-| ---------- | ------ | -------- | ----------------------------------------------------------------------------------- | ---------------------------------- |
-| 2026-11-27 | Claude | D13      | Neutral working name "Coffee Marketplace" used in all UI; no BEANZ marks            | Proposed default, not approved     |
-| 2026-11-27 | Claude | D02      | Seeded `commission/sandbox-v1` (10%, sandbox flag, unapproved) for development only | Proposed default, not approved     |
-| 2026-11-27 | Claude | D12      | Sign-in verified via any Supabase provider; admin routes require aal2 (MFA)         | Channels and SMS vendor not chosen |
-| 2026-11-27 | Claude | D10      | 15-minute pickup slots, capacity per branch (sandbox values)                        | Proposed default, not approved     |
-| 2026-11-27 | Claude | —        | Staff invitations expire after 72 hours; no email sent until a provider is approved | Proposed default, not approved     |
-| 2026-11-27 | Claude | D01      | Customer app defaults to Abu Dhabi; any of the seven emirates can be chosen         | Proposed default, not approved     |
-| 2026-11-27 | Claude | —        | At most 20 of one item per cart line (sandbox limit)                                | Proposed default, not approved     |
-| 2026-11-27 | Claude | D06      | Pricing policy `sandbox-v1`: tax-inclusive, sample 5% VAT, no fee, no discount      | Proposed default, not approved     |
-| 2026-11-27 | Claude | —        | Quotes valid 5 minutes; checkout holds slot and stock 10 minutes for payment        | Proposed default, not approved     |
-| 2026-11-27 | Claude | D02      | Commission posted at completion on amount paid less refunds (sandbox 10%)           | Proposed default, not approved     |
-| 2026-11-27 | Claude | D03      | Payment captured after hold expiry is refunded in full automatically                | Proposed default, not approved     |
-| 2026-11-27 | Claude | D04      | Payouts drafted manually by maker, approved by a different checker (sandbox)        | Proposed default, not approved     |
+| Date       | Author | Decision | Change                                                                                            | Approval                           |
+| ---------- | ------ | -------- | ------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| 2026-11-27 | Claude | D13      | Neutral working name "Coffee Marketplace" used in all UI; no BEANZ marks                          | Proposed default, not approved     |
+| 2026-11-27 | Claude | D02      | Seeded `commission/sandbox-v1` (10%, sandbox flag, unapproved) for development only               | Proposed default, not approved     |
+| 2026-11-27 | Claude | D12      | Sign-in verified via any Supabase provider; admin routes require aal2 (MFA)                       | Channels and SMS vendor not chosen |
+| 2026-11-27 | Claude | D10      | 15-minute pickup slots, capacity per branch (sandbox values)                                      | Proposed default, not approved     |
+| 2026-11-27 | Claude | —        | Staff invitations expire after 72 hours; no email sent until a provider is approved               | Proposed default, not approved     |
+| 2026-11-27 | Claude | D01      | Customer app defaults to Abu Dhabi; any of the seven emirates can be chosen                       | Proposed default, not approved     |
+| 2026-11-27 | Claude | —        | At most 20 of one item per cart line (sandbox limit)                                              | Proposed default, not approved     |
+| 2026-11-27 | Claude | D06      | Pricing policy `sandbox-v1`: tax-inclusive, sample 5% VAT, no fee, no discount                    | Proposed default, not approved     |
+| 2026-11-27 | Claude | —        | Quotes valid 5 minutes; checkout holds slot and stock 10 minutes for payment                      | Proposed default, not approved     |
+| 2026-11-27 | Claude | D02      | Commission posted at completion on amount paid less refunds (sandbox 10%)                         | Proposed default, not approved     |
+| 2026-11-27 | Claude | D03      | Payment captured after hold expiry is refunded in full automatically                              | Proposed default, not approved     |
+| 2026-11-27 | Claude | D04      | Payouts drafted manually by maker, approved by a different checker (sandbox)                      | Proposed default, not approved     |
+| 2026-11-27 | Claude | D10      | Branch has 120 s to accept; unaccepted paid orders cancelled and refunded automatically (sandbox) | Proposed default, not approved     |
+| 2026-11-27 | Claude | D05      | Customer cancel: automatic with refund before acceptance; support review after; no no-show rules  | Proposed default, not approved     |
+| 2026-11-27 | Owner  | Process  | Build and merge remaining phases without per-phase approval; one final report                     | Instructed by owner                |
 
 ## Phase handoff template
 

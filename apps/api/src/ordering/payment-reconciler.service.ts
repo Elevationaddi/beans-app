@@ -1,4 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import { ENV } from "../config/config.module.js";
+import type { Env } from "../config/env.js";
 import { PrismaService } from "../database/prisma.service.js";
 import type { OrderStatus, Prisma } from "../generated/prisma/client.js";
 import { LedgerService } from "../finance/ledger.service.js";
@@ -10,8 +12,9 @@ import {
   type PaymentProvider,
   type ProviderPayment,
 } from "../payments/payment-provider.js";
+import { PickupCodes } from "./pickup-code.js";
 
-interface LockedOrder {
+export interface LockedOrder {
   id: string;
   user_id: string;
   branch_id: string;
@@ -42,6 +45,8 @@ export class PaymentReconciler {
     @Inject(OutboxService) private readonly outbox: OutboxService,
     @Inject(LedgerService) private readonly ledger: LedgerService,
     @Inject(RefundService) private readonly refunds: RefundService,
+    @Inject(PickupCodes) private readonly pickupCodes: PickupCodes,
+    @Inject(ENV) private readonly env: Env,
   ) {}
 
   /** Records a provider answer for one attempt. Safe to call repeatedly. */
@@ -204,19 +209,34 @@ export class PaymentReconciler {
       where: { id: order.reservation_id },
       data: { state: "committed" },
     });
-    await this.transition(tx, order, "received", { metadata: { paymentId } });
+    // Staff see the order now; the handoff code is issued and the acceptance clock starts.
+    await this.transition(tx, order, "received", {
+      metadata: { paymentId },
+      data: {
+        pickupCodeHash: this.pickupCodes.hashFor(order.id),
+        acceptBy: new Date(Date.now() + this.env.ACCEPT_TIMEOUT_SECONDS * 1000),
+      },
+    });
   }
 
-  /** Moves the locked order to a new status: version bump, timeline event and outbox, together. */
+  /**
+   * Moves the locked order to a new status: version bump, timeline event and outbox, together.
+   * `data` changes other columns in the same update. Returns the new version.
+   */
   async transition(
     tx: Prisma.TransactionClient,
     order: LockedOrder,
     to: OrderStatus,
-    extra: { reason?: string; metadata?: Prisma.InputJsonObject; actorId?: string } = {},
-  ): Promise<void> {
+    extra: {
+      reason?: string;
+      metadata?: Prisma.InputJsonObject;
+      actorId?: string;
+      data?: Prisma.OrderUncheckedUpdateInput;
+    } = {},
+  ): Promise<number> {
     await tx.order.update({
       where: { id: order.id },
-      data: { status: to, version: order.version + 1 },
+      data: { ...extra.data, status: to, version: order.version + 1 },
     });
     const last = await tx.orderEvent.findFirst({
       where: { orderId: order.id },
@@ -234,6 +254,28 @@ export class PaymentReconciler {
         metadata: extra.metadata ?? {},
       },
     });
+    await this.announce(tx, order, to);
+    return order.version + 1;
+  }
+
+  /**
+   * A change that is not a status change (curbside arrival, its acknowledgement): version
+   * bump and outbox only, so tablets and the customer app refetch. Returns the new version.
+   */
+  async touch(
+    tx: Prisma.TransactionClient,
+    order: LockedOrder,
+    data: Prisma.OrderUncheckedUpdateInput,
+  ): Promise<number> {
+    await tx.order.update({
+      where: { id: order.id },
+      data: { ...data, version: order.version + 1 },
+    });
+    await this.announce(tx, order, order.status);
+    return order.version + 1;
+  }
+
+  private async announce(tx: Prisma.TransactionClient, order: LockedOrder, status: OrderStatus) {
     await this.outbox.enqueue(tx, {
       topic: "order.updated",
       aggregateId: order.id,
@@ -241,8 +283,10 @@ export class PaymentReconciler {
       payload: {
         orderId: order.id,
         branchId: order.branch_id,
-        status: to,
+        userId: order.user_id,
+        status,
         version: order.version + 1,
+        occurredAt: new Date().toISOString(),
       },
     });
   }

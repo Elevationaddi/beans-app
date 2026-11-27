@@ -9,6 +9,7 @@ import { CheckoutController } from "./checkout.controller.js";
 import { CheckoutService } from "./checkout.service.js";
 import { OrdersController } from "./orders.controller.js";
 import { PaymentReconciler } from "./payment-reconciler.service.js";
+import { pickupCodeProviders, PickupCodes } from "./pickup-code.js";
 import { QuoteService } from "./quote.service.js";
 import { VehiclesController } from "./vehicles.controller.js";
 
@@ -16,7 +17,13 @@ import { VehiclesController } from "./vehicles.controller.js";
 @Module({
   imports: [DiscoveryModule, InventoryModule, PaymentsModule, FinanceModule],
   controllers: [VehiclesController, CartController, CheckoutController, OrdersController],
-  providers: [CartService, QuoteService, CheckoutService, PaymentReconciler],
-  exports: [PaymentReconciler],
+  providers: [
+    CartService,
+    QuoteService,
+    CheckoutService,
+    PaymentReconciler,
+    ...pickupCodeProviders,
+  ],
+  exports: [PaymentReconciler, PickupCodes],
 })
 export class OrderingModule {}

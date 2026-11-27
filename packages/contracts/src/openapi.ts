@@ -68,7 +68,14 @@ export function buildOpenApiDocument(version: string): JsonSchema {
         content:
           "binary" in success
             ? { "application/octet-stream": { schema: { type: "string", format: "binary" } } }
-            : { "application/json": { schema: toSchema(success.schema, "output") } },
+            : "eventStream" in success
+              ? {
+                  "text/event-stream": {
+                    schema: { type: "string" },
+                    "x-event-data": toSchema(success.eventStream, "output"),
+                  },
+                }
+              : { "application/json": { schema: toSchema(success.schema, "output") } },
       },
     };
     for (const status of route.errors) {

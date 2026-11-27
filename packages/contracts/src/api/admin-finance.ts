@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { dataEnvelope, filsSchema, listEnvelope, pageQuerySchema, uuidSchema } from "./common.js";
-import { paymentStatusSchema } from "./ordering.js";
+import { paymentStatusSchema, refundKindSchema, refundStatusSchema } from "./ordering.js";
 
 /** A finance decision always carries a reason; it is written to the audit log. */
 const reasonSchema = z.string().trim().min(3).max(500);
@@ -35,16 +35,6 @@ export type AdminPayment = z.infer<typeof adminPaymentSchema>;
 export const adminPaymentListResponseSchema = listEnvelope(adminPaymentSchema);
 
 // ── Refunds ─────────────────────────────────────────────────────────────────
-
-export const refundStatusSchema = z.enum([
-  "requested",
-  "approved",
-  "rejected",
-  "submitted",
-  "succeeded",
-  "failed",
-]);
-export const refundKindSchema = z.enum(["manual", "late_capture"]);
 
 export const createRefundRequestSchema = z.strictObject({
   paymentId: uuidSchema,
