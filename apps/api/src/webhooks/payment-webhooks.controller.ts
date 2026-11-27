@@ -3,6 +3,7 @@ import { webhookParamsSchema } from "@beans/contracts";
 import { Public } from "../auth/public.decorator.js";
 import { ZodValidationPipe } from "../common/zod-validation.pipe.js";
 import { PaymentWebhookService } from "./payment-webhook.service.js";
+import { LIMITS, RateLimit } from "../security/rate-limit.js";
 
 interface RawRequest {
   rawBody?: Buffer;
@@ -16,6 +17,7 @@ export class PaymentWebhooksController {
 
   @Public()
   @Post(":provider")
+  @RateLimit(LIMITS.webhook)
   @HttpCode(200)
   async receive(
     @Param(new ZodValidationPipe(webhookParamsSchema)) params: { provider: string },

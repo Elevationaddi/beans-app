@@ -13,6 +13,7 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe.js";
 import { Idempotent } from "../idempotency/idempotent.interceptor.js";
 import { CheckoutService } from "./checkout.service.js";
 import { QuoteService } from "./quote.service.js";
+import { LIMITS, RateLimit } from "../security/rate-limit.js";
 
 @Controller()
 export class CheckoutController {
@@ -22,6 +23,7 @@ export class CheckoutController {
   ) {}
 
   @Post("quotes")
+  @RateLimit(LIMITS.quote)
   async quote(
     @CurrentActor() actor: Actor,
     @Body(new ZodValidationPipe(createQuoteRequestSchema)) body: CreateQuoteRequest,
@@ -31,6 +33,7 @@ export class CheckoutController {
 
   /** Requires an Idempotency-Key. To retry a failed payment, send the same quoteId with a new key. */
   @Post("checkout")
+  @RateLimit(LIMITS.checkout)
   @Idempotent()
   async checkout(
     @CurrentActor() actor: Actor,

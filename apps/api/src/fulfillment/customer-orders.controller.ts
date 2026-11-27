@@ -35,6 +35,7 @@ import { RealtimeService } from "../realtime/realtime.service.js";
 import { FulfillmentService } from "./fulfillment.service.js";
 import { liveStream } from "./live-stream.js";
 import { type LineSnapshot, toCancellationRequest, toOrderRefund } from "./order-views.js";
+import { LIMITS, RateLimit } from "../security/rate-limit.js";
 
 const idParams = new ZodValidationPipe(z.strictObject({ id: uuidSchema }));
 
@@ -48,6 +49,7 @@ export class CustomerOrdersController {
   ) {}
 
   @Post(":id/arrival")
+  @RateLimit(LIMITS.arrival)
   @HttpCode(200)
   @Idempotent()
   async arrive(
@@ -68,6 +70,7 @@ export class CustomerOrdersController {
   }
 
   @Post(":id/cancel-requests")
+  @RateLimit(LIMITS.cancelRequest)
   @Idempotent()
   async requestCancellation(
     @CurrentActor() actor: Actor,

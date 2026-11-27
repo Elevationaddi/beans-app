@@ -79,6 +79,11 @@ export const envSchema = z
       .enum(["true", "false"])
       .default("true")
       .transform((value) => value === "true"),
+    /** Per-actor and per-IP request limits on sensitive routes (docs/10). Must stay on in production. */
+    RATE_LIMIT_ENABLED: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true"),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== "production") return;
@@ -97,6 +102,13 @@ export const envSchema = z
         code: "custom",
         path: ["STORAGE_DRIVER"],
         message: "local file storage cannot run with NODE_ENV=production",
+      });
+    }
+    if (!env.RATE_LIMIT_ENABLED) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["RATE_LIMIT_ENABLED"],
+        message: "rate limits cannot be switched off with NODE_ENV=production",
       });
     }
     if (env.FILE_SCANNER === "basic") {

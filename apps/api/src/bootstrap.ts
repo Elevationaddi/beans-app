@@ -5,10 +5,12 @@ import { AppModule } from "./app.module.js";
 import { HttpExceptionFilter } from "./common/http-exception.filter.js";
 import { requestIdMiddleware } from "./common/request-id.middleware.js";
 import type { Env } from "./config/env.js";
+import { securityHeaders } from "./security/security-headers.js";
 
 /** HTTP wiring shared by the server and the test suite. */
 export function configureApp(app: INestApplication, env: Env): INestApplication {
   app.use(requestIdMiddleware);
+  app.use(securityHeaders(env));
   app.setGlobalPrefix("v1", { exclude: ["health", "health/live"] });
   app.useGlobalFilters(new HttpExceptionFilter());
   app.enableCors({ origin: env.CORS_ORIGINS, credentials: false });

@@ -26,6 +26,7 @@ import { Public } from "../auth/public.decorator.js";
 import type { Actor, ApiResponse } from "../common/request-context.js";
 import { ZodValidationPipe } from "../common/zod-validation.pipe.js";
 import { FilesService } from "./files.service.js";
+import { LIMITS, RateLimit } from "../security/rate-limit.js";
 
 const idParams = new ZodValidationPipe(z.strictObject({ id: uuidSchema }));
 const tokenQuery = new ZodValidationPipe(signedTokenQuerySchema);
@@ -39,6 +40,7 @@ export class UploadsController {
   constructor(@Inject(FilesService) private readonly files: FilesService) {}
 
   @Post()
+  @RateLimit(LIMITS.upload)
   async create(
     @CurrentActor() actor: Actor,
     @Body(new ZodValidationPipe(createUploadRequestSchema)) body: CreateUploadRequest,

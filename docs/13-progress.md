@@ -1,23 +1,23 @@
 # Implementation progress
 
-Status: phases 01–08 merged; phase 09 deferred (not in MVP); phase 10 implemented. The owner asked (2026-11-27) for the
+Status: phases 01–08 and 10 merged; phase 09 deferred (not in MVP); phase 11 implemented. The owner asked (2026-11-27) for the
 remaining phases to be built and merged without per-phase approval, with one final report.
 No production integrations or real money.
 
-| Phase | Status                 | Commit                       | Tests                                  | Blockers                                      |
-| ----- | ---------------------- | ---------------------------- | -------------------------------------- | --------------------------------------------- |
-| 01    | Done (merged)          | 2db5b9c                      | 17 unit, 3 integration, all apps build | None                                          |
-| 02    | Done (merged)          | 6a8a569                      | 28 unit, 52 integration                | D12 before production sign-in                 |
-| 03    | Done (merged)          | 6d21d02                      | 32 unit, 71 integration                | Storage provider, malware scanner (D11)       |
-| 04    | Done (merged)          | 63496dc                      | 37 unit, 108 integration               | D10 (slot length), invite delivery            |
-| 05    | Done (merged)          | ad02125                      | 54 unit, 122 integration               | D12 (app sign-in), D13 before production copy |
-| 06    | Done (merged)          | 7818223                      | 62 unit, 137 integration               | D02, D06 for real pricing; D12 for app        |
-| 07    | Done (merged)          | a5bcaa3                      | 71 unit, 145 integration               | D02–D04, D06 before any live provider         |
-| 08    | Done (merged)          | 58ec117                      | 76 unit, 161 integration               | D05, D10; D12 for tablet and app screens      |
-| 09    | Deferred (not in MVP)  | —                            | —                                      | D07, D08, D14, D16 and legal review           |
-| 10    | Implemented, in review | branch `phase-10-operations` | 76 unit, 168 integration               | D11 (retention), D12 for screens              |
-| 11    | Not started            | —                            | —                                      | See decision register                         |
-| 12    | Not started            | —                            | —                                      | D01, D11, D15 and all money decisions         |
+| Phase | Status                 | Commit                      | Tests                                  | Blockers                                      |
+| ----- | ---------------------- | --------------------------- | -------------------------------------- | --------------------------------------------- |
+| 01    | Done (merged)          | 2db5b9c                     | 17 unit, 3 integration, all apps build | None                                          |
+| 02    | Done (merged)          | 6a8a569                     | 28 unit, 52 integration                | D12 before production sign-in                 |
+| 03    | Done (merged)          | 6d21d02                     | 32 unit, 71 integration                | Storage provider, malware scanner (D11)       |
+| 04    | Done (merged)          | 63496dc                     | 37 unit, 108 integration               | D10 (slot length), invite delivery            |
+| 05    | Done (merged)          | ad02125                     | 54 unit, 122 integration               | D12 (app sign-in), D13 before production copy |
+| 06    | Done (merged)          | 7818223                     | 62 unit, 137 integration               | D02, D06 for real pricing; D12 for app        |
+| 07    | Done (merged)          | a5bcaa3                     | 71 unit, 145 integration               | D02–D04, D06 before any live provider         |
+| 08    | Done (merged)          | 58ec117                     | 76 unit, 161 integration               | D05, D10; D12 for tablet and app screens      |
+| 09    | Deferred (not in MVP)  | —                           | —                                      | D07, D08, D14, D16 and legal review           |
+| 10    | Done (merged)          | 8e82873                     | 76 unit, 168 integration               | D11 (retention), D12 for screens              |
+| 11    | Implemented, in review | branch `phase-11-hardening` | 77 unit, 172 integration               | Staging (hosting), D15 device audit, pen test |
+| 12    | Not started            | —                           | —                                      | D01, D11, D15 and all money decisions         |
 
 ## Phase 01 — Foundation (2026-11-27)
 
@@ -951,6 +951,46 @@ migrate or roll back.
 
 `20261127215200_operations`: new tables `tickets` and `ticket_messages` and their enums,
 CHECKs and append-only triggers. Additive. Rollback: drop both tables and the seven enums.
+
+## Phase 11 — Hardening (2026-11-27)
+
+Full results, the Q01–Q24 matrix, threat model and dependency review are in
+[14-hardening-report.md](14-hardening-report.md).
+
+### Scope completed
+
+- **Rate limits** on sensitive routes (checkout, quote, staff actions, check-in, cancellation,
+  uploads, tickets, privacy requests, reports and exports, provider webhooks), per user or IP,
+  in Redis. 429 with `Retry-After`. `RATE_LIMIT_ENABLED` cannot be false in production.
+- **Security headers** on every response.
+- **Concurrency**: 12 simultaneous buyers for 5 units sell exactly 5.
+- **Provider outage at checkout (Q22)**: the order stays pending; a retry uses the same attempt
+  and provider key, so there is one payment.
+- **Backup and restore drill** (`apps/api/scripts/backup-restore-check.sh`): restored copy
+  matches row counts and the journal balances.
+- Q01–Q24 matrix: every applicable scenario has a passing test; Q18 is partial (device audit
+  needed); Q19–Q21 are phase two.
+
+### Commands and actual results (local run, 2026-11-27)
+
+| Command                                            | Result                                                          |
+| -------------------------------------------------- | --------------------------------------------------------------- |
+| `pnpm format:check`, `pnpm lint`, `pnpm typecheck` | Pass                                                            |
+| `pnpm test`                                        | 77 passed: contracts 6, ui 5, api 52, mobile 14                 |
+| `pnpm test:integration`                            | 172 passed in 19 files (hardening 4)                            |
+| `backup-restore-check.sh` on the test database     | OK: dump 1 s, restore under 1 s, counts match, journal balances |
+| `pnpm audit --prod --audit-level high`             | No high or critical advisories                                  |
+| `pnpm audit`                                       | 4 moderate, build and test tooling only                         |
+
+### Migration and rollback
+
+No database change. Rollback: revert the commit (rate limits and headers are code only).
+
+### Remaining blockers
+
+Staging environment and hosting (load tests, production backups, RPO/RTO), device
+accessibility audit (D15), external penetration test and SAST, step-up MFA for role and bank
+changes, and sign-in for all screens (D12).
 
 ## Decision and change log
 
