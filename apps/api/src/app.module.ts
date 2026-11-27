@@ -7,6 +7,7 @@ import { ConfigModule } from "./config/config.module.js";
 import type { Env } from "./config/env.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { DiscoveryModule } from "./discovery/discovery.module.js";
+import { FinanceModule } from "./finance/finance.module.js";
 import { FilesModule } from "./files/files.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { IdempotencyModule } from "./idempotency/idempotency.module.js";
@@ -17,6 +18,7 @@ import { OrderingModule } from "./ordering/ordering.module.js";
 import { OutboxModule } from "./outbox/outbox.module.js";
 import { RedisModule } from "./redis/redis.module.js";
 import { StaffModule } from "./staff/staff.module.js";
+import { WebhooksModule } from "./webhooks/webhooks.module.js";
 import { TenancyModule } from "./tenancy/tenancy.module.js";
 
 /** Root module: one modular backend (CLAUDE.md). Business modules join in later phases. */
@@ -42,6 +44,8 @@ export class AppModule {
         StaffModule,
         DiscoveryModule,
         OrderingModule,
+        FinanceModule,
+        WebhooksModule,
         OnboardingModule,
         AdminModule,
       ],

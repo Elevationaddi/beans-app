@@ -60,6 +60,7 @@ describe("loadEnv", () => {
       SUPABASE_JWT_ISSUER: "https://auth.example.com/auth/v1",
       API_PUBLIC_URL: "https://api.example.com",
       FILE_SIGNING_SECRET: "x".repeat(40),
+      PAYMENT_WEBHOOK_SECRET: "y".repeat(40),
     });
     expect(issues.sort()).toEqual([
       "FILE_SCANNER: the basic file checker cannot run with NODE_ENV=production",
@@ -72,6 +73,7 @@ describe("loadEnv", () => {
     const issues = issuesFor({ ...base, NODE_ENV: "production" });
     expect(issues).toContain("SUPABASE_JWKS_URL: required in production");
     expect(issues).toContain("SUPABASE_JWT_ISSUER: required in production");
+    expect(issues).toContain("PAYMENT_WEBHOOK_SECRET: required in production");
   });
 
   it("requires a CORS allowlist in production", () => {

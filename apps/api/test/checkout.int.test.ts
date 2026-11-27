@@ -856,7 +856,7 @@ describe("phase 6: cart, quotes, checkout with the sandbox provider, orders", ()
       expect(detail).toMatchObject({ status: "received", payment: { status: "captured" } });
     });
 
-    it("releases expired holds only after asking the provider, and flags a late capture", async () => {
+    it("releases expired holds only after asking the provider, and refunds a late capture", async () => {
       const shop = await makeCafe("Expiry", { croissantStock: 2 });
       const { person, quote, cart } = await quoted(shop, [
         { productId: shop.croissant.id, quantity: 2 },
@@ -891,7 +891,8 @@ describe("phase 6: cart, quotes, checkout with the sandbox provider, orders", ()
       ).data;
       expect(restored).toMatchObject({ id: cart.id, items: [{ quantity: 2 }] });
 
-      // The provider captures late: the order stays failed and a refund case is raised.
+      // The provider captures late (Q08): the order stays failed and the payment is refunded
+      // in full automatically (phase 7).
       const payment = await world.prisma.payment.findFirstOrThrow({
         where: { orderId: pending.orderId },
       });
@@ -900,11 +901,10 @@ describe("phase 6: cart, quotes, checkout with the sandbox provider, orders", ()
       expect(
         (await world.prisma.order.findUniqueOrThrow({ where: { id: pending.orderId } })).status,
       ).toBe("payment_failed");
-      expect(
-        await world.prisma.outboxMessage.count({
-          where: { dedupeKey: `payment:${payment.id}:refund_required` },
-        }),
-      ).toBe(1);
+      const refunds = await world.prisma.refund.findMany({ where: { paymentId: payment.id } });
+      expect(refunds.map((r) => [r.kind, r.status, r.amountFils])).toEqual([
+        ["late_capture", "succeeded", payment.amountFils],
+      ]);
 
       // Checking out the old quote again gives the final state and charges nothing.
       const charges = provider.chargesCreated;

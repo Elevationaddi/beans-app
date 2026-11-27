@@ -22,6 +22,10 @@ export function loggerLevels(env: Env) {
 
 /** Builds the HTTP application without listening. */
 export async function createApp(env: Env): Promise<INestApplication> {
-  const app = await NestFactory.create(AppModule.forRoot(env), { logger: [...loggerLevels(env)] });
+  // rawBody keeps the exact bytes of JSON requests for webhook signature checks.
+  const app = await NestFactory.create(AppModule.forRoot(env), {
+    logger: [...loggerLevels(env)],
+    rawBody: true,
+  });
   return configureApp(app, env);
 }

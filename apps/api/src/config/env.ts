@@ -64,6 +64,8 @@ export const envSchema = z
       .transform((value) => value === "true"),
     PAYMENT_PROVIDER: z.enum(["fake"]).default("fake"),
     LIVE_PAYMENTS_ENABLED: booleanFlag,
+    /** Webhook signing secret (32+ chars). Random per process when unset outside production. */
+    PAYMENT_WEBHOOK_SECRET: z.string().min(32).optional(),
     /** How long a price quote stays valid. Sandbox: docs/07 proposes 5 minutes; confirm before launch. */
     QUOTE_TTL_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
     /** How long checkout holds a slot place and stock while payment completes. Sandbox value. */
@@ -105,6 +107,7 @@ export const envSchema = z
       "SUPABASE_JWT_ISSUER",
       "API_PUBLIC_URL",
       "FILE_SIGNING_SECRET",
+      "PAYMENT_WEBHOOK_SECRET",
     ] as const) {
       if (!env[key]) {
         ctx.addIssue({ code: "custom", path: [key], message: "required in production" });

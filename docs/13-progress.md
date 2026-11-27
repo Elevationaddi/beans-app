@@ -1,6 +1,6 @@
 # Implementation progress
 
-Status: phases 01–05 merged; phase 06 implemented, awaiting owner review. No production
+Status: phases 01–06 merged; phase 07 implemented, awaiting owner review. No production
 integrations or real money.
 
 | Phase | Status                 | Commit                     | Tests                                  | Blockers                                      |
@@ -10,8 +10,8 @@ integrations or real money.
 | 03    | Done (merged)          | 6d21d02                    | 32 unit, 71 integration                | Storage provider, malware scanner (D11)       |
 | 04    | Done (merged)          | 63496dc                    | 37 unit, 108 integration               | D10 (slot length), invite delivery            |
 | 05    | Done (merged)          | ad02125                    | 54 unit, 122 integration               | D12 (app sign-in), D13 before production copy |
-| 06    | Implemented, in review | branch `phase-06-checkout` | 62 unit, 137 integration               | D02, D06 for real pricing; D12 for app        |
-| 07    | Not started            | —                          | —                                      | D02–D04, D06 before any live provider         |
+| 06    | Done (merged)          | 7818223                    | 62 unit, 137 integration               | D02, D06 for real pricing; D12 for app        |
+| 07    | Implemented, in review | branch `phase-07-payments` | 71 unit, 145 integration               | D02–D04, D06 before any live provider         |
 | 08    | Not started            | —                          | —                                      | D05, D10                                      |
 | 09    | Deferred (not in MVP)  | —                          | —                                      | D07, D08, D14, D16                            |
 | 10    | Not started            | —                          | —                                      | See decision register                         |
@@ -644,6 +644,141 @@ recreate development databases. No production data exists.
 Phase 07: payments (provider adapter contract, signed webhooks, refunds, Q07 and Q08), sandbox
 only until D02–D08 are approved.
 
+## Phase 07 — Payments and finance, sandbox (2026-11-27)
+
+### Scope completed
+
+- **Provider adapter**: the interface now has createPayment, fetchPayment, refund, fetchRefund,
+  initiatePayout, fetchPayout, verifyWebhook and a statement for reconciliation. Only the fake
+  (sandbox) provider exists; it is refused in production and live payments stay blocked.
+- **Signed webhooks** (`POST /v1/webhooks/payments/:provider`): HMAC-SHA256 over the exact raw
+  body with a timestamp, a 5-minute replay window, and a durable receipt unique per provider and
+  event ID. Forged, altered or stale events answer 401 and store nothing; duplicates answer 2xx
+  and do nothing. The handler re-fetches the object from the provider and applies its current
+  state, so out-of-order events cannot move anything backwards. Only a hash of the body is
+  stored, never the payload.
+- **Ledger**: an append-only, balanced journal. Each event posts once (unique source and event
+  key) and is checked in code and again by a deferred database trigger at commit. Postings:
+  - capture: Dr provider clearing, Cr order liability;
+  - completion (for phase 8 to call): Dr liability, Cr merchant payable and commission at the
+    effective commission policy;
+  - refund before completion: Dr liability, Cr clearing;
+  - refund after completion: Dr payable and commission in proportion, Cr clearing;
+  - payout paid: Dr merchant payable, Cr clearing.
+- **Refunds with dual control**: a finance maker requests; a different finance checker approves
+  or rejects. The database refuses self-approval, and a trigger keeps requested, approved,
+  submitted and succeeded refunds at or below the captured amount under concurrency. The provider
+  is called with `refund:<id>`, and the journal posts only on confirmation.
+- **Late capture (Q08)**: a payment captured after its hold expired is refunded in full
+  automatically, and a customer notice event is queued.
+- **Reconciliation**: compares the provider statement for a period with our payments, refunds and
+  payouts (reference, amount, currency, status). Differences become exceptions that block payouts
+  for that merchant (or all payouts when no merchant is known) until a checker resolves them with
+  a reason.
+- **Payout simulation**: a maker drafts the merchant's available payable up to a period end.
+  Earnings are allocated under a merchant lock, so two drafts never cover the same earnings. A
+  different checker approves. A failed or rejected payout releases its earnings, and the journal
+  posts only when the provider confirms.
+- **Admin finance API** (finance roles with MFA): payments, refunds (list, request, approve,
+  reject), payouts (list, draft, approve, reject), reconciliation (list, run, resolve), trial
+  balance. Every decision is audited with reason and request ID. Money mutations need an
+  Idempotency-Key.
+- **Background sweep** (`CHECKOUT_SWEEP_ENABLED`, every 15 s): retries webhook receipts, polls
+  payments, releases expired holds, retries approved refunds and payouts.
+- Contracts and OpenAPI 0.6.0. The idempotency layer now honours `@HttpCode` (approvals answer 200).
+
+### Database (migration `20261127205221_payments_finance`)
+
+New tables: `payment_webhook_events`, `refunds`, `journal_transactions`, `journal_lines`,
+`payouts`, `payout_allocations`, `reconciliation_runs` and `reconciliation_exceptions`.
+
+Guards:
+
+- Refund total kept within the captured amount (a trigger that locks the payment row).
+- Maker must differ from checker on refunds and payouts (CHECKs).
+- Final refund and payout statuses never change, and their amounts are fixed.
+- Journals, journal lines and allocations are append-only.
+- Each journal line has exactly one positive side, from a fixed list of accounts.
+- Every journal is balanced with at least two lines (deferred constraint trigger).
+- An exception can only be resolved with a reason.
+
+### Sandbox values and open decisions (not approved)
+
+- **Commission 10%** (`commission/sandbox-v1`, D02), on the amount paid less refunds before
+  completion. **Payout schedule, holds, negative balances** (D04): payouts are drafted manually
+  and refused when nothing is available.
+- **Accounting treatment** is a model for sandbox only; an accountant and the provider must
+  validate it. Processor fees and tax accounts are not posted until D03 and D06 are approved.
+- **Late capture**: refunded, not restored. The docs/08 state machine has no way back from
+  `payment_failed`.
+
+### Excluded / follow-ups
+
+- **Real provider, payout onboarding, bank details**: need D03 and D04 and a provider choice.
+- **Automatic daily reconciliation schedule**: runs are started from the admin API for now.
+- **Completion posting** is implemented and tested; phase 8 calls it when an order is completed.
+  **Refunds for rejected or cancelled orders** come with phase 8.
+- **Admin finance screens** (A05): API only. Screens need sign-in to the admin console (D12).
+
+### Commands and actual results (local run, 2026-11-27)
+
+| Command                                              | Result                                                           |
+| ---------------------------------------------------- | ---------------------------------------------------------------- |
+| `pnpm lint` / `pnpm typecheck` / `pnpm format:check` | Pass                                                             |
+| `pnpm test`                                          | 71 passed: contracts 6, ui 5, api 46, mobile 14                  |
+| `pnpm test:integration`                              | 145 passed in 16 files (finance file run 3 more times: 8/8 each) |
+| `pnpm --filter @beans/api build`                     | Pass                                                             |
+| Migrations                                           | Applied; `prisma migrate diff --exit-code` shows no difference   |
+| Built API                                            | Unsigned webhook 401; admin finance without a token 401          |
+
+Gate evidence (`apps/api/test/finance.int.test.ts`, `checkout.int.test.ts`, unit tests):
+
+- **Q06**: phase 6 evidence still passes. A pending payment captured by webhook makes the order
+  received, and the capture is posted once.
+- **Q07**:
+  - Forged, altered, stale and unsigned webhooks give 401 and store nothing.
+  - An unknown provider path gives 404.
+  - A duplicate event ID is acknowledged as a duplicate.
+  - The same change sent under a new event ID, and a stale "failed" event after capture, leave
+    the order received with exactly one capture posting.
+  - Unknown objects are ignored.
+- **Q08**: a late capture after the hold expired keeps the order failed and refunds 2400 in
+  full. The ledger nets to zero and the customer notice is queued.
+- **Q13**:
+  - Two makers racing to refund 1500 of 2400: one 201, one `REFUND_LIMIT`.
+  - Self-approval is refused, even for a user holding both roles.
+  - A failed provider refund frees the amount and posts nothing.
+  - A replayed request returns the same refund.
+  - A direct database insert over the limit is refused.
+  - Every decision is audited.
+- **Q14**:
+  - A clean run has no differences.
+  - A provider amount change creates an `amount_mismatch` exception for the merchant.
+  - That exception blocks the merchant's payouts until a checker resolves it with a reason.
+  - Makers cannot resolve.
+- **Payouts**:
+  - Two concurrent drafts: one 201, one 422.
+  - The maker cannot approve their own draft.
+  - The paid amount is the payable net of refund reversals (2160 − 540 = 1620).
+  - A failed payout releases its earnings, and a rejected payout cannot be approved.
+- **Q23 and no duplicate capture**:
+  - The trial balance is balanced with no unbalanced journals.
+  - An unbalanced posting fails at commit, a two-sided line is refused, and journal edits are
+    refused.
+  - Posting a capture again records nothing new.
+  - For one merchant, clearing equals captured − refunded − paid out, payable nets to zero, and
+    all lines sum to zero.
+
+### Migration and rollback
+
+Forward-only and additive (new tables, triggers and functions). Rollback before production:
+revert the merge and recreate development databases.
+
+### Next step
+
+Phase 08: fulfillment (staff order queue, accept or reject with refund, preparation, pickup code,
+curbside arrival, completion posting).
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.
@@ -659,6 +794,9 @@ Record date, author, decision ID, old/new behavior, approval and affected files.
 | 2026-11-27 | Claude | —        | At most 20 of one item per cart line (sandbox limit)                                | Proposed default, not approved     |
 | 2026-11-27 | Claude | D06      | Pricing policy `sandbox-v1`: tax-inclusive, sample 5% VAT, no fee, no discount      | Proposed default, not approved     |
 | 2026-11-27 | Claude | —        | Quotes valid 5 minutes; checkout holds slot and stock 10 minutes for payment        | Proposed default, not approved     |
+| 2026-11-27 | Claude | D02      | Commission posted at completion on amount paid less refunds (sandbox 10%)           | Proposed default, not approved     |
+| 2026-11-27 | Claude | D03      | Payment captured after hold expiry is refunded in full automatically                | Proposed default, not approved     |
+| 2026-11-27 | Claude | D04      | Payouts drafted manually by maker, approved by a different checker (sandbox)        | Proposed default, not approved     |
 
 ## Phase handoff template
 

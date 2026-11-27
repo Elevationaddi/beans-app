@@ -8,6 +8,7 @@ import {
   type NestInterceptor,
   UseInterceptors,
 } from "@nestjs/common";
+import { HTTP_CODE_METADATA } from "@nestjs/common/constants.js";
 import { from, lastValueFrom, type Observable } from "rxjs";
 import { ApiError } from "../common/api-error.js";
 import type { ApiRequest, ApiResponse } from "../common/request-context.js";
@@ -39,7 +40,10 @@ export class IdempotentInterceptor implements NestInterceptor {
           { actorScope: `user:${req.actor.userId}`, route, key, body: req.body ?? null },
           async () => {
             const body = await lastValueFrom(next.handle(), { defaultValue: undefined });
-            const status = req.method === "POST" ? HttpStatus.CREATED : HttpStatus.OK;
+            // Respect @HttpCode on the handler (for example 200 for approvals).
+            const declared = Reflect.getMetadata(HTTP_CODE_METADATA, context.getHandler()) as
+              number | undefined;
+            const status = declared ?? (req.method === "POST" ? HttpStatus.CREATED : HttpStatus.OK);
             return { status, body };
           },
         )
