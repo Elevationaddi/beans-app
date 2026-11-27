@@ -1,0 +1,14 @@
+// Prisma schema for the coffee marketplace.
+// Phase 1 only wires up the connection. Core models (docs/06-database-schema.md)
+// arrive in phase 2 with their migrations.
+
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "esm"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}

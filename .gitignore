@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Generated
+apps/api/src/generated/
+
+# Expo
+.expo/
+expo-env.d.ts
+apps/mobile/android/
+apps/mobile/ios/
+
+# Environment files: only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# Logs and OS files
+*.log
+.DS_Store
+coverage/

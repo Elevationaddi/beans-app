@@ -1,0 +1,54 @@
+:root {
+  /* Working palette from docs/09-design-system.md. Brand (D13) is not approved yet. */
+  --color-background: #faf7f2;
+  --color-surface: #ffffff;
+  --color-ink: #241c18;
+  --color-primary: #623f30;
+  --color-border: #e2dad2;
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-background);
+  color: var(--color-ink);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Noto Sans Arabic",
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 16px;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--color-primary);
+}
+
+a {
+  color: var(--color-primary);
+}

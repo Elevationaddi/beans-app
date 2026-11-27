@@ -1,0 +1,14 @@
+pnpm-lock.yaml
+dist/
+.next/
+apps/api/src/generated/
+reference/
+# Specification pack is kept exactly as delivered.
+docs/0*.md
+docs/10-security.md
+docs/11-testing-deployment.md
+docs/12-development-roadmap.md
+architecture/
+prompts/
+CLAUDE.md
+MANIFEST.md

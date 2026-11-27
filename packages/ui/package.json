@@ -1,0 +1,28 @@
+{
+  "name": "@beans/ui",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Design tokens shared by the mobile, merchant and admin apps.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@beans/config": "workspace:*",
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.2"
+  }
+}
