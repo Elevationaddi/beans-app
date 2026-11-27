@@ -63,6 +63,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: No destructive migration without a named approval
+        run: pnpm --filter @beans/api db:check-migrations
       - name: Apply migrations to an empty database
         run: pnpm db:migrate
       - name: Schema matches migrations (no drift)

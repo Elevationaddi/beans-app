@@ -14,6 +14,7 @@
     "test:integration": "pnpm prisma:generate && vitest run --project integration",
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
+    "db:check-migrations": "node --import tsx scripts/check-migrations.ts",
     "db:migrate:dev": "prisma migrate dev",
     "db:seed": "pnpm prisma:generate && node --env-file-if-exists=.env --import tsx prisma/seed.ts"
   },

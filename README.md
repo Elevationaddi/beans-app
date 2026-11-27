@@ -32,9 +32,11 @@ The PDF and public BEANZ features informed scope; internal BEANZ architecture is
 
 ## Local development
 
-Phases 1–3: workspace, core database, identity, tenancy, audit, idempotency, outbox, and
-merchant onboarding (applications, secure document uploads, admin review).
-See docs/13-progress.md for what exists and how it was verified.
+The MVP API is built (phases 1–8 and 10–11): identity, tenancy, onboarding, catalog, discovery,
+cart and checkout, sandbox payments and finance, fulfilment, operations and hardening. Screens
+that need sign-in wait on decision D12. Nothing is deployed and no live money is possible.
+See docs/13-progress.md for what exists and how it was verified, docs/14-hardening-report.md
+for test evidence and docs/15-release-plan.md for the path to staging and a pilot.
 
 | Path                 | What it is                                                  | Local URL                           |
 | -------------------- | ----------------------------------------------------------- | ----------------------------------- |
@@ -59,7 +61,8 @@ curl http://localhost:3000/health  # {"status":"ok",...,"checks":{"database":"up
 ```
 
 Checks: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration`
-(needs `pnpm db:up`), `pnpm build`. CI runs all of them plus a secret scan and dependency audit.
+(needs `pnpm db:up`), `pnpm build`, `pnpm --filter @beans/api db:check-migrations`. CI runs all
+of them plus a secret scan and dependency audit.
 
 API reference: `packages/contracts/openapi.json` (regenerate with
 `pnpm --filter @beans/contracts openapi`). Signing in locally needs a Supabase project; see
