@@ -51,16 +51,20 @@ describe("loadEnv", () => {
     ]);
   });
 
-  it("refuses the fake payment provider in production", () => {
+  it("refuses every development-only adapter in production", () => {
     const issues = issuesFor({
       ...base,
       NODE_ENV: "production",
       CORS_ORIGINS: "https://merchant.example.com",
       SUPABASE_JWKS_URL: "https://auth.example.com/auth/v1/.well-known/jwks.json",
       SUPABASE_JWT_ISSUER: "https://auth.example.com/auth/v1",
+      API_PUBLIC_URL: "https://api.example.com",
+      FILE_SIGNING_SECRET: "x".repeat(40),
     });
-    expect(issues).toEqual([
+    expect(issues.sort()).toEqual([
+      "FILE_SCANNER: the basic file checker cannot run with NODE_ENV=production",
       "PAYMENT_PROVIDER: the fake payment provider cannot run with NODE_ENV=production",
+      "STORAGE_DRIVER: local file storage cannot run with NODE_ENV=production",
     ]);
   });
 

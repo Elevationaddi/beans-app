@@ -12,6 +12,8 @@ export function testEnv(overrides: NodeJS.ProcessEnv = {}): Env {
     SUPABASE_JWT_ISSUER: TEST_ISSUER,
     SUPABASE_JWKS_URL: "https://auth.test.invalid/auth/v1/.well-known/jwks.json",
     OUTBOX_RELAY_ENABLED: "false",
+    OUTBOX_WORKER_ENABLED: "false",
+    STORAGE_LOCAL_DIR: ".storage-test",
     ...overrides,
   });
 }

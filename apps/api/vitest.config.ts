@@ -18,6 +18,9 @@ export default defineConfig({
           include: ["test/**/*.int.test.ts"],
           environment: "node",
           testTimeout: 15_000,
+          // Files share one database and the outbox table; run them one at a time so a
+          // relay in one file never picks up rows written by another.
+          fileParallelism: false,
         },
       },
     ],

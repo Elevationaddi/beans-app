@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   Inject,
   Injectable,
@@ -10,7 +11,29 @@ import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
 import { PrismaService } from "../database/prisma.service.js";
 
-export const OUTBOX_QUEUE = "outbox-events";
+/**
+ * One BullMQ queue per topic domain ("file.scan_requested" → "outbox.file"), so a consumer
+ * only receives its own domain and events without a consumer yet wait in their own queue.
+ */
+export function queueForTopic(topic: string): string {
+  return `outbox.${topic.split(".")[0]}`;
+}
+
+/** BullMQ job IDs may not contain ":"; derive a stable, safe ID from the dedupe key. */
+export function jobIdFor(dedupeKey: string): string {
+  return createHash("sha256").update(dedupeKey).digest("hex");
+}
+
+export function redisConnection(redisUrl: string) {
+  const url = new URL(redisUrl);
+  return {
+    host: url.hostname,
+    port: Number(url.port || 6379),
+    ...(url.username && { username: decodeURIComponent(url.username) }),
+    ...(url.password && { password: decodeURIComponent(url.password) }),
+    ...(url.protocol === "rediss:" && { tls: {} }),
+  };
+}
 const LEASE_MS = 60_000;
 const MAX_ATTEMPTS = 10;
 
@@ -37,27 +60,10 @@ export interface OutboxPublisher {
 export const OUTBOX_PUBLISHER = Symbol("OUTBOX_PUBLISHER");
 
 export class BullMqOutboxPublisher implements OutboxPublisher {
-  private readonly queue: Queue;
+  private readonly queues = new Map<string, Queue>();
   private readonly logger = new Logger("BullMqOutboxPublisher");
 
-  constructor(redisUrl: string) {
-    const url = new URL(redisUrl);
-    this.queue = new Queue(OUTBOX_QUEUE, {
-      connection: {
-        host: url.hostname,
-        port: Number(url.port || 6379),
-        ...(url.username && { username: decodeURIComponent(url.username) }),
-        ...(url.password && { password: decodeURIComponent(url.password) }),
-        ...(url.protocol === "rediss:" && { tls: {} }),
-        // Fail a publish after one retry instead of hanging; the relay backs off and retries.
-        maxRetriesPerRequest: 1,
-      },
-      defaultJobOptions: { removeOnComplete: 1000, removeOnFail: 5000 },
-    });
-    this.queue.on("error", (error: Error) =>
-      this.logger.warn(`Queue connection error: ${error.message}`),
-    );
-  }
+  constructor(private readonly redisUrl: string) {}
 
   async publish(message: {
     topic: string;
@@ -65,32 +71,34 @@ export class BullMqOutboxPublisher implements OutboxPublisher {
     aggregateId: string;
     payload: unknown;
   }) {
-    // jobId = dedupe key: BullMQ ignores a second add with the same id, so a relay crash
+    // jobId derived from the dedupe key: BullMQ ignores a second add with the same id, so a relay crash
     // between publish and marking the row cannot create a duplicate job.
-    await this.queue.add(
+    await this.queue(queueForTopic(message.topic)).add(
       message.topic,
       { aggregateId: message.aggregateId, payload: message.payload },
-      { jobId: message.dedupeKey },
+      { jobId: jobIdFor(message.dedupeKey) },
     );
   }
 
   async close() {
-    // Let a connection attempt still in flight settle before closing, so it cannot surface
-    // later as an unhandled rejection. A failure here is already reported by the error event.
-    // Bounded: when Redis is unreachable the connection retries forever.
-    let timer: NodeJS.Timeout | undefined;
-    const timeout = new Promise<void>((resolve) => {
-      timer = setTimeout(resolve, 1_000);
-    });
-    await Promise.race([
-      this.queue.waitUntilReady().then(
-        () => undefined,
-        (error: Error) => this.logger.warn(`Queue was not ready at shutdown: ${error.message}`),
-      ),
-      timeout,
-    ]);
-    clearTimeout(timer);
-    await this.queue.close();
+    await Promise.all([...this.queues.values()].map((queue) => queue.close()));
+    this.queues.clear();
+  }
+
+  private queue(name: string): Queue {
+    let queue = this.queues.get(name);
+    if (!queue) {
+      queue = new Queue(name, {
+        // Fail a publish after one retry instead of hanging; the relay backs off and retries.
+        connection: { ...redisConnection(this.redisUrl), maxRetriesPerRequest: 1 },
+        defaultJobOptions: { removeOnComplete: 1000, removeOnFail: 5000 },
+      });
+      queue.on("error", (error: Error) =>
+        this.logger.warn(`Queue ${name} connection error: ${error.message}`),
+      );
+      this.queues.set(name, queue);
+    }
+    return queue;
   }
 }
 

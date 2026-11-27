@@ -11,6 +11,7 @@ const STATUS_TEXT: Record<number, string> = {
   401: "Missing, invalid or expired access token",
   403: "Authenticated but not permitted (role, MFA or account status)",
   404: "Not found or outside the caller's scope",
+  413: "Payload larger than allowed",
   409: "Conflict (stale version or idempotency key reuse)",
   422: "Semantically invalid",
   429: "Rate limited",
@@ -60,17 +61,21 @@ export function buildOpenApiDocument(version: string): JsonSchema {
   const errorSchema = toSchema(errorResponseSchema, "output");
 
   for (const route of apiRoutes as readonly RouteContract[]) {
+    const success = route.success;
     const responses: Record<string, JsonSchema> = {
-      [route.success.status]: {
-        description: STATUS_TEXT[route.success.status] ?? "Success",
-        content: { "application/json": { schema: toSchema(route.success.schema, "output") } },
+      [success.status]: {
+        description: STATUS_TEXT[success.status] ?? "Success",
+        content:
+          "binary" in success
+            ? { "application/octet-stream": { schema: { type: "string", format: "binary" } } }
+            : { "application/json": { schema: toSchema(success.schema, "output") } },
       },
     };
     for (const status of route.errors) {
       // The health endpoint answers 503 with its own body so load balancers can read it.
       const schema =
-        route.path.startsWith("/health") && status === 503
-          ? toSchema(route.success.schema, "output")
+        route.path.startsWith("/health") && status === 503 && "schema" in success
+          ? toSchema(success.schema, "output")
           : { $ref: "#/components/schemas/ErrorResponse" };
       responses[status] = {
         description: STATUS_TEXT[status] ?? "Error",
@@ -88,6 +93,14 @@ export function buildOpenApiDocument(version: string): JsonSchema {
     if (route.access.kind !== "public") operation.security = [{ bearerAuth: [] }];
     const parameters = parametersFor(route);
     if (parameters.length > 0) operation.parameters = parameters;
+    if (route.rawBody) {
+      operation.requestBody = {
+        required: true,
+        content: Object.fromEntries(
+          route.rawBody.map((type) => [type, { schema: { type: "string", format: "binary" } }]),
+        ),
+      };
+    }
     if (route.body) {
       operation.requestBody = {
         required: true,

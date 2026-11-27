@@ -5,10 +5,12 @@ import { AuthModule } from "./auth/auth.module.js";
 import { ConfigModule } from "./config/config.module.js";
 import type { Env } from "./config/env.js";
 import { DatabaseModule } from "./database/database.module.js";
+import { FilesModule } from "./files/files.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { IdempotencyModule } from "./idempotency/idempotency.module.js";
 import { MeModule } from "./me/me.module.js";
 import { MerchantModule } from "./merchant/merchant.module.js";
+import { OnboardingModule } from "./onboarding/onboarding.module.js";
 import { OutboxModule } from "./outbox/outbox.module.js";
 import { RedisModule } from "./redis/redis.module.js";
 import { TenancyModule } from "./tenancy/tenancy.module.js";
@@ -28,9 +30,11 @@ export class AppModule {
         AuditModule,
         IdempotencyModule,
         OutboxModule,
+        FilesModule,
         HealthModule,
         MeModule,
         MerchantModule,
+        OnboardingModule,
         AdminModule,
       ],
     };
