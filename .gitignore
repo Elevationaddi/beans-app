@@ -27,3 +27,4 @@ apps/mobile/ios/
 *.log
 .DS_Store
 coverage/
+dump.rdb

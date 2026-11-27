@@ -1,14 +1,444 @@
-// Prisma schema for the coffee marketplace.
-// Phase 1 only wires up the connection. Core models (docs/06-database-schema.md)
-// arrive in phase 2 with their migrations.
+// Prisma schema for the coffee marketplace. Contract: docs/06-database-schema.md.
+//
+// Phase 2 creates the identity, tenancy, catalog and platform tables. Order, payment,
+// finance, support and phase-two tables arrive in the phases that use them.
+// Constraints Prisma cannot express (CHECKs, composite tenant FKs, append-only triggers,
+// partial indexes) live in the SQL migrations; see prisma/migrations/*/migration.sql.
+//
+// Money is always BigInt fils. Timestamps are timestamptz (UTC).
 
 generator client {
-  provider               = "prisma-client"
-  output                 = "../src/generated/prisma"
-  moduleFormat           = "esm"
-  importFileExtension    = "js"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ───────────────────────────── Identity ─────────────────────────────
+
+enum Locale {
+  en
+  ar
+}
+
+enum UserStatus {
+  active
+  suspended
+  deleted
+}
+
+model User {
+  id          String     @id @default(uuid()) @db.Uuid
+  /// Subject ("sub") of the verified Supabase access token.
+  authSubject String     @unique @map("auth_subject")
+  displayName String?    @map("display_name")
+  email       String?
+  phone       String?
+  locale      Locale     @default(en)
+  status      UserStatus @default(active)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships      Membership[]
+  adminRoles       AdminRole[]
+  auditEvents      AuditEvent[]
+  policiesApproved Policy[]     @relation("PolicyApprover")
+
+  @@map("users")
+}
+
+enum AdminRoleName {
+  super_admin
+  operations
+  finance_maker
+  finance_checker
+  support
+  marketing
+  analyst
+  security
+}
+
+model AdminRole {
+  id        String        @id @default(uuid()) @db.Uuid
+  userId    String        @map("user_id") @db.Uuid
+  role      AdminRoleName
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, role])
+  @@map("admin_roles")
+}
+
+// ───────────────────────────── Tenancy ─────────────────────────────
+
+enum MerchantStatus {
+  draft
+  submitted
+  review
+  approved
+  rejected
+  suspended
+}
+
+model Merchant {
+  id                 String         @id @default(uuid()) @db.Uuid
+  legalName          String         @map("legal_name")
+  brandName          String         @map("brand_name")
+  licenseNumber      String         @unique @map("license_number")
+  status             MerchantStatus @default(draft)
+  providerAccountRef String?        @map("provider_account_ref")
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  branches       Branch[]
+  memberships    Membership[]
+  categories     Category[]
+  products       Product[]
+  modifierGroups ModifierGroup[]
+
+  @@map("merchants")
+}
+
+enum BranchStatus {
+  draft
+  active
+  paused
+  closed
+}
+
+model Branch {
+  id         String       @id @default(uuid()) @db.Uuid
+  merchantId String       @map("merchant_id") @db.Uuid
+  nameEn     String       @map("name_en")
+  nameAr     String?      @map("name_ar")
+  address    String
+  lat        Decimal?     @db.Decimal(9, 6)
+  lng        Decimal?     @db.Decimal(9, 6)
+  timezone   String       @default("Asia/Dubai")
+  status     BranchStatus @default(draft)
+  /// Fulfilment modes offered: in_store, curbside, dine_in.
+  modes      String[]
+  capacity   Int
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  merchant   Merchant           @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  hours      BranchHour[]
+  exceptions BranchException[]
+  members    MembershipBranch[]
+  products   BranchProduct[]
+  options    BranchOption[]
+
+  @@unique([id, merchantId])
+  @@index([merchantId, status])
+  @@map("branches")
+}
+
+model BranchHour {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @map("branch_id") @db.Uuid
+  /// ISO weekday, 1 = Monday ... 7 = Sunday, in the branch timezone.
+  weekday   Int
+  opens     DateTime @db.Time(0)
+  closes    DateTime @db.Time(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, weekday])
+  @@map("branch_hours")
+}
+
+model BranchException {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @map("branch_id") @db.Uuid
+  localDate DateTime @map("local_date") @db.Date
+  closed    Boolean
+  /// [{ "opens": "HH:MM", "closes": "HH:MM" }] when open with special hours.
+  intervals Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, localDate])
+  @@map("branch_exceptions")
+}
+
+enum MembershipRole {
+  owner
+  manager
+  barista
+  analyst
+}
+
+enum MembershipStatus {
+  invited
+  active
+  revoked
+}
+
+model Membership {
+  id         String           @id @default(uuid()) @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  merchantId String           @map("merchant_id") @db.Uuid
+  role       MembershipRole
+  status     MembershipStatus @default(active)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user     User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  merchant Merchant           @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  branches MembershipBranch[]
+
+  @@unique([userId, merchantId])
+  @@unique([id, merchantId])
+  @@index([merchantId])
+  @@map("memberships")
+}
+
+/// Branch assignment. merchant_id is repeated so composite FKs guarantee the membership
+/// and the branch belong to the same merchant.
+model MembershipBranch {
+  id           String @id @default(uuid()) @db.Uuid
+  membershipId String @map("membership_id") @db.Uuid
+  branchId     String @map("branch_id") @db.Uuid
+  merchantId   String @map("merchant_id") @db.Uuid
+
+  membership Membership @relation(fields: [membershipId, merchantId], references: [id, merchantId], onDelete: Cascade)
+  branch     Branch     @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Cascade)
+
+  @@unique([membershipId, branchId])
+  @@index([branchId])
+  @@map("membership_branches")
+}
+
+// ───────────────────────────── Catalog ─────────────────────────────
+
+model Category {
+  id         String   @id @default(uuid()) @db.Uuid
+  merchantId String   @map("merchant_id") @db.Uuid
+  nameEn     String   @map("name_en")
+  nameAr     String?  @map("name_ar")
+  sort       Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  merchant Merchant  @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  products Product[]
+
+  @@unique([id, merchantId])
+  @@index([merchantId, sort])
+  @@map("categories")
+}
+
+enum ProductStatus {
+  draft
+  published
+  archived
+}
+
+model Product {
+  id           String        @id @default(uuid()) @db.Uuid
+  merchantId   String        @map("merchant_id") @db.Uuid
+  categoryId   String        @map("category_id") @db.Uuid
+  /// { "en": "...", "ar": "..." }
+  names        Json
+  descriptions Json          @default("{}")
+  photoKey     String?       @map("photo_key")
+  baseFils     BigInt        @map("base_fils")
+  allergens    String[]
+  status       ProductStatus @default(draft)
+  version      Int           @default(1)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  merchant Merchant        @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  category Category        @relation(fields: [categoryId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  groups   ProductGroup[]
+  branches BranchProduct[]
+
+  @@unique([id, merchantId])
+  @@index([merchantId, categoryId, status])
+  @@map("products")
+}
+
+model ModifierGroup {
+  id         String   @id @default(uuid()) @db.Uuid
+  merchantId String   @map("merchant_id") @db.Uuid
+  name       Json
+  minCount   Int      @map("min_count")
+  maxCount   Int      @map("max_count")
+  sort       Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  merchant Merchant         @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  options  ModifierOption[]
+  products ProductGroup[]
+
+  @@unique([id, merchantId])
+  @@index([merchantId])
+  @@map("modifier_groups")
+}
+
+model ModifierOption {
+  id         String   @id @default(uuid()) @db.Uuid
+  groupId    String   @map("group_id") @db.Uuid
+  merchantId String   @map("merchant_id") @db.Uuid
+  name       Json
+  deltaFils  BigInt   @default(0) @map("delta_fils")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  group    ModifierGroup  @relation(fields: [groupId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  branches BranchOption[]
+
+  @@unique([id, merchantId])
+  @@index([groupId])
+  @@map("modifier_options")
+}
+
+model ProductGroup {
+  id         String @id @default(uuid()) @db.Uuid
+  productId  String @map("product_id") @db.Uuid
+  groupId    String @map("group_id") @db.Uuid
+  merchantId String @map("merchant_id") @db.Uuid
+  sort       Int    @default(0)
+
+  product Product       @relation(fields: [productId, merchantId], references: [id, merchantId], onDelete: Cascade)
+  group   ModifierGroup @relation(fields: [groupId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([productId, groupId])
+  @@map("product_groups")
+}
+
+model BranchProduct {
+  id                String   @id @default(uuid()) @db.Uuid
+  branchId          String   @map("branch_id") @db.Uuid
+  productId         String   @map("product_id") @db.Uuid
+  merchantId        String   @map("merchant_id") @db.Uuid
+  enabled           Boolean  @default(true)
+  priceOverrideFils BigInt?  @map("price_override_fils")
+  /// Null means stock is not tracked for this product at this branch.
+  stockOnHand       Int?     @map("stock_on_hand")
+  stockReserved     Int      @default(0) @map("stock_reserved")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  branch  Branch  @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  product Product @relation(fields: [productId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([branchId, productId])
+  @@map("branch_products")
+}
+
+model BranchOption {
+  id                String   @id @default(uuid()) @db.Uuid
+  branchId          String   @map("branch_id") @db.Uuid
+  optionId          String   @map("option_id") @db.Uuid
+  merchantId        String   @map("merchant_id") @db.Uuid
+  enabled           Boolean  @default(true)
+  deltaOverrideFils BigInt?  @map("delta_override_fils")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  branch Branch         @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  option ModifierOption @relation(fields: [optionId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([branchId, optionId])
+  @@map("branch_options")
+}
+
+// ───────────────────────────── Platform ─────────────────────────────
+
+/// Effective-dated commercial policy versions (decision register). Immutable once effective.
+model Policy {
+  id            String   @id @default(uuid()) @db.Uuid
+  type          String
+  version       String
+  effectiveAt   DateTime @map("effective_at") @db.Timestamptz(6)
+  configuration Json
+  approvedById  String?  @map("approved_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  approvedBy User? @relation("PolicyApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+
+  @@unique([type, version])
+  @@map("policies")
+}
+
+enum IdempotencyStatus {
+  in_progress
+  completed
+}
+
+model IdempotencyKey {
+  id           String            @id @default(uuid()) @db.Uuid
+  actorScope   String            @map("actor_scope")
+  route        String
+  key          String
+  requestHash  String            @map("request_hash")
+  status       IdempotencyStatus @default(in_progress)
+  responseCode Int?              @map("response_code")
+  response     Json?
+  expiresAt    DateTime          @map("expires_at") @db.Timestamptz(6)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([actorScope, route, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+enum OutboxState {
+  pending
+  dispatched
+  failed
+}
+
+model OutboxMessage {
+  id          String      @id @default(uuid()) @db.Uuid
+  topic       String
+  aggregateId String      @map("aggregate_id") @db.Uuid
+  dedupeKey   String      @unique @map("dedupe_key")
+  payload     Json
+  state       OutboxState @default(pending)
+  attempts    Int         @default(0)
+  lastError   String?     @map("last_error")
+  nextRunAt   DateTime    @default(now()) @map("next_run_at") @db.Timestamptz(6)
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([state, nextRunAt])
+  @@map("outbox")
+}
+
+/// Append-only. UPDATE and DELETE are rejected by a database trigger.
+model AuditEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  actorId        String?  @map("actor_id") @db.Uuid
+  action         String
+  targetType     String   @map("target_type")
+  targetId       String   @map("target_id")
+  reason         String?
+  beforeRedacted Json?    @map("before_redacted")
+  afterRedacted  Json?    @map("after_redacted")
+  requestId      String   @map("request_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([targetType, targetId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("audit_events")
 }

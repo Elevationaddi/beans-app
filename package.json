@@ -21,7 +21,7 @@
     "db:up": "docker compose up -d --wait postgres redis",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @beans/api db:migrate",
-    "db:seed": "echo \"No seed data yet: seeds arrive with the core schema in phase 2.\""
+    "db:seed": "pnpm --filter @beans/api db:seed"
   },
   "devDependencies": {
     "prettier": "^3.10.1"

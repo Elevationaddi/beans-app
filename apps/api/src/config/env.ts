@@ -9,9 +9,9 @@ const booleanFlag = z
  * Server configuration, validated once at startup. The process refuses to start when
  * anything is missing or unsafe, rather than failing later on first use.
  *
- * Only variables used in phase 1 are required. Supabase and payment settings are
- * accepted now so deployments can be prepared, and become required in the phases that
- * use them (2 and 7).
+ * Token verification settings (SUPABASE_JWKS_URL, SUPABASE_JWT_ISSUER) are required in
+ * production. Without them in development, every authenticated request answers 401, so
+ * nothing is silently trusted.
  */
 export const envSchema = z
   .object({
@@ -37,7 +37,17 @@ export const envSchema = z
       )
       .pipe(z.array(z.string().url())),
     SUPABASE_URL: z.string().url().optional(),
+    /** JSON Web Key Set used to verify access token signatures (asymmetric keys only). */
     SUPABASE_JWKS_URL: z.string().url().optional(),
+    /** Expected "iss" claim, normally `${SUPABASE_URL}/auth/v1`. */
+    SUPABASE_JWT_ISSUER: z.string().min(1).optional(),
+    /** Expected "aud" claim. Supabase uses "authenticated" for signed-in users. */
+    SUPABASE_JWT_AUDIENCE: z.string().min(1).default("authenticated"),
+    /** Poll the outbox and publish to BullMQ from this process. */
+    OUTBOX_RELAY_ENABLED: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true"),
     PAYMENT_PROVIDER: z.enum(["fake"]).default("fake"),
     LIVE_PAYMENTS_ENABLED: booleanFlag,
   })
@@ -50,6 +60,11 @@ export const envSchema = z
         path: ["PAYMENT_PROVIDER"],
         message: "the fake payment provider cannot run with NODE_ENV=production",
       });
+    }
+    for (const key of ["SUPABASE_JWKS_URL", "SUPABASE_JWT_ISSUER"] as const) {
+      if (!env[key]) {
+        ctx.addIssue({ code: "custom", path: [key], message: "required in production" });
+      }
     }
     if (env.CORS_ORIGINS.length === 0) {
       ctx.addIssue({

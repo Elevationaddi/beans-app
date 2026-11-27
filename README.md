@@ -32,7 +32,8 @@ The PDF and public BEANZ features informed scope; internal BEANZ architecture is
 
 ## Local development
 
-Phase 1 sets up the workspace only. No business features exist yet.
+Phases 1–2: workspace, core database, identity, tenancy, audit, idempotency and outbox.
+See docs/13-progress.md for what exists and how it was verified.
 
 | Path                 | What it is                                                  | Local URL                           |
 | -------------------- | ----------------------------------------------------------- | ----------------------------------- |
@@ -50,13 +51,18 @@ Requirements: Node 22.13+, pnpm 10 (`corepack enable`), Docker.
 pnpm install                       # also builds packages/contracts and packages/ui
 pnpm db:up                         # PostgreSQL 16 + Redis 7 via docker-compose.yml
 cp .env.example apps/api/.env
-pnpm db:migrate                    # no migrations yet; core schema arrives in phase 2
+pnpm db:migrate                    # applies prisma/migrations
+pnpm db:seed                       # synthetic merchants, branches, menu and staff
 pnpm build && pnpm --filter @beans/api start
 curl http://localhost:3000/health  # {"status":"ok",...,"checks":{"database":"up","redis":"up"}}
 ```
 
 Checks: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration`
 (needs `pnpm db:up`), `pnpm build`. CI runs all of them plus a secret scan and dependency audit.
+
+API reference: `packages/contracts/openapi.json` (regenerate with
+`pnpm --filter @beans/contracts openapi`). Signing in locally needs a Supabase project; see
+"Signing in locally" in docs/13-progress.md.
 
 `GET /health` answers 200 when PostgreSQL and Redis are reachable and 503 otherwise.
 `GET /health/live` only confirms the process is running.

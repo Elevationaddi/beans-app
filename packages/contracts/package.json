@@ -10,22 +10,31 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./openapi.json": "./openapi.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "openapi.json"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "openapi": "tsx scripts/generate-openapi.ts && prettier --write openapi.json src/generated/openapi.ts",
+    "openapi:check": "pnpm openapi && git diff --exit-code -- openapi.json src/generated/openapi.ts"
   },
   "dependencies": {
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
     "@beans/config": "workspace:*",
     "typescript": "~6.0.3",
-    "vitest": "^5.1.2"
+    "vitest": "^5.1.2",
+    "openapi-typescript": "^7.13.0",
+    "tsx": "^4.23.15",
+    "prettier": "^3.10.1",
+    "@types/node": "^22.19.0"
   }
 }
