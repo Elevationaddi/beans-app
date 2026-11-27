@@ -1,0 +1,11 @@
+# UI/UX design system (proposed)
+Working palette: background #FAF7F2, surface #FFFFFF, ink #241C18, primary #623F30, accent #B77954, success #237A50, warning #946200, error #B42318, border #E2DAD2. Validate contrast per component; never rely on color alone. Use original brand, no BEANZ logo, assets or copied layouts. Typography: system sans or licensed Inter for Latin, Noto Sans Arabic for Arabic; weights 400/500/600/700. Sizes 12 caption, 14 secondary, 16 body, 20 section, 28 headline. 4/8 spacing scale; 12px radius; minimum 44pt touch target, 48dp Android where appropriate. Respect dynamic type and reduced motion.
+
+## Navigation and layouts
+Mobile: bottom nav Home/Explore/Orders/Rewards/Profile (hide Rewards until enabled); cart badge, modal product customizer; checkout step header; persistent status banner for active order. Merchant/admin: responsive sidebar, breadcrumbs, filter toolbar, paginated table, detail drawer, confirmation dialog for irreversible actions. Tablet: three/four-column queue on landscape, stacked tabs portrait, audible alerts with visual alternative. Keep buttons reachable, no hover-only action, keyboard focus and screen-reader labels.
+
+## Components
+Button primary/secondary/destructive/disabled/loading; text input with label, hint and inline error; searchable selector; cafe card with branch/status/distance; menu row and price; modifier selector min/max; quantity stepper; cart summary; timeline; status chip with text; empty state; skeleton; toast and persistent error; dialog; date filter; chart with accessible tabular fallback; audit log row; localized currency and receipt. All network screens handle initial loading, empty, retry, stale/offline, forbidden and success. Payment pending is distinct from successful payment. Do not expose raw server error or provider secret.
+
+## Localization
+Translation keys not hardcoded sentences; English/Arabic locale persisted to profile; RTL layout uses logical start/end, mirrors directional icons only, preserves numeric/plate order and map geometry. AED via Intl.NumberFormat; display two decimals; Dubai timezone local schedule and explicit dates. Human review all Arabic and allergen terms. Accessibility target WCAG 2.2 AA; test VoiceOver/TalkBack, keyboard, focus trap, 200% zoom, large text and color contrast. Use licensed photos or merchant uploads with consent.

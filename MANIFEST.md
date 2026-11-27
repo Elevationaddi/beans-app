@@ -1,0 +1,34 @@
+# Package contents
+
+- `CLAUDE.md`
+- `README.md`
+- `architecture/database-erd.md`
+- `architecture/system-architecture.md`
+- `architecture/user-flows.md`
+- `docs/00-decisions.md`
+- `docs/01-product-requirements.md`
+- `docs/02-customer-app.md`
+- `docs/03-business-portal.md`
+- `docs/04-admin-panel.md`
+- `docs/05-barista-interface.md`
+- `docs/06-database-schema.md`
+- `docs/07-api-specification.md`
+- `docs/08-business-logic.md`
+- `docs/09-design-system.md`
+- `docs/10-security.md`
+- `docs/11-testing-deployment.md`
+- `docs/12-development-roadmap.md`
+- `docs/13-progress.md`
+- `prompts/phase-01.md`
+- `prompts/phase-02.md`
+- `prompts/phase-03.md`
+- `prompts/phase-04.md`
+- `prompts/phase-05.md`
+- `prompts/phase-06.md`
+- `prompts/phase-07.md`
+- `prompts/phase-08.md`
+- `prompts/phase-09.md`
+- `prompts/phase-10.md`
+- `prompts/phase-11.md`
+- `prompts/phase-12.md`
+- `reference/Original_Product_Blueprint.pdf`

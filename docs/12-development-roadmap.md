@@ -1,0 +1,2 @@
+# Implementation sequence
+MVP phases 1–8, 10–12 with phase-two modules disabled; phase 9 and QR/advanced campaigns deferred until approvals and stable pilot. Do not skip foundations or enable incomplete features. Every phase requires passing tests, updated API/data docs, progress log, migration review and user approval before production operations. Use prompts/phase-XX.md individually. Phase 9 can be skipped for MVP; phase 10 builds support/basic analytics first. Release phase does not automatically deploy.
