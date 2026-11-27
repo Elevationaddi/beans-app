@@ -6,7 +6,8 @@ import { PrismaService } from "../src/database/prisma.service.js";
 import {
   BullMqOutboxPublisher,
   OUTBOX_PUBLISHER,
-  OUTBOX_QUEUE,
+  jobIdFor,
+  queueForTopic,
   OutboxRelayService,
   type OutboxPublisher,
 } from "../src/outbox/outbox-relay.service.js";
@@ -134,8 +135,8 @@ describe("BullMQ publisher", () => {
   it("adds one job per dedupe key even when published twice", async () => {
     const env = testEnv();
     const publisher = new BullMqOutboxPublisher(env.REDIS_URL);
-    const queue = new Queue(OUTBOX_QUEUE, { connection: { url: env.REDIS_URL } });
-    const dedupeKey = `bullmq-test-${randomUUID()}`;
+    const queue = new Queue(queueForTopic("test.event"), { connection: { url: env.REDIS_URL } });
+    const dedupeKey = `bullmq-test:${randomUUID()}`;
     try {
       const message = {
         topic: "test.event",
@@ -145,10 +146,10 @@ describe("BullMQ publisher", () => {
       };
       await publisher.publish(message);
       await publisher.publish(message);
-      const job = await queue.getJob(dedupeKey);
+      const job = await queue.getJob(jobIdFor(dedupeKey));
       expect(job?.name).toBe("test.event");
       const waiting = await queue.getJobs(["waiting"]);
-      expect(waiting.filter((j) => j.id === dedupeKey)).toHaveLength(1);
+      expect(waiting.filter((j) => j.id === jobIdFor(dedupeKey))).toHaveLength(1);
       await job?.remove();
     } finally {
       await publisher.close();

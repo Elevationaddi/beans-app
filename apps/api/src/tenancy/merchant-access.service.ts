@@ -38,6 +38,18 @@ export class MerchantAccessService {
     };
   }
 
+  /**
+   * The merchant when the user is its active owner, whatever the merchant's status (owners
+   * must see a rejected or suspended application). 404 otherwise.
+   */
+  async requireOwner(userId: string, merchantId: string) {
+    const merchant = await this.prisma.merchant.findFirst({
+      where: { id: merchantId, memberships: { some: { userId, role: "owner", status: "active" } } },
+    });
+    if (!merchant) throw ApiError.notFound("Merchant not found");
+    return merchant;
+  }
+
   /** Access to one branch, or 404 when it does not exist or is out of scope. */
   async requireBranch(userId: string, branchId: string): Promise<BranchAccess> {
     const branch = await this.prisma.branch.findFirst({

@@ -6,6 +6,7 @@ import {
   OUTBOX_PUBLISHER,
   OutboxRelayService,
 } from "./outbox-relay.service.js";
+import { OutboxWorkerService } from "./outbox-worker.service.js";
 import { OutboxService } from "./outbox.service.js";
 
 @Global()
@@ -13,6 +14,7 @@ import { OutboxService } from "./outbox.service.js";
   providers: [
     OutboxService,
     OutboxRelayService,
+    OutboxWorkerService,
     {
       provide: OUTBOX_PUBLISHER,
       useFactory: (env: Env) => new BullMqOutboxPublisher(env.REDIS_URL),

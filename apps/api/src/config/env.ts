@@ -48,6 +48,20 @@ export const envSchema = z
       .enum(["true", "false"])
       .default("true")
       .transform((value) => value === "true"),
+    /** Public base URL of this API, used to build upload and download links. */
+    API_PUBLIC_URL: z.string().url().optional(),
+    /** Private object storage. Only the local development driver exists so far. */
+    STORAGE_DRIVER: z.enum(["local"]).default("local"),
+    STORAGE_LOCAL_DIR: z.string().min(1).default(".storage"),
+    /** HMAC secret for signed file links (32+ chars). Random per process when unset outside production. */
+    FILE_SIGNING_SECRET: z.string().min(32).optional(),
+    /** Uploaded-file check. Only the basic development checker exists so far. */
+    FILE_SCANNER: z.enum(["basic"]).default("basic"),
+    /** Consume outbox jobs (file checks) in this process. */
+    OUTBOX_WORKER_ENABLED: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true"),
     PAYMENT_PROVIDER: z.enum(["fake"]).default("fake"),
     LIVE_PAYMENTS_ENABLED: booleanFlag,
   })
@@ -61,7 +75,28 @@ export const envSchema = z
         message: "the fake payment provider cannot run with NODE_ENV=production",
       });
     }
-    for (const key of ["SUPABASE_JWKS_URL", "SUPABASE_JWT_ISSUER"] as const) {
+    // Development-only adapters must never run in production (release blockers until a
+    // storage provider and malware scanner are chosen; see docs/13-progress.md).
+    if (env.STORAGE_DRIVER === "local") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["STORAGE_DRIVER"],
+        message: "local file storage cannot run with NODE_ENV=production",
+      });
+    }
+    if (env.FILE_SCANNER === "basic") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["FILE_SCANNER"],
+        message: "the basic file checker cannot run with NODE_ENV=production",
+      });
+    }
+    for (const key of [
+      "SUPABASE_JWKS_URL",
+      "SUPABASE_JWT_ISSUER",
+      "API_PUBLIC_URL",
+      "FILE_SIGNING_SECRET",
+    ] as const) {
       if (!env[key]) {
         ctx.addIssue({ code: "custom", path: [key], message: "required in production" });
       }

@@ -107,6 +107,178 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/merchant/applications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Applications the caller owns */
+    get: operations["listMerchantApplications"];
+    put?: never;
+    /** Start a merchant application; the caller becomes its owner */
+    post: operations["createMerchantApplication"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/applications/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One application the caller owns, with documents and reviewer note */
+    get: operations["getMerchantApplication"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Edit a draft application (including after corrections are requested) */
+    patch: operations["updateMerchantApplication"];
+    trace?: never;
+  };
+  "/v1/merchant/applications/{id}/submit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Submit a draft for review with checked documents (one trade licence required) */
+    post: operations["submitMerchantApplication"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/uploads": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Get a short-lived link to upload one file to private storage */
+    post: operations["createUpload"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/uploads/{id}/content": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Local development storage only: receive the bytes for a signed upload link */
+    put: operations["putUploadContent"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/uploads/{id}/complete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Confirm the upload; the file is quarantined until the automatic check passes */
+    post: operations["completeUpload"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/uploads/{id}/download": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Local development storage only: download through a short-lived signed link */
+    get: operations["downloadUpload"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/merchants": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Merchant applications and accounts, oldest submission first */
+    get: operations["listAdminMerchants"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/merchants/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Application details with short-lived document links (audited) */
+    get: operations["getAdminMerchant"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/merchants/{id}/review": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Review decision with a mandatory reason: start review, approve, reject, request changes, suspend, reinstate */
+    post: operations["reviewMerchant"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -600,6 +772,1097 @@ export interface operations {
       };
       /** @description Authenticated but not permitted (role, MFA or account status) */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  listMerchantApplications: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              legalName: string;
+              brandName: string;
+              licenseNumber: string;
+              contact: {
+                name?: string;
+                email?: string;
+                phone?: string;
+              };
+              /** @enum {string} */
+              status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+              reviewNote: string | null;
+              submittedAt: string | null;
+              reviewedAt: string | null;
+              documents: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                uploadId: string;
+                /** @enum {string} */
+                type: "trade_license" | "owner_id" | "vat_certificate" | "other";
+                /** @enum {string} */
+                fileStatus: "pending" | "quarantined" | "clean" | "rejected";
+                /** @enum {string} */
+                reviewStatus: "pending" | "accepted" | "rejected";
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            }[];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  createMerchantApplication: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          legalName: string;
+          brandName: string;
+          licenseNumber: string;
+          contact: {
+            name: string;
+            /** Format: email */
+            email: string;
+            phone: string;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              legalName: string;
+              brandName: string;
+              licenseNumber: string;
+              contact: {
+                name?: string;
+                email?: string;
+                phone?: string;
+              };
+              /** @enum {string} */
+              status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+              reviewNote: string | null;
+              submittedAt: string | null;
+              reviewedAt: string | null;
+              documents: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                uploadId: string;
+                /** @enum {string} */
+                type: "trade_license" | "owner_id" | "vat_certificate" | "other";
+                /** @enum {string} */
+                fileStatus: "pending" | "quarantined" | "clean" | "rejected";
+                /** @enum {string} */
+                reviewStatus: "pending" | "accepted" | "rejected";
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  getMerchantApplication: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              legalName: string;
+              brandName: string;
+              licenseNumber: string;
+              contact: {
+                name?: string;
+                email?: string;
+                phone?: string;
+              };
+              /** @enum {string} */
+              status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+              reviewNote: string | null;
+              submittedAt: string | null;
+              reviewedAt: string | null;
+              documents: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                uploadId: string;
+                /** @enum {string} */
+                type: "trade_license" | "owner_id" | "vat_certificate" | "other";
+                /** @enum {string} */
+                fileStatus: "pending" | "quarantined" | "clean" | "rejected";
+                /** @enum {string} */
+                reviewStatus: "pending" | "accepted" | "rejected";
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateMerchantApplication: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          legalName?: string;
+          brandName?: string;
+          licenseNumber?: string;
+          contact?: {
+            name: string;
+            /** Format: email */
+            email: string;
+            phone: string;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              legalName: string;
+              brandName: string;
+              licenseNumber: string;
+              contact: {
+                name?: string;
+                email?: string;
+                phone?: string;
+              };
+              /** @enum {string} */
+              status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+              reviewNote: string | null;
+              submittedAt: string | null;
+              reviewedAt: string | null;
+              documents: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                uploadId: string;
+                /** @enum {string} */
+                type: "trade_license" | "owner_id" | "vat_certificate" | "other";
+                /** @enum {string} */
+                fileStatus: "pending" | "quarantined" | "clean" | "rejected";
+                /** @enum {string} */
+                reviewStatus: "pending" | "accepted" | "rejected";
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  submitMerchantApplication: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          documentIds: string[];
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              legalName: string;
+              brandName: string;
+              licenseNumber: string;
+              contact: {
+                name?: string;
+                email?: string;
+                phone?: string;
+              };
+              /** @enum {string} */
+              status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+              reviewNote: string | null;
+              submittedAt: string | null;
+              reviewedAt: string | null;
+              documents: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                uploadId: string;
+                /** @enum {string} */
+                type: "trade_license" | "owner_id" | "vat_certificate" | "other";
+                /** @enum {string} */
+                fileStatus: "pending" | "quarantined" | "clean" | "rejected";
+                /** @enum {string} */
+                reviewStatus: "pending" | "accepted" | "rejected";
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  createUpload: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @constant */
+          purpose: "merchant_document";
+          /** Format: uuid */
+          merchantId: string;
+          /** @enum {string} */
+          documentType: "trade_license" | "owner_id" | "vat_certificate" | "other";
+          /** @enum {string} */
+          mime: "application/pdf" | "image/jpeg" | "image/png";
+          size: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uri */
+              uploadUrl: string;
+              /** @constant */
+              method: "PUT";
+              headers: {
+                [key: string]: string;
+              };
+              maxBytes: number;
+              /** Format: date-time */
+              expiresAt: string;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  putUploadContent: {
+    parameters: {
+      query: {
+        token: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/pdf": string;
+        "image/jpeg": string;
+        "image/png": string;
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** @enum {string} */
+              status: "pending" | "quarantined" | "clean" | "rejected";
+              /** @enum {string} */
+              mime: "application/pdf" | "image/jpeg" | "image/png";
+              size: number;
+              rejectionReason: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Payload larger than allowed */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  completeUpload: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** @enum {string} */
+              status: "pending" | "quarantined" | "clean" | "rejected";
+              /** @enum {string} */
+              mime: "application/pdf" | "image/jpeg" | "image/png";
+              size: number;
+              rejectionReason: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  downloadUpload: {
+    parameters: {
+      query: {
+        token: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": string;
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  listAdminMerchants: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+        status?: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              legalName: string;
+              brandName: string;
+              /** @enum {string} */
+              status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+              submittedAt: string | null;
+              branchCount: number;
+            }[];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  getAdminMerchant: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              legalName: string;
+              brandName: string;
+              licenseNumber: string;
+              contact: {
+                name?: string;
+                email?: string;
+                phone?: string;
+              };
+              /** @enum {string} */
+              status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+              reviewNote: string | null;
+              submittedAt: string | null;
+              reviewedAt: string | null;
+              documents: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                uploadId: string;
+                /** @enum {string} */
+                type: "trade_license" | "owner_id" | "vat_certificate" | "other";
+                /** @enum {string} */
+                fileStatus: "pending" | "quarantined" | "clean" | "rejected";
+                /** @enum {string} */
+                reviewStatus: "pending" | "accepted" | "rejected";
+                /** Format: date-time */
+                createdAt: string;
+                downloadUrl: string | null;
+              }[];
+              branchCount: number;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  reviewMerchant: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          decision:
+            "start_review" | "approve" | "reject" | "request_changes" | "suspend" | "reinstate";
+          reason: string;
+          /** @enum {string} */
+          expectedStatus: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              legalName: string;
+              brandName: string;
+              licenseNumber: string;
+              contact: {
+                name?: string;
+                email?: string;
+                phone?: string;
+              };
+              /** @enum {string} */
+              status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+              reviewNote: string | null;
+              submittedAt: string | null;
+              reviewedAt: string | null;
+              documents: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                uploadId: string;
+                /** @enum {string} */
+                type: "trade_license" | "owner_id" | "vat_certificate" | "other";
+                /** @enum {string} */
+                fileStatus: "pending" | "quarantined" | "clean" | "rejected";
+                /** @enum {string} */
+                reviewStatus: "pending" | "accepted" | "rejected";
+                /** Format: date-time */
+                createdAt: string;
+                downloadUrl: string | null;
+              }[];
+              branchCount: number;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
         headers: {
           [name: string]: unknown;
         };

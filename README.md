@@ -32,7 +32,8 @@ The PDF and public BEANZ features informed scope; internal BEANZ architecture is
 
 ## Local development
 
-Phases 1–2: workspace, core database, identity, tenancy, audit, idempotency and outbox.
+Phases 1–3: workspace, core database, identity, tenancy, audit, idempotency, outbox, and
+merchant onboarding (applications, secure document uploads, admin review).
 See docs/13-progress.md for what exists and how it was verified.
 
 | Path                 | What it is                                                  | Local URL                           |

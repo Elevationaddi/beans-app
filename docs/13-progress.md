@@ -1,22 +1,22 @@
 # Implementation progress
 
-Status: phase 01 merged; phase 02 implemented, awaiting owner review. No production
+Status: phases 01–02 merged; phase 03 implemented, awaiting owner review. No production
 integrations or real money.
 
-| Phase | Status                 | Commit                          | Tests                                  | Blockers                              |
-| ----- | ---------------------- | ------------------------------- | -------------------------------------- | ------------------------------------- |
-| 01    | Done (merged)          | 2db5b9c                         | 17 unit, 3 integration, all apps build | None                                  |
-| 02    | Implemented, in review | branch `phase-02-data-identity` | 28 unit, 52 integration                | D12 before production sign-in         |
-| 03    | Not started            | —                               | —                                      | See decision register                 |
-| 04    | Not started            | —                               | —                                      | See decision register                 |
-| 05    | Not started            | —                               | —                                      | D13 (brand) before production copy    |
-| 06    | Not started            | —                               | —                                      | D02, D06 for real pricing             |
-| 07    | Not started            | —                               | —                                      | D02–D04, D06 before any live provider |
-| 08    | Not started            | —                               | —                                      | D05, D10                              |
-| 09    | Deferred (not in MVP)  | —                               | —                                      | D07, D08, D14, D16                    |
-| 10    | Not started            | —                               | —                                      | See decision register                 |
-| 11    | Not started            | —                               | —                                      | See decision register                 |
-| 12    | Not started            | —                               | —                                      | D01, D11, D15 and all money decisions |
+| Phase | Status                 | Commit                                | Tests                                  | Blockers                                |
+| ----- | ---------------------- | ------------------------------------- | -------------------------------------- | --------------------------------------- |
+| 01    | Done (merged)          | 2db5b9c                               | 17 unit, 3 integration, all apps build | None                                    |
+| 02    | Done (merged)          | 6a8a569                               | 28 unit, 52 integration                | D12 before production sign-in           |
+| 03    | Implemented, in review | branch `phase-03-merchant-onboarding` | 32 unit, 71 integration                | Storage provider, malware scanner (D11) |
+| 04    | Not started            | —                                     | —                                      | See decision register                   |
+| 05    | Not started            | —                                     | —                                      | D13 (brand) before production copy      |
+| 06    | Not started            | —                                     | —                                      | D02, D06 for real pricing               |
+| 07    | Not started            | —                                     | —                                      | D02–D04, D06 before any live provider   |
+| 08    | Not started            | —                                     | —                                      | D05, D10                                |
+| 09    | Deferred (not in MVP)  | —                                     | —                                      | D07, D08, D14, D16                      |
+| 10    | Not started            | —                                     | —                                      | See decision register                   |
+| 11    | Not started            | —                                     | —                                      | See decision register                   |
+| 12    | Not started            | —                                     | —                                      | D01, D11, D15 and all money decisions   |
 
 ## Phase 01 — Foundation (2026-11-27)
 
@@ -198,6 +198,108 @@ create it; managed providers must allow it).
 - `openapi-typescript` 7.13 declares a TypeScript ^5 peer; it runs correctly with 6.0.
 - Rate limiting for sign-in-adjacent routes is not built yet (phase 11 hardening).
 - Next: phase 03 (merchant applications, document quarantine, admin review queue).
+
+## Phase 03 — Merchant onboarding (2026-11-27)
+
+### Scope completed
+
+- **Migration** `20261127192540_merchant_onboarding`: `uploads` and `merchant_documents`
+  tables; merchant `contact`, `review_note`, `submitted_at`, `reviewed_at`; composite
+  `(upload_id, merchant_id)` foreign key so a document can only point at its own merchant's
+  upload; a database trigger that refuses an `active` branch or a `published` product unless
+  the merchant is `approved` (B01 "unapproved merchant cannot publish").
+- **Applications** (`/v1/merchant/applications`): create (caller becomes owner; duplicate
+  licence → 409), list own, get, edit while draft, submit with documents. Submission needs
+  every listed document to belong to the application and pass the file check, including a
+  trade licence. All writes audited; submission emits `merchant.application_submitted`.
+- **Uploads** (`/v1/uploads`): server-generated, tenant-bound object keys
+  (`merchants/{id}/documents/{uploadId}`); 15-minute HMAC-signed upload links bound to one
+  upload, type and maximum size; PDF/JPEG/PNG up to 10 MB; size and type enforced on receipt;
+  `complete` quarantines the file and enqueues `file.scan_requested` in the same transaction.
+  The outbox worker runs the file check and marks the upload clean or rejected (audited).
+  Download links (5 minutes, signed, `Content-Disposition: attachment`, `nosniff`,
+  `no-store`) exist only for clean files and only open the file they name.
+- **Admin review** (`/v1/admin/merchants`, operations role + MFA): queue with status filter,
+  detail with document links (each issue audited), and review decisions with a mandatory
+  reason and the status the reviewer saw (`expectedStatus`, stale → 409):
+
+  | Decision        | From      | To        |
+  | --------------- | --------- | --------- |
+  | start_review    | submitted | review    |
+  | approve         | review    | approved  |
+  | reject          | review    | rejected  |
+  | request_changes | review    | draft     |
+  | suspend         | approved  | suspended |
+  | reinstate       | suspended | approved  |
+
+  Approval needs a clean trade licence. Admins cannot review a merchant they belong to.
+  Concurrent decisions: one wins, the other gets 409. Every decision is audited with reason,
+  before/after status and request ID, and emits `merchant.status_changed`.
+
+- **Outbox fixes found by these tests**: BullMQ job IDs cannot contain `:` (phase 2 used the
+  dedupe key directly); job IDs are now a SHA-256 of the dedupe key. Topics now go to one
+  queue per domain (`outbox.file`, `outbox.merchant`), so a consumer only receives its own
+  events. Integration test files now run one at a time because they share the outbox table.
+
+### Development adapters (production blockers)
+
+- `STORAGE_DRIVER=local` stores files on local disk behind signed links served by the API.
+- `FILE_SCANNER=basic` checks that content matches the declared type and rejects the EICAR
+  test file and PDFs with scripts or embedded files. **It is not a malware scanner.**
+- Both are refused when `NODE_ENV=production`. Before launch: choose private object storage
+  (for example Supabase Storage or S3 in an approved region, D11) and a malware scanning
+  service, then add their adapters behind the same interfaces.
+
+### Excluded / follow-ups
+
+- Merchant portal and admin console screens for onboarding: they need a Supabase project to
+  sign in (see "Signing in locally"). The API is complete and typed for them.
+- Payout onboarding (B01 lists it): depends on the payment provider (D03/D04).
+- Branch creation during onboarding: phase 4 (branches can be drafted before approval; the
+  database refuses to activate them until approval).
+- Suspension "prevents new checkout; active orders resolved" (A02): checkout is phase 6,
+  fulfilment phase 8.
+
+### Spec notes
+
+- docs/06 does not list `uploads`; docs/07 requires `/uploads` endpoints, so the table was
+  added. `merchant_documents.object_key` is kept as specified and mirrors the upload's key.
+- "Request corrections" (B01) has no status of its own; it returns the application to
+  `draft` with the reviewer's note.
+- Which documents are mandatory is not specified; only the trade licence is required for now.
+- Added `GET /v1/merchant/applications[/{id}]` and `PATCH /v1/merchant/applications/{id}`
+  (not in docs/07) so applicants can see review notes and fix drafts.
+
+### Commands and actual results (local run, 2026-11-27)
+
+| Command                                              | Result                                                                         |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `pnpm lint` / `pnpm typecheck` / `pnpm format:check` | Pass                                                                           |
+| `pnpm test`                                          | 32 passed: contracts 6, ui 5, api 21                                           |
+| `pnpm test:integration`                              | 71 passed in 9 files; 3 consecutive runs green                                 |
+| `pnpm build`                                         | All packages and apps build                                                    |
+| Migrations on empty databases + `pnpm db:seed`       | Applied; seed unchanged                                                        |
+| Built API smoke test                                 | Starts; `/health` 200; `/v1/uploads` 401 without token; forged upload link 403 |
+
+New integration coverage (19 tests): application ownership and privacy, duplicate licence,
+strict validation, submission rules, upload quarantine and type mismatch rejection, wrong
+content type, oversize body (413), forged/foreign/expired-purpose links, size mismatch;
+cross-tenant denial for tickets, completion, submission and download links; download only
+for clean files; admin role and MFA; queue listing; full review cycle with mandatory reasons
+and audit trail; rejection; self-review blocked; concurrent decisions; suspension lockout
+and reinstatement; publish lock before approval and after suspension; file check end-to-end
+through outbox relay and BullMQ worker.
+
+### Migration and rollback
+
+Forward-only. Adds tables, nullable columns and a defaulted `contact` column, so existing rows
+are unaffected. Rollback before production: revert the merge and recreate development
+databases.
+
+### Next step
+
+Phase 04: branches, hours, exceptions, capacity slots, categories, products, modifiers,
+availability and staff invites.
 
 ## Decision and change log
 
