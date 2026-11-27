@@ -1,23 +1,23 @@
 # Implementation progress
 
-Status: phases 01–07 merged; phase 08 implemented. The owner asked (2026-11-27) for the
+Status: phases 01–08 merged; phase 09 deferred (not in MVP); phase 10 implemented. The owner asked (2026-11-27) for the
 remaining phases to be built and merged without per-phase approval, with one final report.
 No production integrations or real money.
 
-| Phase | Status                 | Commit                        | Tests                                  | Blockers                                      |
-| ----- | ---------------------- | ----------------------------- | -------------------------------------- | --------------------------------------------- |
-| 01    | Done (merged)          | 2db5b9c                       | 17 unit, 3 integration, all apps build | None                                          |
-| 02    | Done (merged)          | 6a8a569                       | 28 unit, 52 integration                | D12 before production sign-in                 |
-| 03    | Done (merged)          | 6d21d02                       | 32 unit, 71 integration                | Storage provider, malware scanner (D11)       |
-| 04    | Done (merged)          | 63496dc                       | 37 unit, 108 integration               | D10 (slot length), invite delivery            |
-| 05    | Done (merged)          | ad02125                       | 54 unit, 122 integration               | D12 (app sign-in), D13 before production copy |
-| 06    | Done (merged)          | 7818223                       | 62 unit, 137 integration               | D02, D06 for real pricing; D12 for app        |
-| 07    | Done (merged)          | a5bcaa3                       | 71 unit, 145 integration               | D02–D04, D06 before any live provider         |
-| 08    | Implemented, in review | branch `phase-08-fulfillment` | 76 unit, 161 integration               | D05, D10; D12 for tablet and app screens      |
-| 09    | Deferred (not in MVP)  | —                             | —                                      | D07, D08, D14, D16                            |
-| 10    | Not started            | —                             | —                                      | See decision register                         |
-| 11    | Not started            | —                             | —                                      | See decision register                         |
-| 12    | Not started            | —                             | —                                      | D01, D11, D15 and all money decisions         |
+| Phase | Status                 | Commit                       | Tests                                  | Blockers                                      |
+| ----- | ---------------------- | ---------------------------- | -------------------------------------- | --------------------------------------------- |
+| 01    | Done (merged)          | 2db5b9c                      | 17 unit, 3 integration, all apps build | None                                          |
+| 02    | Done (merged)          | 6a8a569                      | 28 unit, 52 integration                | D12 before production sign-in                 |
+| 03    | Done (merged)          | 6d21d02                      | 32 unit, 71 integration                | Storage provider, malware scanner (D11)       |
+| 04    | Done (merged)          | 63496dc                      | 37 unit, 108 integration               | D10 (slot length), invite delivery            |
+| 05    | Done (merged)          | ad02125                      | 54 unit, 122 integration               | D12 (app sign-in), D13 before production copy |
+| 06    | Done (merged)          | 7818223                      | 62 unit, 137 integration               | D02, D06 for real pricing; D12 for app        |
+| 07    | Done (merged)          | a5bcaa3                      | 71 unit, 145 integration               | D02–D04, D06 before any live provider         |
+| 08    | Done (merged)          | 58ec117                      | 76 unit, 161 integration               | D05, D10; D12 for tablet and app screens      |
+| 09    | Deferred (not in MVP)  | —                            | —                                      | D07, D08, D14, D16 and legal review           |
+| 10    | Implemented, in review | branch `phase-10-operations` | 76 unit, 168 integration               | D11 (retention), D12 for screens              |
+| 11    | Not started            | —                            | —                                      | See decision register                         |
+| 12    | Not started            | —                            | —                                      | D01, D11, D15 and all money decisions         |
 
 ## Phase 01 — Foundation (2026-11-27)
 
@@ -877,6 +877,80 @@ Additive. Rollback: drop the two triggers and `guard_order_transition()`, drop
 ### Next step
 
 Phase 09 (rewards, gifts, table QR) stays switched off: D07, D08, D14 and D16 are open.
+
+## Phase 09 — Phase-two engagement (deferred, 2026-11-27)
+
+Not built, as the phase prompt says ("default skip for MVP"; gate needs Q19–Q21 plus
+financial and legal approval). Rewards (D07), gifts (D08), table QR / dine-in (D14) and
+platform-funded promotions (D16) are open, and CLAUDE.md forbids gift sales and stored value
+until approved. The API keeps refusing them: `rewardId`, `promoCode`, `tableToken` and
+`dine_in` answer `FEATURE_DISABLED`, and `GET /v1/admin/settings` shows them off. Nothing to
+migrate or roll back.
+
+## Phase 10 — Operations and insights (2026-11-27)
+
+### Scope completed
+
+- **Support tickets** (`/v1/tickets`, `/v1/tickets/:id`, `/v1/tickets/:id/messages`): customers
+  raise tickets, optionally about their own order; owners and managers raise tickets for their
+  merchant, optionally about that merchant's orders. Each side sees only its own tickets (others
+  404). Messages are append-only (database trigger); a reply from the requester reopens a ticket.
+- **Support queue** (`/v1/admin/tickets…`, support and operations): all tickets, internal notes
+  (never shown to customers or merchants; a database CHECK allows them only from support),
+  status, priority and assignee changes (audited; assignee must be a support or operations
+  admin).
+- **Privacy requests (Q24)**: `POST /v1/me/privacy-requests` (access, correction, deletion)
+  opens a high-priority privacy ticket and is audited. `GET /v1/admin/privacy-requests/:id/export`
+  (support or security) returns only the requester's own data for an access request and is
+  audited. Nothing is deleted automatically (D11).
+- **Merchant dashboard and analytics** (`/v1/merchant/dashboard`, `/v1/merchant/analytics`):
+  owners, managers and analysts, limited to the branches in their scope. Paid, completed,
+  rejected and cancelled orders, gross, refunded and net sales, average prep time, live queue;
+  completed orders per Dubai day and top products. Definitions are written on the contract
+  schemas, and the tests rebuild the numbers from raw rows.
+- **Admin overview** (`/v1/admin/dashboard`, optional city): GMV, refunds, orders, active shops,
+  pending approvals, open tickets and cancellation requests, and alerts (failed outbox rows,
+  webhooks waiting over 5 minutes, failed refunds or payouts, open reconciliation exceptions,
+  orders past their acceptance time).
+- **Reports** (`/v1/admin/reports`): orders or refunds per merchant, aggregates only, every view
+  audited.
+- **Settings** (`/v1/admin/settings`, read only): feature switches, timeouts, currency,
+  timezone, provider and policy versions (sandbox flagged).
+- Audit viewer already existed (phase 2, security role).
+- Contracts and OpenAPI 0.8.0 (15 new routes).
+
+### Gate evidence
+
+- **Q15** (tenant B reaching A): denied for the order queue and live stream (phase 8 tests),
+  tickets, dashboard and analytics (this phase), and files (phase 3 upload tests).
+- **Q16**: a revoked barista gets 404 on orders and transitions; a suspended merchant
+  disappears from discovery, refuses new carts, and its staff lose the queue.
+- **Q24**: request and export scoped to the requester and audited.
+- Aggregates reconcile with raw rows; reports contain no personal data and are audited.
+
+### Excluded / follow-ups
+
+- Admin and portal screens (A01–A10, B01, B09, support screens): blocked on sign-in (D12).
+- Async, expiring file exports: reports are returned as JSON aggregates; a file export with
+  download links needs the storage provider (open since phase 3).
+- Editing settings and policies (`POST /admin/policies`, approve): needs approved decisions;
+  read-only for now.
+- Campaigns (A07): phase two.
+- docs/07 lists one `/tickets` route for customers, merchants and admins; admin access is
+  served under `/v1/admin/tickets` so the MFA admin guard always applies.
+
+### Commands and actual results (local run, 2026-11-27)
+
+| Command                                      | Result                                          |
+| -------------------------------------------- | ----------------------------------------------- |
+| `pnpm format`, `pnpm lint`, `pnpm typecheck` | Pass                                            |
+| `pnpm test`                                  | 76 passed: contracts 6, ui 5, api 51, mobile 14 |
+| `pnpm test:integration`                      | 168 passed in 18 files (operations 7)           |
+
+### Migration and rollback
+
+`20261127215200_operations`: new tables `tickets` and `ticket_messages` and their enums,
+CHECKs and append-only triggers. Additive. Rollback: drop both tables and the seven enums.
 
 ## Decision and change log
 

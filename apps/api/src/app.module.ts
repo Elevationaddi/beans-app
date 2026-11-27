@@ -15,6 +15,7 @@ import { IdempotencyModule } from "./idempotency/idempotency.module.js";
 import { MeModule } from "./me/me.module.js";
 import { MerchantModule } from "./merchant/merchant.module.js";
 import { OnboardingModule } from "./onboarding/onboarding.module.js";
+import { OperationsModule } from "./operations/operations.module.js";
 import { OrderingModule } from "./ordering/ordering.module.js";
 import { OutboxModule } from "./outbox/outbox.module.js";
 import { RealtimeModule } from "./realtime/realtime.module.js";
@@ -49,6 +50,7 @@ export class AppModule {
         OrderingModule,
         FinanceModule,
         FulfillmentModule,
+        OperationsModule,
         WebhooksModule,
         OnboardingModule,
         AdminModule,

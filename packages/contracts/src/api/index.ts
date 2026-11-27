@@ -9,6 +9,7 @@ export * from "./merchant-applications.js";
 export * from "./merchant-branches.js";
 export * from "./merchant-catalog.js";
 export * from "./merchant-staff.js";
+export * from "./operations.js";
 export * from "./ordering.js";
 export * from "./routes.js";
 export * from "./uploads.js";

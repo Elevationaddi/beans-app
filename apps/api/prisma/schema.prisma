@@ -64,6 +64,9 @@ model User {
   arrivalsAcknowledged  Order[]                   @relation("OrderArrivalAck")
   cancellationRequests  CancellationRequest[]     @relation("CancellationRequester")
   cancellationsResolved CancellationRequest[]     @relation("CancellationResolver")
+  ticketsRequested      Ticket[]                  @relation("TicketRequester")
+  ticketsAssigned       Ticket[]                  @relation("TicketAssignee")
+  ticketMessages        TicketMessage[]
 
   @@map("users")
 }
@@ -129,6 +132,7 @@ model Merchant {
   favoritedBy    Favorite[]
   journalLines   JournalLine[]
   payouts        Payout[]
+  tickets        Ticket[]
 
   @@index([status, submittedAt])
   @@map("merchants")
@@ -821,6 +825,7 @@ model Order {
   refunds              Refund[]
   arrivalAckBy         User?                 @relation("OrderArrivalAck", fields: [arrivalAckById], references: [id], onDelete: Restrict)
   cancellationRequests CancellationRequest[]
+  tickets              Ticket[]
 
   @@index([branchId, status, createdAt])
   @@index([status, acceptBy])
@@ -1135,4 +1140,98 @@ model CancellationRequest {
   @@index([orderId])
   @@index([status, createdAt])
   @@map("cancellation_requests")
+}
+
+enum TicketCategory {
+  order_issue
+  payment
+  account
+  privacy
+  merchant_support
+  other
+}
+
+enum TicketStatus {
+  open
+  pending
+  resolved
+  closed
+}
+
+enum TicketPriority {
+  low
+  normal
+  high
+  urgent
+}
+
+/// Who raised a ticket: a customer, or a merchant member on behalf of their merchant.
+enum TicketChannel {
+  customer
+  merchant
+}
+
+/// Privacy requests (docs/07 POST /me/privacy-requests); handled by people, never automated (D11).
+enum PrivacyRequestKind {
+  access
+  deletion
+  correction
+}
+
+enum TicketAuthorRole {
+  customer
+  merchant
+  support
+}
+
+enum TicketVisibility {
+  public
+  internal
+}
+
+/**
+ * Support tickets (docs/04 A06, docs/03 support). A customer ticket may reference only the
+ * customer's own order; a merchant ticket belongs to one merchant and may reference only that
+ * merchant's orders. Messages are append-only; internal notes are visible to support only.
+ */
+model Ticket {
+  id          String              @id @default(uuid()) @db.Uuid
+  channel     TicketChannel
+  requesterId String              @map("requester_id") @db.Uuid
+  merchantId  String?             @map("merchant_id") @db.Uuid
+  orderId     String?             @map("order_id") @db.Uuid
+  category    TicketCategory
+  privacyKind PrivacyRequestKind? @map("privacy_kind")
+  status      TicketStatus        @default(open)
+  priority    TicketPriority      @default(normal)
+  assigneeId  String?             @map("assignee_id") @db.Uuid
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  requester User            @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  assignee  User?           @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  merchant  Merchant?       @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  order     Order?          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  messages  TicketMessage[]
+
+  @@index([requesterId, createdAt])
+  @@index([merchantId, createdAt])
+  @@index([status, priority, createdAt])
+  @@map("tickets")
+}
+
+model TicketMessage {
+  id         String           @id @default(uuid()) @db.Uuid
+  ticketId   String           @map("ticket_id") @db.Uuid
+  authorId   String           @map("author_id") @db.Uuid
+  authorRole TicketAuthorRole @map("author_role")
+  visibility TicketVisibility @default(public)
+  body       String
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_messages")
 }
