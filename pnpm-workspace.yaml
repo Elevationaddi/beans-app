@@ -1,0 +1,18 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Only these packages may run install scripts (native binaries for Prisma, SWC, esbuild, sharp).
+onlyBuiltDependencies:
+  - "@prisma/engines"
+  - "@swc/core"
+  - esbuild
+  - prisma
+  - sharp
+  - unrs-resolver
+
+overrides:
+  # @prisma/config pins effect 3.20.0, which has a high-severity ReDoS advisory
+  # (GHSA-g3hv-75wg-m249). 3.22.x is the patched release on the same major line.
+  # Remove once Prisma ships a fixed pin.
+  effect: 3.22.5

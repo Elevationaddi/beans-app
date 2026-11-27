@@ -1,0 +1,46 @@
+{
+  "name": "@beans/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Modular NestJS backend for the coffee marketplace.",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm prisma:generate && tsc -p tsconfig.build.json",
+    "start": "node --env-file-if-exists=.env --enable-source-maps dist/main.js",
+    "dev": "pnpm prisma:generate && tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "lint": "eslint .",
+    "typecheck": "pnpm prisma:generate && tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --project unit",
+    "test:integration": "pnpm prisma:generate && vitest run --project integration",
+    "prisma:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@beans/contracts": "workspace:*",
+    "@nestjs/common": "12.6.3",
+    "@nestjs/core": "12.6.3",
+    "@nestjs/platform-express": "12.6.3",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "ioredis": "^5.11.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@beans/config": "workspace:*",
+    "@eslint/js": "^9.39.0",
+    "@nestjs/testing": "12.6.3",
+    "@swc/core": "^1.16.22",
+    "@types/node": "^22.19.0",
+    "@types/supertest": "^7.2.1",
+    "eslint": "^9.39.0",
+    "prisma": "7.10.1",
+    "supertest": "^7.3.2",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.74.0",
+    "unplugin-swc": "^2.0.0",
+    "vitest": "^5.1.2"
+  }
+}
