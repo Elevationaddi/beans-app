@@ -51,6 +51,11 @@ model User {
   invitationsSent     StaffInvitation[] @relation("InvitationInviter")
   invitationsAccepted StaffInvitation[] @relation("InvitationAcceptor")
   favorites           Favorite[]
+  vehicles            Vehicle[]
+  carts               Cart[]
+  quotes              Quote[]
+  orders              Order[]
+  orderEvents         OrderEvent[]
 
   @@map("users")
 }
@@ -153,6 +158,9 @@ model Branch {
   members    MembershipBranch[]
   products   BranchProduct[]
   options    BranchOption[]
+  carts      Cart[]
+  quotes     Quote[]
+  orders     Order[]
 
   @@unique([id, merchantId])
   @@index([merchantId, status])
@@ -331,7 +339,9 @@ model Slot {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  branch       Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  quotes       Quote[]
+  reservations Reservation[]
 
   @@unique([branchId, startsAt])
   @@map("slots")
@@ -410,8 +420,10 @@ model Product {
 
   merchant Merchant        @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   category Category        @relation(fields: [categoryId, merchantId], references: [id, merchantId], onDelete: Restrict)
-  groups   ProductGroup[]
-  branches BranchProduct[]
+  groups     ProductGroup[]
+  branches   BranchProduct[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
 
   @@unique([id, merchantId])
   @@index([merchantId, categoryId, status])
@@ -483,8 +495,9 @@ model BranchProduct {
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  branch  Branch  @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
-  product Product @relation(fields: [productId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  branch           Branch            @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  product          Product           @relation(fields: [productId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  reservationItems ReservationItem[]
 
   @@unique([branchId, productId])
   @@map("branch_products")
@@ -605,4 +618,256 @@ model Favorite {
   @@unique([userId, merchantId])
   @@index([userId, createdAt])
   @@map("favorites")
+}
+
+// ───────────────────────────── Ordering ─────────────────────────────
+// Phase 6: cart, quote, reservation (holds), pending order and sandbox payment attempts.
+// Order and payment history is never deleted: every FK here is ON DELETE RESTRICT.
+
+/// A customer's saved car for curbside pickup. Orders keep their own snapshot, so deleting
+/// a vehicle never changes an order.
+model Vehicle {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  plate       String
+  plateRegion String?  @map("plate_region")
+  color       String
+  model       String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("vehicles")
+}
+
+enum CartStatus {
+  active
+  converted
+  abandoned
+}
+
+/// One branch per cart (F04). At most one active cart per customer (partial unique index).
+model Cart {
+  id        String     @id @default(uuid()) @db.Uuid
+  userId    String     @map("user_id") @db.Uuid
+  branchId  String     @map("branch_id") @db.Uuid
+  version   Int        @default(1)
+  status    CartStatus @default(active)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  branch Branch     @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  items  CartItem[]
+  quotes Quote[]
+
+  @@index([userId, status])
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  cartId    String   @map("cart_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  quantity  Int
+  /// Chosen modifier option IDs, a JSON array of UUID strings (choices only, never prices).
+  options   Json     @default("[]")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([cartId])
+  @@map("cart_items")
+}
+
+enum OrderMode {
+  in_store
+  curbside
+  dine_in
+}
+
+/// Server-priced snapshot of a cart version. Immutable (database trigger); holds nothing.
+model Quote {
+  id            String    @id @default(uuid()) @db.Uuid
+  cartId        String    @map("cart_id") @db.Uuid
+  cartVersion   Int       @map("cart_version")
+  userId        String    @map("user_id") @db.Uuid
+  branchId      String    @map("branch_id") @db.Uuid
+  mode          OrderMode
+  /// The pickup slot (ASAP resolves to the current slot).
+  slotId        String    @map("slot_id") @db.Uuid
+  totals        Json
+  lineSnapshot  Json      @map("line_snapshot")
+  fulfillment   Json
+  menuVersion   String    @map("menu_version")
+  policyVersion String    @map("policy_version")
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  cart        Cart         @relation(fields: [cartId], references: [id], onDelete: Restrict)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  slot        Slot         @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  reservation Reservation?
+  order       Order?
+
+  @@index([expiresAt])
+  @@index([userId, createdAt])
+  @@map("quotes")
+}
+
+enum ReservationState {
+  held
+  committed
+  released
+}
+
+/// Slot place and stock held for one checkout until payment is verified or the hold expires.
+model Reservation {
+  id        String           @id @default(uuid()) @db.Uuid
+  quoteId   String           @unique @map("quote_id") @db.Uuid
+  slotId    String           @map("slot_id") @db.Uuid
+  state     ReservationState @default(held)
+  expiresAt DateTime         @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  quote Quote             @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  slot  Slot              @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  items ReservationItem[]
+  order Order?
+
+  @@index([state, expiresAt])
+  @@map("reservations")
+}
+
+model ReservationItem {
+  id              String @id @default(uuid()) @db.Uuid
+  reservationId   String @map("reservation_id") @db.Uuid
+  branchProductId String @map("branch_product_id") @db.Uuid
+  quantity        Int
+
+  reservation   Reservation   @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  branchProduct BranchProduct @relation(fields: [branchProductId], references: [id], onDelete: Restrict)
+
+  @@unique([reservationId, branchProductId])
+  @@map("reservation_items")
+}
+
+enum OrderStatus {
+  pending_payment
+  payment_failed
+  received
+  accepted
+  rejected
+  cancelled
+  preparing
+  ready
+  completed
+}
+
+model Order {
+  id                  String      @id @default(uuid()) @db.Uuid
+  userId              String      @map("user_id") @db.Uuid
+  branchId            String      @map("branch_id") @db.Uuid
+  /// Derived from the branch on the server; composite FK keeps it consistent.
+  merchantId          String      @map("merchant_id") @db.Uuid
+  quoteId             String      @unique @map("quote_id") @db.Uuid
+  reservationId       String      @unique @map("reservation_id") @db.Uuid
+  publicNumber        String      @unique @map("public_number")
+  status              OrderStatus @default(pending_payment)
+  mode                OrderMode
+  fulfillmentSnapshot Json        @map("fulfillment_snapshot")
+  totals              Json
+  policyVersion       String      @map("policy_version")
+  /// Set when the handoff code is issued (phase 8).
+  pickupCodeHash      String?     @map("pickup_code_hash")
+  etaAt               DateTime?   @map("eta_at") @db.Timestamptz(6)
+  version             Int         @default(1)
+  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  branch      Branch       @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  quote       Quote        @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  reservation Reservation  @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  items       OrderItem[]
+  events      OrderEvent[]
+  payments    Payment[]
+
+  @@index([branchId, status, createdAt])
+  @@index([userId, createdAt])
+  @@map("orders")
+}
+
+/// Immutable line snapshot: names, options and prices as charged.
+model OrderItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  /// Position on the order, from 1, as the customer arranged the cart.
+  lineNo    Int      @map("line_no")
+  productId String   @map("product_id") @db.Uuid
+  quantity  Int
+  snapshot  Json
+  totalFils BigInt   @map("total_fils")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, lineNo])
+  @@map("order_items")
+}
+
+/// Append-only order timeline (database trigger rejects UPDATE and DELETE).
+model OrderEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  seq       Int
+  fromState String?  @map("from_state")
+  toState   String   @map("to_state")
+  actorId   String?  @map("actor_id") @db.Uuid
+  reason    String?
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  actor User? @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, seq])
+  @@map("order_events")
+}
+
+enum PaymentStatus {
+  pending
+  captured
+  failed
+}
+
+/// One provider payment attempt. The provider idempotency key is stable per attempt, so a
+/// retried call can never create a second charge. No card data is ever stored.
+model Payment {
+  id          String        @id @default(uuid()) @db.Uuid
+  orderId     String        @map("order_id") @db.Uuid
+  attempt     Int
+  provider    String
+  providerKey String        @unique @map("provider_key")
+  providerRef String?       @unique @map("provider_ref")
+  amountFils  BigInt        @map("amount_fils")
+  currency    String        @db.Char(3)
+  status      PaymentStatus @default(pending)
+  failureCode String?       @map("failure_code")
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, attempt])
+  @@index([status, updatedAt])
+  @@map("payments")
 }

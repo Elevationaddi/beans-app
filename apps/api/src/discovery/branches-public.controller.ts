@@ -207,6 +207,7 @@ export class BranchesPublicController {
         slots: rows
           .filter((s) => s.startsAt > now)
           .map((s) => ({
+            id: s.id,
             startsAt: s.startsAt.toISOString(),
             available: s.reserved + s.confirmed < s.capacity,
           })),

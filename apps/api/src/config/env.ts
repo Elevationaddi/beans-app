@@ -64,6 +64,15 @@ export const envSchema = z
       .transform((value) => value === "true"),
     PAYMENT_PROVIDER: z.enum(["fake"]).default("fake"),
     LIVE_PAYMENTS_ENABLED: booleanFlag,
+    /** How long a price quote stays valid. Sandbox: docs/07 proposes 5 minutes; confirm before launch. */
+    QUOTE_TTL_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
+    /** How long checkout holds a slot place and stock while payment completes. Sandbox value. */
+    RESERVATION_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(600),
+    /** Run the checkout sweep (poll pending payments, release expired holds) in this process. */
+    CHECKOUT_SWEEP_ENABLED: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true"),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== "production") return;

@@ -1,22 +1,22 @@
 # Implementation progress
 
-Status: phases 01–02 merged; phase 03 implemented, awaiting owner review. No production
+Status: phases 01–05 merged; phase 06 implemented, awaiting owner review. No production
 integrations or real money.
 
-| Phase | Status                 | Commit                      | Tests                                  | Blockers                                      |
-| ----- | ---------------------- | --------------------------- | -------------------------------------- | --------------------------------------------- |
-| 01    | Done (merged)          | 2db5b9c                     | 17 unit, 3 integration, all apps build | None                                          |
-| 02    | Done (merged)          | 6a8a569                     | 28 unit, 52 integration                | D12 before production sign-in                 |
-| 03    | Done (merged)          | 6d21d02                     | 32 unit, 71 integration                | Storage provider, malware scanner (D11)       |
-| 04    | Done (merged)          | 63496dc                     | 37 unit, 108 integration               | D10 (slot length), invite delivery            |
-| 05    | Implemented, in review | branch `phase-05-discovery` | 54 unit, 122 integration               | D12 (app sign-in), D13 before production copy |
-| 06    | Not started            | —                           | —                                      | D02, D06 for real pricing                     |
-| 07    | Not started            | —                           | —                                      | D02–D04, D06 before any live provider         |
-| 08    | Not started            | —                           | —                                      | D05, D10                                      |
-| 09    | Deferred (not in MVP)  | —                           | —                                      | D07, D08, D14, D16                            |
-| 10    | Not started            | —                           | —                                      | See decision register                         |
-| 11    | Not started            | —                           | —                                      | See decision register                         |
-| 12    | Not started            | —                           | —                                      | D01, D11, D15 and all money decisions         |
+| Phase | Status                 | Commit                     | Tests                                  | Blockers                                      |
+| ----- | ---------------------- | -------------------------- | -------------------------------------- | --------------------------------------------- |
+| 01    | Done (merged)          | 2db5b9c                    | 17 unit, 3 integration, all apps build | None                                          |
+| 02    | Done (merged)          | 6a8a569                    | 28 unit, 52 integration                | D12 before production sign-in                 |
+| 03    | Done (merged)          | 6d21d02                    | 32 unit, 71 integration                | Storage provider, malware scanner (D11)       |
+| 04    | Done (merged)          | 63496dc                    | 37 unit, 108 integration               | D10 (slot length), invite delivery            |
+| 05    | Done (merged)          | ad02125                    | 54 unit, 122 integration               | D12 (app sign-in), D13 before production copy |
+| 06    | Implemented, in review | branch `phase-06-checkout` | 62 unit, 137 integration               | D02, D06 for real pricing; D12 for app        |
+| 07    | Not started            | —                          | —                                      | D02–D04, D06 before any live provider         |
+| 08    | Not started            | —                          | —                                      | D05, D10                                      |
+| 09    | Deferred (not in MVP)  | —                          | —                                      | D07, D08, D14, D16                            |
+| 10    | Not started            | —                          | —                                      | See decision register                         |
+| 11    | Not started            | —                          | —                                      | See decision register                         |
+| 12    | Not started            | —                          | —                                      | D01, D11, D15 and all money decisions         |
 
 ## Phase 01 — Foundation (2026-11-27)
 
@@ -520,6 +520,130 @@ the merge and recreate development databases.
 
 Phase 06: cart and checkout (server cart, quote, holds), which needs sign-in in the app.
 
+## Phase 06 — Cart and checkout (2026-11-27)
+
+### Scope completed
+
+- **Vehicles** (`/v1/vehicles`): list, add, change, remove the customer's own cars (plate
+  normalized to upper case, optional emirate and model, at most 10). Orders keep a copy, so
+  removing a car never changes an order.
+- **Server cart** (`/v1/cart`, `/v1/cart/items`): one active cart per customer, one branch per
+  cart (F04). Every item is validated and priced on the server against the branch menu (Q02);
+  client prices are unknown fields and are refused. Every change carries `expectedVersion` and
+  bumps the version with one conditional update, so two devices cannot overwrite each other.
+  Identical lines merge (still at most 20). Switching branch with items needs
+  `replaceConfirmed` (Q03); the old cart is kept as abandoned. Lines that stop being orderable
+  are shown with an issue (`unavailable`, `options_changed`) instead of being repriced or
+  dropped silently.
+- **Quotes** (`POST /v1/quotes`): an immutable snapshot of lines, branch prices, totals, pickup
+  type, slot (or ASAP), car and policy version, valid 5 minutes (sandbox). Curbside needs one
+  of the customer's cars. ASAP needs the branch open now and uses the current 15-minute slot.
+  Paused branches, full slots, sold-out stock, dine-in, promo codes, rewards and table tokens
+  are refused (the last four with `FEATURE_DISABLED`). A quote holds nothing.
+- **Checkout** (`POST /v1/checkout`, Idempotency-Key required): one transaction checks that the
+  cart is exactly the quoted version, re-prices every line against the live menu
+  (`PRICE_CHANGED` on any difference, Q05), checks the branch, then holds the slot place and
+  tracked stock with conditional updates (slot first, then products by ID), and creates the
+  reservation, the order (`pending_payment`), immutable order lines, the first timeline event,
+  payment attempt 1 and an outbox event. The payment provider is called after commit with the
+  stable key `order:<id>:<attempt>`.
+- **Payment results** (sandbox provider only):
+  - captured: the held slot place becomes confirmed, the reservation is committed and the
+    order moves to `received` in one transaction. Only then is it a paid order.
+  - failed: the order keeps its holds; checking out the same quote again (new Idempotency-Key)
+    makes attempt 2. A new attempt is only made after the previous one is recorded as failed.
+  - pending: nothing changes; repeating checkout only re-checks with the provider.
+  - Repeating checkout for a quote that already has an order never creates a second order or
+    charge (double tap, lost response, replays).
+- **Checkout sweep** (every 15 s, `CHECKOUT_SWEEP_ENABLED`): polls open payment attempts and,
+  after asking the provider, releases expired holds (slot place and stock), marks the order
+  `payment_failed` and gives the customer their cart back. A capture that arrives after the
+  release keeps the order failed and raises a `payment.refund_required` outbox event (refunds
+  arrive with phase 7, Q08).
+- **Orders** (`GET /v1/orders`, `GET /v1/orders/:id`): the customer's own orders with lines,
+  totals, pickup details, latest payment status and timeline. Others' orders answer 404.
+- **Public slots** now include the slot `id` that quotes use.
+- Contracts and OpenAPI 0.5.0 regenerated; route registry matches the API.
+
+### Database (migration `20261127204136_checkout_orders_payments`)
+
+New tables `vehicles`, `carts`, `cart_items`, `quotes`, `reservations`, `reservation_items`,
+`orders`, `order_items`, `order_events`, `payments`. Hand-written guards: one active cart per
+customer (partial unique index); quantities 1–20; quotes and order lines immutable and order
+events append-only (triggers); orders carry the merchant through a composite branch FK;
+payments: unique key and provider reference, at most one pending and one captured payment per
+order, amount and identity fixed, final status never changes, no deletes. Every order and
+payment FK is `ON DELETE RESTRICT`.
+
+### Sandbox values (not approved; please confirm)
+
+- **Pricing policy `sandbox-v1`** (D06): prices include a sample 5% VAT computed as
+  round(total × 5 / 105), no customer fee, no discount. Not a legal tax calculation.
+- **Quote valid 5 minutes** (docs/07 proposal) and **hold kept 10 minutes** for payment
+  (`QUOTE_TTL_SECONDS`, `RESERVATION_TTL_SECONDS`).
+- **Fake payment provider** only (refused in production by config). For testing, checkout
+  accepts `sandboxOutcome` (succeed, fail, pending); it is refused for any other provider.
+
+### Excluded / follow-ups
+
+- **Checkout in the app**: needs sign-in (D12 and a Supabase test project). The app cart stays
+  on the device until then.
+- **Webhooks, refunds, real provider** (phase 7). The late-capture refund (Q08) is only flagged.
+- **Staff order queue, accept/reject, pickup code** (phase 8). `pickup_code_hash` is set then.
+- **Rewards, promo codes, dine-in QR** (phase 9, D07, D14, D16).
+
+### Decisions and spec notes
+
+- Holds are taken at checkout, not at quote time (docs/06: "Checkout atomically reserves";
+  docs/02 C07: "Hold slot and stock on payment attempt").
+- "Retry with same key" (docs/02 C07) is implemented as the same provider key per attempt: the
+  same request key replays the earlier answer, and a retry is a new request for the same quote.
+- `cart_items.options` stores the chosen option IDs (a JSON array); order lines store the
+  full names and prices as charged.
+- Stock stays reserved after payment until completion (docs/08: consumed on completion).
+- Added `order_items.line_no` (keeps the cart order), `orders.merchant_id` and
+  `orders.reservation_id`, `payments.provider_key` and `failure_code` beyond docs/06.
+
+### Commands and actual results (local run, 2026-11-27)
+
+| Command                                              | Result                                                                            |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `pnpm lint` / `pnpm typecheck` / `pnpm format:check` | Pass                                                                              |
+| `pnpm test`                                          | 62 passed: contracts 6, ui 5, api 37, mobile 14                                   |
+| `pnpm test:integration`                              | 137 passed in 15 files (checkout file run 3 more times: 15/15 each, no flakes)    |
+| `pnpm --filter @beans/api build`                     | Pass                                                                              |
+| Migrations                                           | Applied to fresh databases; `prisma migrate diff --exit-code` shows no difference |
+| `pnpm db:seed`                                       | Pass                                                                              |
+| Built API with seed data                             | Health up; checkout without a token 401; public slots list slot IDs               |
+
+Gate evidence (all in `apps/api/test/checkout.int.test.ts`):
+
+- **Q02**: client price field 400; missing required option 422; switched-off option 409; cart
+  and quote use branch prices (1700 + 300 + 250 = 2250 per cup).
+- **Q03**: switching with items 409 until confirmed; cart unchanged; never two active carts;
+  another café's product cannot be added.
+- **Q04**: two customers race for the last croissant: one 201, one `OUT_OF_STOCK`, stock held
+  once. Two race for the last slot place: one 201, one `SLOT_FULL`, slot confirmed 1. A double
+  tap on one quote: one order, one charge.
+- **Q05**: price change after quote `PRICE_CHANGED`, stock drop `OUT_OF_STOCK`, cart edit
+  `QUOTE_EXPIRED`; nothing held or charged in each case.
+- **Quote expiry**: an expired quote is refused with `QUOTE_EXPIRED`, no order created.
+- **Q06**: success marks `received` only after capture; failure keeps holds and `retryable`,
+  the same key replays, a new request makes attempt 2 and captures, no third attempt; pending
+  never charges again and settles via the sweep; an expired hold is released only after asking
+  the provider, a late capture raises a refund case, and a failed attempt is not retried after
+  the hold expired.
+
+### Migration and rollback
+
+Forward-only and additive (new tables only). Rollback before production: revert the merge and
+recreate development databases. No production data exists.
+
+### Next step
+
+Phase 07: payments (provider adapter contract, signed webhooks, refunds, Q07 and Q08), sandbox
+only until D02–D08 are approved.
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.
@@ -533,6 +657,8 @@ Record date, author, decision ID, old/new behavior, approval and affected files.
 | 2026-11-27 | Claude | —        | Staff invitations expire after 72 hours; no email sent until a provider is approved | Proposed default, not approved     |
 | 2026-11-27 | Claude | D01      | Customer app defaults to Abu Dhabi; any of the seven emirates can be chosen         | Proposed default, not approved     |
 | 2026-11-27 | Claude | —        | At most 20 of one item per cart line (sandbox limit)                                | Proposed default, not approved     |
+| 2026-11-27 | Claude | D06      | Pricing policy `sandbox-v1`: tax-inclusive, sample 5% VAT, no fee, no discount      | Proposed default, not approved     |
+| 2026-11-27 | Claude | —        | Quotes valid 5 minutes; checkout holds slot and stock 10 minutes for payment        | Proposed default, not approved     |
 
 ## Phase handoff template
 
