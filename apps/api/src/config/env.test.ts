@@ -56,10 +56,18 @@ describe("loadEnv", () => {
       ...base,
       NODE_ENV: "production",
       CORS_ORIGINS: "https://merchant.example.com",
+      SUPABASE_JWKS_URL: "https://auth.example.com/auth/v1/.well-known/jwks.json",
+      SUPABASE_JWT_ISSUER: "https://auth.example.com/auth/v1",
     });
     expect(issues).toEqual([
       "PAYMENT_PROVIDER: the fake payment provider cannot run with NODE_ENV=production",
     ]);
+  });
+
+  it("requires token verification settings in production", () => {
+    const issues = issuesFor({ ...base, NODE_ENV: "production" });
+    expect(issues).toContain("SUPABASE_JWKS_URL: required in production");
+    expect(issues).toContain("SUPABASE_JWT_ISSUER: required in production");
   });
 
   it("requires a CORS allowlist in production", () => {

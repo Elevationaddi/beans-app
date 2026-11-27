@@ -1,10 +1,13 @@
-import { Controller, Get, Inject, ServiceUnavailableException } from "@nestjs/common";
+import { Controller, Get, HttpStatus, Inject } from "@nestjs/common";
 import type { HealthResponse, LivenessResponse } from "@beans/contracts";
+import { Public } from "../auth/public.decorator.js";
+import { PassthroughHttpException } from "../common/http-exception.filter.js";
 import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
 import { PrismaService } from "../database/prisma.service.js";
 import { RedisService } from "../redis/redis.service.js";
 
+@Public()
 @Controller("health")
 export class HealthController {
   constructor(
@@ -31,8 +34,8 @@ export class HealthController {
       checks: { database: database ? "up" : "down", redis: redis ? "up" : "down" },
     };
     if (!healthy) {
-      // Nest sends the object as the response body with HTTP 503.
-      throw new ServiceUnavailableException(body);
+      // Sent unchanged with HTTP 503 so load balancers can read which dependency is down.
+      throw new PassthroughHttpException(body, HttpStatus.SERVICE_UNAVAILABLE);
     }
     return body;
   }

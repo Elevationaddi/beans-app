@@ -1,22 +1,22 @@
 # Implementation progress
 
-Status: phase 01 implemented, awaiting owner review. No business features, production
+Status: phase 01 merged; phase 02 implemented, awaiting owner review. No production
 integrations or real money.
 
-| Phase | Status                 | Commit                       | Tests                                  | Blockers                              |
-| ----- | ---------------------- | ---------------------------- | -------------------------------------- | ------------------------------------- |
-| 01    | Implemented, in review | branch `phase-01-foundation` | 17 unit, 3 integration, all apps build | None for this phase                   |
-| 02    | Not started            | —                            | —                                      | D12 (sign-in channels, SMS vendor)    |
-| 03    | Not started            | —                            | —                                      | See decision register                 |
-| 04    | Not started            | —                            | —                                      | See decision register                 |
-| 05    | Not started            | —                            | —                                      | D13 (brand) before production copy    |
-| 06    | Not started            | —                            | —                                      | D02, D06 for real pricing             |
-| 07    | Not started            | —                            | —                                      | D02–D04, D06 before any live provider |
-| 08    | Not started            | —                            | —                                      | D05, D10                              |
-| 09    | Deferred (not in MVP)  | —                            | —                                      | D07, D08, D14, D16                    |
-| 10    | Not started            | —                            | —                                      | See decision register                 |
-| 11    | Not started            | —                            | —                                      | See decision register                 |
-| 12    | Not started            | —                            | —                                      | D01, D11, D15 and all money decisions |
+| Phase | Status                 | Commit                          | Tests                                  | Blockers                              |
+| ----- | ---------------------- | ------------------------------- | -------------------------------------- | ------------------------------------- |
+| 01    | Done (merged)          | 2db5b9c                         | 17 unit, 3 integration, all apps build | None                                  |
+| 02    | Implemented, in review | branch `phase-02-data-identity` | 28 unit, 52 integration                | D12 before production sign-in         |
+| 03    | Not started            | —                               | —                                      | See decision register                 |
+| 04    | Not started            | —                               | —                                      | See decision register                 |
+| 05    | Not started            | —                               | —                                      | D13 (brand) before production copy    |
+| 06    | Not started            | —                               | —                                      | D02, D06 for real pricing             |
+| 07    | Not started            | —                               | —                                      | D02–D04, D06 before any live provider |
+| 08    | Not started            | —                               | —                                      | D05, D10                              |
+| 09    | Deferred (not in MVP)  | —                               | —                                      | D07, D08, D14, D16                    |
+| 10    | Not started            | —                               | —                                      | See decision register                 |
+| 11    | Not started            | —                               | —                                      | See decision register                 |
+| 12    | Not started            | —                               | —                                      | D01, D11, D15 and all money decisions |
 
 ## Phase 01 — Foundation (2026-11-27)
 
@@ -88,13 +88,126 @@ No database migrations in this phase. Rollback is reverting the merge commit.
 - Next: phase 02 (core schema, identity, membership guards, audit, idempotency, outbox).
   Needs D12 for production sign-in; development can use a local/test Supabase project.
 
+## Phase 02 — Data and identity (2026-11-27)
+
+### Scope completed
+
+- **Schema and migration** `20261127190450_core_identity_tenancy_catalog`: users, admin_roles,
+  merchants, branches, branch_hours, branch_exceptions, memberships, membership_branches,
+  categories, products, modifier_groups, modifier_options, product_groups, branch_products,
+  branch_options, policies, idempotency_keys, outbox, audit_events (docs/06).
+  Hand-written SQL adds what Prisma cannot express: CHECKs (non-negative fils, modifier
+  min/max, stock reserved <= on hand, ISO weekday, allowed fulfilment modes), an exclusion
+  constraint against overlapping opening hours, composite `(id, merchant_id)` foreign keys so
+  a membership, product, option or branch assignment can never cross tenants, an append-only
+  trigger on audit_events (UPDATE/DELETE/TRUNCATE rejected), and a trigger making approved,
+  effective policies immutable.
+- **Seed** (`pnpm db:seed`, repeatable, refuses production): 7 synthetic users (customer,
+  owner/manager/barista of merchant A, owner of merchant B, security and operations admins),
+  2 merchants x 2 branches, hours, an English/Arabic test menu with modifiers and tracked
+  stock, and a `commission/sandbox-v1` policy left unapproved. Arabic strings are prefixed
+  `[للمراجعة]` ("for review") and are not production translations.
+- **Identity**: global deny-by-default guard; Supabase access tokens verified with `jose`
+  against the JWKS (asymmetric algorithms only), issuer, audience, expiry and not-before.
+  Role claims in tokens are ignored. Users are created on first sign-in; user status, admin
+  roles and memberships are read from the database on every request, so suspension and
+  revocation are immediate. Without verification settings every token is rejected.
+- **Admin**: `@RequireAdmin(...roles)` needs a listed role from the database and an `aal2`
+  (MFA) session. No implicit super_admin bypass.
+- **Tenancy**: `MerchantAccessService` scopes queries to active memberships of operating
+  merchants (owners: all branches; other roles: assigned branches). Out-of-scope IDs answer 404. Suspended or rejected merchants lock out their staff.
+- **Audit**: `AuditService.record` in the same transaction as the change, with secrets
+  removed and personal data masked. `GET /v1/admin/audit` (security role + MFA) audits each
+  read.
+- **Idempotency**: `@Idempotent()` interceptor and `IdempotencyService` (actor + route + key,
+  canonical body hash, 24 h retention, 409 on a different body or a concurrent duplicate,
+  key released on failure). No production route uses it yet; orders/payments will.
+- **Outbox**: `OutboxService.enqueue(tx, …)` with unique dedupe keys; `OutboxRelayService`
+  leases rows with `FOR UPDATE SKIP LOCKED`, publishes to BullMQ outside the transaction
+  (`jobId` = dedupe key), and backs off exponentially, marking rows failed after 10 attempts.
+- **API conventions**: `/v1` prefix, `{ data }` / `{ data, meta: { nextCursor } }` envelopes,
+  `{ error: { code, message, fieldErrors?, requestId } }` errors, X-Request-Id, strict request
+  validation (unknown fields rejected), opaque keyset cursors.
+- **Endpoints**: `GET /v1/me`, `PATCH /v1/me`, `GET /v1/merchant/branches`,
+  `GET /v1/merchant/branches/{id}`, `GET /v1/admin/audit`.
+- **OpenAPI and client**: route registry in `packages/contracts/src/api/routes.ts`,
+  rendered to `packages/contracts/openapi.json` (OpenAPI 3.1) with generated types and a
+  typed `createApiClient` (openapi-fetch). A test checks the registry matches the routes Nest
+  actually registers; CI fails if the committed document is stale.
+
+### Excluded (later phases)
+
+Order, cart, payment, finance, support and phase-two tables; merchant documents (phase 3);
+merchant write endpoints (phases 3–4); rate limiting (phase 11); sign-in UI. Step-up MFA for
+owner bank/role changes arrives with those endpoints.
+
+### Decisions and spec notes
+
+- D12 not approved: verification works with any Supabase project (email/password or phone
+  OTP). Production needs the chosen channels and SMS vendor.
+- docs/06 lists `memberships.status` as free text; implemented as enum `invited/active/revoked`.
+- docs/06 does not say whether owners hold `membership_branches` rows; implemented as
+  "owners operate every branch of their merchant without assignment rows".
+- docs/10 says suspended merchants must not take new actions; phase 2 hides all of a
+  suspended merchant's branches from its staff. Revisit in phase 3 (owners may need read access
+  to resolve a suspension).
+- Tenant-owned join tables carry `merchant_id` so composite foreign keys can enforce tenant
+  consistency (docs/06: "composite branch/merchant foreign keys where applicable").
+
+### Commands and actual results (local run, 2026-11-27)
+
+| Command                                              | Result                                                                                        |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `pnpm lint` / `pnpm typecheck` / `pnpm format:check` | Pass                                                                                          |
+| `pnpm test`                                          | 28 passed: contracts 6, ui 5, api 17                                                          |
+| `pnpm test:integration`                              | 52 passed in 8 files; 4 consecutive runs all green                                            |
+| `pnpm build`                                         | All packages and apps build                                                                   |
+| `pnpm db:migrate` on an empty database               | Migration applied                                                                             |
+| `prisma migrate diff … --exit-code`                  | No difference between schema and migrations                                                   |
+| `pnpm db:seed` twice                                 | Same counts both runs (7 users, 2 merchants, 4 branches, 6 products, 4 memberships, 1 policy) |
+| Built API: `GET /health`, `GET /v1/me`               | 200; 401 `UNAUTHENTICATED` with request ID (no verifier configured)                           |
+
+Integration coverage: token signature/issuer/audience/expiry/nbf/`alg: none`; first sign-in
+race creates one user; role claims ignored; suspension immediate; tenant A cannot read
+tenant B (404, same as non-existent); barista limited to assigned branch; membership
+revocation and branch unassignment immediate; merchant suspension; database rejects
+cross-tenant assignments and products; admin role + MFA, no super_admin bypass, revocation
+immediate; audit read audited; profile update audited with masking; audit table rejects
+UPDATE/DELETE/TRUNCATE; idempotency replay, conflict, per-actor scope, concurrency and
+release on failure; outbox atomicity, dedupe, concurrent relays publish once, backoff;
+BullMQ job dedupe; hours overlap, money and stock CHECKs; policy immutability; route
+registry matches Nest.
+
+### Signing in locally
+
+Run a local Supabase stack (`supabase start`) or use a test project with asymmetric JWT
+signing keys, then set `SUPABASE_JWKS_URL` and `SUPABASE_JWT_ISSUER` in `apps/api/.env`.
+To act as a seeded persona, set that user's `auth_subject` to the Supabase user ID, e.g.
+`UPDATE users SET auth_subject = '<supabase-user-id>' WHERE email = 'owner-a@example.test';`.
+Admin routes also need an MFA (aal2) session.
+
+### Migration and rollback
+
+Forward-only. Rolling back before any real data exists: revert the merge and drop/recreate the
+development database. After real data exists, write a new forward migration instead.
+Requires the `btree_gist` extension (trusted in PostgreSQL 13+, so a database owner can
+create it; managed providers must allow it).
+
+### Risks and next step
+
+- `openapi-typescript` 7.13 declares a TypeScript ^5 peer; it runs correctly with 6.0.
+- Rate limiting for sign-in-adjacent routes is not built yet (phase 11 hardening).
+- Next: phase 03 (merchant applications, document quarantine, admin review queue).
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.
 
-| Date       | Author | Decision | Change                                                                   | Approval                       |
-| ---------- | ------ | -------- | ------------------------------------------------------------------------ | ------------------------------ |
-| 2026-11-27 | Claude | D13      | Neutral working name "Coffee Marketplace" used in all UI; no BEANZ marks | Proposed default, not approved |
+| Date       | Author | Decision | Change                                                                              | Approval                           |
+| ---------- | ------ | -------- | ----------------------------------------------------------------------------------- | ---------------------------------- |
+| 2026-11-27 | Claude | D13      | Neutral working name "Coffee Marketplace" used in all UI; no BEANZ marks            | Proposed default, not approved     |
+| 2026-11-27 | Claude | D02      | Seeded `commission/sandbox-v1` (10%, sandbox flag, unapproved) for development only | Proposed default, not approved     |
+| 2026-11-27 | Claude | D12      | Sign-in verified via any Supabase provider; admin routes require aal2 (MFA)         | Channels and SMS vendor not chosen |
 
 ## Phase handoff template
 
