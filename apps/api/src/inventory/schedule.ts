@@ -124,3 +124,74 @@ export function slotStarts(
   }
   return starts.sort((a, b) => a.getTime() - b.getTime());
 }
+
+/** Local calendar date and minutes after midnight of `now` in `timeZone`. */
+export function localClock(
+  timeZone: string,
+  now: Date = new Date(),
+): { date: string; minutes: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "00";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    minutes: Number(get("hour")) * 60 + Number(get("minute")),
+  };
+}
+
+export interface WeeklyHours {
+  weekday: number;
+  opens: string;
+  closes: string;
+}
+
+export interface DateException {
+  date: string;
+  closed: boolean;
+  intervals: ClockInterval[];
+}
+
+/** The intervals that apply on one local date: its exception if any, else the weekly hours. */
+export function intervalsOn(
+  localDate: string,
+  hours: readonly WeeklyHours[],
+  exceptions: readonly DateException[],
+): ClockInterval[] {
+  const exception = exceptions.find((e) => e.date === localDate);
+  if (exception) return exception.closed ? [] : exception.intervals;
+  const weekday = isoWeekday(localDate);
+  return hours.filter((h) => h.weekday === weekday);
+}
+
+/** Whether the branch is inside its opening hours at `now` (branch-local time). */
+export function isOpenAt(
+  timeZone: string,
+  hours: readonly WeeklyHours[],
+  exceptions: readonly DateException[],
+  now: Date = new Date(),
+): boolean {
+  const { date, minutes } = localClock(timeZone, now);
+  return intervalsOn(date, hours, exceptions).some(
+    (i) => clockMinutes(i.opens) <= minutes && minutes < clockMinutes(i.closes),
+  );
+}
+
+/** Great-circle distance in metres (haversine). */
+export function distanceMeters(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const rad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return Math.round(2 * 6_371_000 * Math.asin(Math.sqrt(h)));
+}

@@ -64,7 +64,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     if (status >= 500) {
       const detail =
         exception instanceof Error ? (exception.stack ?? exception.message) : String(exception);
-      this.logger.error(`[${requestId}] ${req.method} ${req.url} failed: ${detail}`);
+      this.logger.error(`[${requestId}] ${req.method} ${req.url.split("?")[0]} failed: ${detail}`);
     }
     res.status(status).json({ error: body });
   }

@@ -6,6 +6,7 @@ import { CatalogModule } from "./catalog/catalog.module.js";
 import { ConfigModule } from "./config/config.module.js";
 import type { Env } from "./config/env.js";
 import { DatabaseModule } from "./database/database.module.js";
+import { DiscoveryModule } from "./discovery/discovery.module.js";
 import { FilesModule } from "./files/files.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { IdempotencyModule } from "./idempotency/idempotency.module.js";
@@ -38,6 +39,7 @@ export class AppModule {
         MerchantModule,
         CatalogModule,
         StaffModule,
+        DiscoveryModule,
         OnboardingModule,
         AdminModule,
       ],

@@ -20,6 +20,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow location to sort caf\u00e9s by distance. You can choose your emirate instead."
+        }
+      ]
+    ]
   }
 }

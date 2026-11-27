@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { dataEnvelope, filsSchema, listEnvelope, localDateSchema, uuidSchema } from "./common.js";
+import {
+  citySchema,
+  dataEnvelope,
+  filsSchema,
+  listEnvelope,
+  localDateSchema,
+  uuidSchema,
+} from "./common.js";
 
 export const branchStatusSchema = z.enum(["draft", "active", "paused", "closed"]);
 export const fulfilmentModeSchema = z.enum(["in_store", "curbside", "dine_in"]);
@@ -38,6 +45,7 @@ export const merchantBranchSchema = z.object({
   lat: z.number().nullable(),
   lng: z.number().nullable(),
   phone: z.string().nullable(),
+  city: citySchema.nullable(),
   timezone: z.string(),
   status: branchStatusSchema,
   modes: z.array(fulfilmentModeSchema),
@@ -62,6 +70,8 @@ const branchFields = {
     .trim()
     .regex(/^\+?[0-9 ()-]{6,20}$/, "Phone number")
     .nullable(),
+  /** Customers find branches by emirate; a branch without one is not listed by city. */
+  city: citySchema.nullable(),
   modes: z.array(fulfilmentModeSchema).min(1).max(3),
   /** Orders the branch can take per 15-minute pickup slot (sandbox slot length, D10). */
   capacity: z.number().int().min(0).max(1000),
@@ -77,6 +87,7 @@ export const createBranchRequestSchema = z.strictObject({
   lat: branchFields.lat.optional(),
   lng: branchFields.lng.optional(),
   phone: branchFields.phone.optional(),
+  city: branchFields.city.optional(),
   hours: branchFields.hours.default([]),
 });
 export type CreateBranchRequest = z.infer<typeof createBranchRequestSchema>;
@@ -89,6 +100,7 @@ export const updateBranchRequestSchema = z
     lat: branchFields.lat,
     lng: branchFields.lng,
     phone: branchFields.phone,
+    city: branchFields.city,
     modes: branchFields.modes,
     capacity: branchFields.capacity,
     hours: branchFields.hours,

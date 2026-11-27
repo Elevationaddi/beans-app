@@ -261,8 +261,16 @@ async function upsertMerchant(m: MerchantSeed, index: number) {
   for (const b of m.branches) {
     await prisma.branch.upsert({
       where: { id: b.id },
-      create: { ...b, merchantId: m.id, timezone: "Asia/Dubai", status: "active", capacity: 12 },
-      update: {},
+      // All sample branches are in the proposed Abu Dhabi pilot (D01).
+      create: {
+        ...b,
+        merchantId: m.id,
+        city: "abu_dhabi",
+        timezone: "Asia/Dubai",
+        status: "active",
+        capacity: 12,
+      },
+      update: { city: "abu_dhabi" },
     });
     // Saturday-Thursday 07:00-22:00; Friday 07:00-11:30 and 13:30-23:00 (sample only).
     const existing = await prisma.branchHour.count({ where: { branchId: b.id } });

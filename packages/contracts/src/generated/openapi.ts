@@ -524,6 +524,126 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/branches": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Find cafés: search, emirate, pickup type, open now; nearest first when a location is sent */
+    get: operations["searchBranches"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/branches/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Branch details, hours in branch time, holidays and sibling branches */
+    get: operations["getBranch"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/branches/{id}/menu": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Published menu with branch prices, sold-out flags and drink options */
+    get: operations["getBranchMenu"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/branches/{id}/items/price": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Server price of one customized item; checks required options and availability */
+    post: operations["priceBranchItem"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/branches/{id}/slots": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Future pickup times for a date and pickup type */
+    get: operations["listPickupSlots"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/favorites": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Cafés the customer saved, most recent first */
+    get: operations["listFavorites"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/favorites/{merchantId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Save a café (repeating is harmless) */
+    put: operations["saveFavorite"];
+    post?: never;
+    /** Remove a saved café */
+    delete: operations["removeFavorite"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -829,6 +949,17 @@ export interface operations {
               lat: number | null;
               lng: number | null;
               phone: string | null;
+              city:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
               timezone: string;
               /** @enum {string} */
               status: "draft" | "active" | "paused" | "closed";
@@ -902,6 +1033,17 @@ export interface operations {
           lat?: number | null;
           lng?: number | null;
           phone?: string | null;
+          city?:
+            | (
+                | "abu_dhabi"
+                | "dubai"
+                | "sharjah"
+                | "ajman"
+                | "umm_al_quwain"
+                | "ras_al_khaimah"
+                | "fujairah"
+              )
+            | null;
           modes: ("in_store" | "curbside" | "dine_in")[];
           capacity: number;
           /** @default [] */
@@ -932,6 +1074,17 @@ export interface operations {
               lat: number | null;
               lng: number | null;
               phone: string | null;
+              city:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
               timezone: string;
               /** @enum {string} */
               status: "draft" | "active" | "paused" | "closed";
@@ -1022,6 +1175,17 @@ export interface operations {
               lat: number | null;
               lng: number | null;
               phone: string | null;
+              city:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
               timezone: string;
               /** @enum {string} */
               status: "draft" | "active" | "paused" | "closed";
@@ -1101,6 +1265,17 @@ export interface operations {
           lat?: number | null;
           lng?: number | null;
           phone?: string | null;
+          city?:
+            | (
+                | "abu_dhabi"
+                | "dubai"
+                | "sharjah"
+                | "ajman"
+                | "umm_al_quwain"
+                | "ras_al_khaimah"
+                | "fujairah"
+              )
+            | null;
           modes?: ("in_store" | "curbside" | "dine_in")[];
           capacity?: number;
           hours?: {
@@ -1132,6 +1307,17 @@ export interface operations {
               lat: number | null;
               lng: number | null;
               phone: string | null;
+              city:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
               timezone: string;
               /** @enum {string} */
               status: "draft" | "active" | "paused" | "closed";
@@ -4094,6 +4280,592 @@ export interface operations {
       };
       /** @description Conflict (stale version or idempotency key reuse) */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  searchBranches: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+        q?: string;
+        city?:
+          | "abu_dhabi"
+          | "dubai"
+          | "sharjah"
+          | "ajman"
+          | "umm_al_quwain"
+          | "ras_al_khaimah"
+          | "fujairah";
+        lat?: number;
+        lng?: number;
+        mode?: "in_store" | "curbside" | "dine_in";
+        openNow?: "true" | "false";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              address: string;
+              city:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              lat: number | null;
+              lng: number | null;
+              modes: ("in_store" | "curbside" | "dine_in")[];
+              /** @enum {string} */
+              availability: "open" | "closed" | "paused";
+              distanceMeters: number | null;
+            }[];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  getBranch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              address: string;
+              city:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              lat: number | null;
+              lng: number | null;
+              modes: ("in_store" | "curbside" | "dine_in")[];
+              /** @enum {string} */
+              availability: "open" | "closed" | "paused";
+              distanceMeters: number | null;
+              phone: string | null;
+              timezone: string;
+              hours: {
+                weekday: number;
+                opens: string;
+                closes: string;
+              }[];
+              exceptions: {
+                /** Format: date */
+                date: string;
+                closed: boolean;
+                intervals: {
+                  opens: string;
+                  closes: string;
+                }[];
+              }[];
+              siblings: {
+                /** Format: uuid */
+                id: string;
+                names: {
+                  en: string;
+                  ar?: string;
+                };
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  getBranchMenu: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              branchId: string;
+              /** @constant */
+              currency: "AED";
+              version: string;
+              categories: {
+                /** Format: uuid */
+                id: string;
+                names: {
+                  en: string;
+                  ar?: string;
+                };
+                products: {
+                  /** Format: uuid */
+                  id: string;
+                  names: {
+                    en: string;
+                    ar?: string;
+                  };
+                  descriptions: {
+                    en?: string;
+                    ar?: string;
+                  };
+                  priceFils: string;
+                  allergens: string[];
+                  available: boolean;
+                  groups: {
+                    /** Format: uuid */
+                    id: string;
+                    names: {
+                      en: string;
+                      ar?: string;
+                    };
+                    minCount: number;
+                    maxCount: number;
+                    options: {
+                      /** Format: uuid */
+                      id: string;
+                      names: {
+                        en: string;
+                        ar?: string;
+                      };
+                      deltaFils: string;
+                      available: boolean;
+                    }[];
+                  }[];
+                }[];
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  priceBranchItem: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: uuid */
+          productId: string;
+          /** @default [] */
+          optionIds?: string[];
+          quantity: number;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              productId: string;
+              optionIds: string[];
+              quantity: number;
+              unitFils: string;
+              lineFils: string;
+              menuVersion: string;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  listPickupSlots: {
+    parameters: {
+      query: {
+        date: string;
+        mode: "in_store" | "curbside" | "dine_in";
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: date */
+              date: string;
+              timezone: string;
+              /** @enum {string} */
+              availability: "open" | "closed" | "paused";
+              slots: {
+                /** Format: date-time */
+                startsAt: string;
+                available: boolean;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  listFavorites: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              /** Format: date-time */
+              savedAt: string;
+            }[];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  saveFavorite: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        merchantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              merchantId: string;
+              saved: boolean;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  removeFavorite: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        merchantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              merchantId: string;
+              saved: boolean;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
         headers: {
           [name: string]: unknown;
         };

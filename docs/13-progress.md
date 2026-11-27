@@ -3,20 +3,20 @@
 Status: phases 01–02 merged; phase 03 implemented, awaiting owner review. No production
 integrations or real money.
 
-| Phase | Status                 | Commit                             | Tests                                  | Blockers                                |
-| ----- | ---------------------- | ---------------------------------- | -------------------------------------- | --------------------------------------- |
-| 01    | Done (merged)          | 2db5b9c                            | 17 unit, 3 integration, all apps build | None                                    |
-| 02    | Done (merged)          | 6a8a569                            | 28 unit, 52 integration                | D12 before production sign-in           |
-| 03    | Done (merged)          | 6d21d02                            | 32 unit, 71 integration                | Storage provider, malware scanner (D11) |
-| 04    | Implemented, in review | branch `phase-04-catalog-branches` | 37 unit, 108 integration               | D10 (slot length), invite delivery      |
-| 05    | Not started            | —                                  | —                                      | D13 (brand) before production copy      |
-| 06    | Not started            | —                                  | —                                      | D02, D06 for real pricing               |
-| 07    | Not started            | —                                  | —                                      | D02–D04, D06 before any live provider   |
-| 08    | Not started            | —                                  | —                                      | D05, D10                                |
-| 09    | Deferred (not in MVP)  | —                                  | —                                      | D07, D08, D14, D16                      |
-| 10    | Not started            | —                                  | —                                      | See decision register                   |
-| 11    | Not started            | —                                  | —                                      | See decision register                   |
-| 12    | Not started            | —                                  | —                                      | D01, D11, D15 and all money decisions   |
+| Phase | Status                 | Commit                      | Tests                                  | Blockers                                      |
+| ----- | ---------------------- | --------------------------- | -------------------------------------- | --------------------------------------------- |
+| 01    | Done (merged)          | 2db5b9c                     | 17 unit, 3 integration, all apps build | None                                          |
+| 02    | Done (merged)          | 6a8a569                     | 28 unit, 52 integration                | D12 before production sign-in                 |
+| 03    | Done (merged)          | 6d21d02                     | 32 unit, 71 integration                | Storage provider, malware scanner (D11)       |
+| 04    | Done (merged)          | 63496dc                     | 37 unit, 108 integration               | D10 (slot length), invite delivery            |
+| 05    | Implemented, in review | branch `phase-05-discovery` | 54 unit, 122 integration               | D12 (app sign-in), D13 before production copy |
+| 06    | Not started            | —                           | —                                      | D02, D06 for real pricing                     |
+| 07    | Not started            | —                           | —                                      | D02–D04, D06 before any live provider         |
+| 08    | Not started            | —                           | —                                      | D05, D10                                      |
+| 09    | Deferred (not in MVP)  | —                           | —                                      | D07, D08, D14, D16                            |
+| 10    | Not started            | —                           | —                                      | See decision register                         |
+| 11    | Not started            | —                           | —                                      | See decision register                         |
+| 12    | Not started            | —                           | —                                      | D01, D11, D15 and all money decisions         |
 
 ## Phase 01 — Foundation (2026-11-27)
 
@@ -419,6 +419,107 @@ Rollback before production: revert the merge and recreate development databases.
 
 Phase 05: discovery (customer branch list, branch details, menu and slot availability).
 
+## Phase 05 — Customer discovery (2026-11-27)
+
+### Scope completed
+
+- **Public API** (`apps/api/src/discovery`, no sign-in):
+  - `GET /v1/branches`: search by café or branch name, emirate, pickup type, open now. Sorted
+    nearest first only when the request carries a location, otherwise by café name.
+  - `GET /v1/branches/:id`: details, hours in branch time, holidays, sibling branches.
+  - `GET /v1/branches/:id/menu`: published products in active categories, with branch prices,
+    sold-out flags (switched off, or tracked stock used up), drink options, and a content
+    `version` that changes whenever the menu changes.
+  - `POST /v1/branches/:id/items/price`: server price of one customized item (Q02).
+  - `GET /v1/branches/:id/slots`: future pickup times for a date and pickup type, as
+    available or full (no counts). A paused branch offers none.
+  - Only active or paused branches of approved merchants are listed; drafts, closed
+    branches and unapproved merchants answer 404. `availability` is `open`, `closed`
+    (outside hours: visible, no ASAP orders) or `paused`.
+- **Favorites** (signed in): `GET /v1/favorites`, `PUT/DELETE /v1/favorites/:merchantId`.
+  Only approved cafés can be saved or are listed; each customer sees only their own.
+- **Branch emirate**: new nullable `branches.city` (the seven emirates, CHECK constraint),
+  editable by the owner in the merchant API, used by the customer emirate filter. Seed
+  branches are set to Abu Dhabi (D01 proposed pilot).
+- **Customer app** (`apps/mobile`, React Navigation):
+  - Screens: welcome (language, emirate, optional location, browse as guest), Home, Explore
+    (search, open now, pickup type, clear filters), café page (status, hours in Dubai time,
+    other branches, menu with sold-out), drink options (min/max, quantity 1–20, notes with an
+    allergy disclaimer), cart, Orders and Profile (language, emirate).
+  - Prices are always the server's: the options screen asks the API for the price of the
+    current choice and adds that to the cart.
+  - The cart holds one branch; adding from another branch asks first (Q03).
+  - Guests see "Sign in to check out" and no checkout action.
+  - Loading, error with retry, offline (last results kept and labelled) and empty states.
+  - English and Arabic, with right-to-left layout for Arabic. Arabic text is a draft and the
+    app shows a notice while Arabic is selected.
+- **Privacy fix**: server error logs now omit query strings, so a customer location sent to
+  search never lands in logs.
+
+### Database (migration `20261127200703_discovery_city_favorites`)
+
+New column `branches.city` (nullable, CHECK on the seven emirates, index with status); new
+table `favorites` (unique per customer and café, cascades with the user).
+
+### Excluded / follow-ups
+
+- **Sign-in in the app**: needs the Supabase test project and D12. Until then the app runs
+  as a guest: saving cafés, orders and checkout show a sign-in message, with no fake action.
+- **Map view** in Explore: list only for now; a map needs a maps provider decision.
+- **Featured shops, offers, reorder** on Home: need campaigns (phase 2) and orders (phase 6+).
+- **Product photos**: wait on the production storage provider.
+- **Device testing**: VoiceOver/TalkBack, 200% zoom and contrast on real devices are still to
+  do (D15). Automated checks cover roles, labels and RTL only.
+
+### Decisions and spec notes
+
+- **D01**: the welcome screen defaults to Abu Dhabi; all seven emirates can be chosen.
+- **Quantity limit of 20 per item** is a sandbox value. Please confirm.
+- **No branch override row** means the product is offered at its base price with stock not
+  tracked. The owner switches it off per branch to hide it as sold out.
+- **Location** is optional, kept in memory on the device only, sent only with search requests
+  and never stored by the server, and never required to browse (Q01).
+- **Added routes not in docs/07**: `POST /v1/branches/:id/items/price` (needed for Q02 and the
+  customizer price) and `DELETE /v1/favorites/:merchantId`.
+- **Search ranks up to 500 branches in memory** (fine for the pilot); move ranking into SQL
+  before wider launch.
+
+### Commands and actual results (local run, 2026-11-27)
+
+| Command                                              | Result                                                                   |
+| ---------------------------------------------------- | ------------------------------------------------------------------------ |
+| `pnpm lint` / `pnpm typecheck` / `pnpm format:check` | Pass                                                                     |
+| `pnpm test`                                          | 54 passed: contracts 6, ui 5, api 29, mobile 14                          |
+| `pnpm test:integration`                              | 122 passed in 14 files                                                   |
+| `pnpm build`                                         | All packages and apps build (mobile Android bundle, 1,000 modules)       |
+| Migrations on existing databases                     | Applied; `prisma migrate diff --exit-code` shows no difference           |
+| `pnpm db:seed` twice                                 | Same counts both runs                                                    |
+| Built API with seed data                             | Search returns 4 branches nearest first; menu with prices; favorites 401 |
+
+Gate evidence:
+
+- **Q01** (guest declines location): app test declines location, picks Dubai, browses; the
+  search request has the emirate and no coordinates. API test browses by emirate without
+  location.
+- **Q02** (required option missing / tampered price): API rejects a missing required option
+  (422), too many choices, duplicates, foreign and switched-off options, bad quantities, and a
+  client-supplied price field (400); the canonical total uses branch prices. App test: Add is
+  disabled until the required option is chosen, and the price request carries choices only.
+- **Q03** (switch branch with cart): app test shows the confirmation and cancelling keeps the
+  cart; unit tests prove a cart never mixes branches.
+- **Accessibility smoke**: every pressable on Home, options and cart has a role and a label,
+  inputs are labelled, headers are marked, Arabic lays out right to left with the draft notice.
+- **Guest cannot check out**: the cart shows the sign-in message and no checkout control.
+
+### Migration and rollback
+
+Forward-only and additive (nullable column, new table). Rollback before production: revert
+the merge and recreate development databases.
+
+### Next step
+
+Phase 06: cart and checkout (server cart, quote, holds), which needs sign-in in the app.
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.
@@ -430,6 +531,8 @@ Record date, author, decision ID, old/new behavior, approval and affected files.
 | 2026-11-27 | Claude | D12      | Sign-in verified via any Supabase provider; admin routes require aal2 (MFA)         | Channels and SMS vendor not chosen |
 | 2026-11-27 | Claude | D10      | 15-minute pickup slots, capacity per branch (sandbox values)                        | Proposed default, not approved     |
 | 2026-11-27 | Claude | —        | Staff invitations expire after 72 hours; no email sent until a provider is approved | Proposed default, not approved     |
+| 2026-11-27 | Claude | D01      | Customer app defaults to Abu Dhabi; any of the seven emirates can be chosen         | Proposed default, not approved     |
+| 2026-11-27 | Claude | —        | At most 20 of one item per cart line (sandbox limit)                                | Proposed default, not approved     |
 
 ## Phase handoff template
 

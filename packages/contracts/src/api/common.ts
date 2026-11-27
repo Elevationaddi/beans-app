@@ -93,3 +93,15 @@ export const localDateSchema = z.iso.date();
 
 /** A merchant the caller belongs to. Only a lookup key: authority comes from membership. */
 export const merchantScopeQuerySchema = pageQuerySchema.extend({ merchantId: uuidSchema });
+
+/** The seven UAE emirates (D01: UAE only). Which ones are live is configuration. */
+export const citySchema = z.enum([
+  "abu_dhabi",
+  "dubai",
+  "sharjah",
+  "ajman",
+  "umm_al_quwain",
+  "ras_al_khaimah",
+  "fujairah",
+]);
+export type City = z.infer<typeof citySchema>;

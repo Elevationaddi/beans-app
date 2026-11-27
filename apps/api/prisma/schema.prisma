@@ -50,6 +50,7 @@ model User {
   policiesApproved    Policy[]          @relation("PolicyApprover")
   invitationsSent     StaffInvitation[] @relation("InvitationInviter")
   invitationsAccepted StaffInvitation[] @relation("InvitationAcceptor")
+  favorites           Favorite[]
 
   @@map("users")
 }
@@ -112,6 +113,7 @@ model Merchant {
   documents      MerchantDocument[]
   uploads        Upload[]
   invitations    StaffInvitation[]
+  favoritedBy    Favorite[]
 
   @@index([status, submittedAt])
   @@map("merchants")
@@ -139,6 +141,8 @@ model Branch {
   /// Orders the branch can take per pickup slot.
   capacity   Int
   phone      String?
+  /// UAE emirate slug (see contracts citySchema); null until the merchant sets it.
+  city       String?
   createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -152,6 +156,7 @@ model Branch {
 
   @@unique([id, merchantId])
   @@index([merchantId, status])
+  @@index([city, status])
   @@map("branches")
 }
 
@@ -585,4 +590,19 @@ model AuditEvent {
   @@index([targetType, targetId, createdAt])
   @@index([actorId, createdAt])
   @@map("audit_events")
+}
+
+/// A café (merchant) a customer saved.
+model Favorite {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  merchantId String   @map("merchant_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, merchantId])
+  @@index([userId, createdAt])
+  @@map("favorites")
 }
