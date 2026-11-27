@@ -43,11 +43,13 @@ model User {
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  memberships      Membership[]
-  adminRoles       AdminRole[]
-  auditEvents      AuditEvent[]
-  uploads          Upload[]
-  policiesApproved Policy[]     @relation("PolicyApprover")
+  memberships         Membership[]
+  adminRoles          AdminRole[]
+  auditEvents         AuditEvent[]
+  uploads             Upload[]
+  policiesApproved    Policy[]          @relation("PolicyApprover")
+  invitationsSent     StaffInvitation[] @relation("InvitationInviter")
+  invitationsAccepted StaffInvitation[] @relation("InvitationAcceptor")
 
   @@map("users")
 }
@@ -109,6 +111,7 @@ model Merchant {
   modifierGroups ModifierGroup[]
   documents      MerchantDocument[]
   uploads        Upload[]
+  invitations    StaffInvitation[]
 
   @@index([status, submittedAt])
   @@map("merchants")
@@ -133,11 +136,14 @@ model Branch {
   status     BranchStatus @default(draft)
   /// Fulfilment modes offered: in_store, curbside, dine_in.
   modes      String[]
+  /// Orders the branch can take per pickup slot.
   capacity   Int
+  phone      String?
   createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   merchant   Merchant           @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  slots      Slot[]
   hours      BranchHour[]
   exceptions BranchException[]
   members    MembershipBranch[]
@@ -195,13 +201,15 @@ enum MembershipStatus {
 }
 
 model Membership {
-  id         String           @id @default(uuid()) @db.Uuid
-  userId     String           @map("user_id") @db.Uuid
-  merchantId String           @map("merchant_id") @db.Uuid
-  role       MembershipRole
-  status     MembershipStatus @default(active)
-  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String           @id @default(uuid()) @db.Uuid
+  userId           String           @map("user_id") @db.Uuid
+  merchantId       String           @map("merchant_id") @db.Uuid
+  role             MembershipRole
+  status           MembershipStatus @default(active)
+  /// Managers may edit the merchant-wide menu only when the owner delegates it (docs/10).
+  catalogDelegated Boolean          @default(false) @map("catalog_delegated")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   user     User               @relation(fields: [userId], references: [id], onDelete: Restrict)
   merchant Merchant           @relation(fields: [merchantId], references: [id], onDelete: Restrict)
@@ -307,6 +315,53 @@ model MerchantDocument {
   @@map("merchant_documents")
 }
 
+/// Pickup capacity per time window (docs/06). Generated from opening hours and exceptions.
+model Slot {
+  id        String   @id @default(uuid()) @db.Uuid
+  branchId  String   @map("branch_id") @db.Uuid
+  startsAt  DateTime @map("starts_at") @db.Timestamptz(6)
+  capacity  Int
+  reserved  Int      @default(0)
+  confirmed Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@unique([branchId, startsAt])
+  @@map("slots")
+}
+
+enum InvitationStatus {
+  pending
+  accepted
+  revoked
+}
+
+/// Staff invitation (docs/03 B07). The token is shown once and stored only as a hash.
+model StaffInvitation {
+  id               String           @id @default(uuid()) @db.Uuid
+  merchantId       String           @map("merchant_id") @db.Uuid
+  email            String
+  role             MembershipRole
+  branchIds        String[]         @map("branch_ids") @db.Uuid
+  catalogDelegated Boolean          @default(false) @map("catalog_delegated")
+  tokenHash        String           @unique @map("token_hash")
+  status           InvitationStatus @default(pending)
+  invitedById      String           @map("invited_by") @db.Uuid
+  acceptedById     String?          @map("accepted_by") @db.Uuid
+  expiresAt        DateTime         @map("expires_at") @db.Timestamptz(6)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  invitedBy  User     @relation("InvitationInviter", fields: [invitedById], references: [id], onDelete: Restrict)
+  acceptedBy User?    @relation("InvitationAcceptor", fields: [acceptedById], references: [id], onDelete: Restrict)
+
+  @@index([merchantId, status])
+  @@map("staff_invitations")
+}
+
 // ───────────────────────────── Catalog ─────────────────────────────
 
 model Category {
@@ -365,6 +420,7 @@ model ModifierGroup {
   minCount   Int      @map("min_count")
   maxCount   Int      @map("max_count")
   sort       Int      @default(0)
+  version    Int      @default(1)
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

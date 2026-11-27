@@ -4,5 +4,7 @@ export * from "./common.js";
 export * from "./me.js";
 export * from "./merchant-applications.js";
 export * from "./merchant-branches.js";
+export * from "./merchant-catalog.js";
+export * from "./merchant-staff.js";
 export * from "./routes.js";
 export * from "./uploads.js";

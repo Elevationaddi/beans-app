@@ -62,3 +62,34 @@ export const pageQuerySchema = z.strictObject({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 export type PageQuery = z.infer<typeof pageQuerySchema>;
+
+/**
+ * Money on the wire: a non-negative integer number of fils as a decimal string (docs/07),
+ * so no client ever does floating-point arithmetic on prices. 1 AED = 100 fils.
+ */
+export const filsSchema = z.string().regex(/^(0|[1-9]\d{0,11})$/, "Amount in fils, digits only");
+
+/**
+ * Text shown to customers in English and Arabic. English is required; Arabic is optional
+ * until reviewed by a native speaker (CLAUDE.md: no invented production translations).
+ */
+export const localizedTextSchema = z.strictObject({
+  en: z.string().trim().min(1).max(200),
+  ar: z.string().trim().min(1).max(200).optional(),
+});
+export type LocalizedText = z.infer<typeof localizedTextSchema>;
+
+/** Optional longer text, either language may be absent. */
+export const localizedDescriptionSchema = z.strictObject({
+  en: z.string().trim().min(1).max(1000).optional(),
+  ar: z.string().trim().min(1).max(1000).optional(),
+});
+
+/** Optimistic concurrency token for state updates (docs/07: stale versions answer 409). */
+export const expectedVersionSchema = z.number().int().min(1);
+
+/** A calendar date in the branch's own timezone, `YYYY-MM-DD`. */
+export const localDateSchema = z.iso.date();
+
+/** A merchant the caller belongs to. Only a lookup key: authority comes from membership. */
+export const merchantScopeQuerySchema = pageQuerySchema.extend({ merchantId: uuidSchema });

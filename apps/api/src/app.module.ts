@@ -2,6 +2,7 @@ import { Module, type DynamicModule } from "@nestjs/common";
 import { AdminModule } from "./admin/admin.module.js";
 import { AuditModule } from "./audit/audit.module.js";
 import { AuthModule } from "./auth/auth.module.js";
+import { CatalogModule } from "./catalog/catalog.module.js";
 import { ConfigModule } from "./config/config.module.js";
 import type { Env } from "./config/env.js";
 import { DatabaseModule } from "./database/database.module.js";
@@ -13,6 +14,7 @@ import { MerchantModule } from "./merchant/merchant.module.js";
 import { OnboardingModule } from "./onboarding/onboarding.module.js";
 import { OutboxModule } from "./outbox/outbox.module.js";
 import { RedisModule } from "./redis/redis.module.js";
+import { StaffModule } from "./staff/staff.module.js";
 import { TenancyModule } from "./tenancy/tenancy.module.js";
 
 /** Root module: one modular backend (CLAUDE.md). Business modules join in later phases. */
@@ -34,6 +36,8 @@ export class AppModule {
         HealthModule,
         MeModule,
         MerchantModule,
+        CatalogModule,
+        StaffModule,
         OnboardingModule,
         AdminModule,
       ],

@@ -3,20 +3,20 @@
 Status: phases 01–02 merged; phase 03 implemented, awaiting owner review. No production
 integrations or real money.
 
-| Phase | Status                 | Commit                                | Tests                                  | Blockers                                |
-| ----- | ---------------------- | ------------------------------------- | -------------------------------------- | --------------------------------------- |
-| 01    | Done (merged)          | 2db5b9c                               | 17 unit, 3 integration, all apps build | None                                    |
-| 02    | Done (merged)          | 6a8a569                               | 28 unit, 52 integration                | D12 before production sign-in           |
-| 03    | Implemented, in review | branch `phase-03-merchant-onboarding` | 32 unit, 71 integration                | Storage provider, malware scanner (D11) |
-| 04    | Not started            | —                                     | —                                      | See decision register                   |
-| 05    | Not started            | —                                     | —                                      | D13 (brand) before production copy      |
-| 06    | Not started            | —                                     | —                                      | D02, D06 for real pricing               |
-| 07    | Not started            | —                                     | —                                      | D02–D04, D06 before any live provider   |
-| 08    | Not started            | —                                     | —                                      | D05, D10                                |
-| 09    | Deferred (not in MVP)  | —                                     | —                                      | D07, D08, D14, D16                      |
-| 10    | Not started            | —                                     | —                                      | See decision register                   |
-| 11    | Not started            | —                                     | —                                      | See decision register                   |
-| 12    | Not started            | —                                     | —                                      | D01, D11, D15 and all money decisions   |
+| Phase | Status                 | Commit                             | Tests                                  | Blockers                                |
+| ----- | ---------------------- | ---------------------------------- | -------------------------------------- | --------------------------------------- |
+| 01    | Done (merged)          | 2db5b9c                            | 17 unit, 3 integration, all apps build | None                                    |
+| 02    | Done (merged)          | 6a8a569                            | 28 unit, 52 integration                | D12 before production sign-in           |
+| 03    | Done (merged)          | 6d21d02                            | 32 unit, 71 integration                | Storage provider, malware scanner (D11) |
+| 04    | Implemented, in review | branch `phase-04-catalog-branches` | 37 unit, 108 integration               | D10 (slot length), invite delivery      |
+| 05    | Not started            | —                                  | —                                      | D13 (brand) before production copy      |
+| 06    | Not started            | —                                  | —                                      | D02, D06 for real pricing               |
+| 07    | Not started            | —                                  | —                                      | D02–D04, D06 before any live provider   |
+| 08    | Not started            | —                                  | —                                      | D05, D10                                |
+| 09    | Deferred (not in MVP)  | —                                  | —                                      | D07, D08, D14, D16                      |
+| 10    | Not started            | —                                  | —                                      | See decision register                   |
+| 11    | Not started            | —                                  | —                                      | See decision register                   |
+| 12    | Not started            | —                                  | —                                      | D01, D11, D15 and all money decisions   |
 
 ## Phase 01 — Foundation (2026-11-27)
 
@@ -301,6 +301,124 @@ databases.
 Phase 04: branches, hours, exceptions, capacity slots, categories, products, modifiers,
 availability and staff invites.
 
+## Phase 04 — Catalog and branch management (2026-11-27)
+
+### Scope completed
+
+- **Branches** (`apps/api/src/merchant`): create (owner, starts as draft), edit, replace weekly
+  hours, open/pause/resume/close with explicit transitions (draft → active/closed, active ⇄
+  paused, any → closed, closed → active). Opening needs an approved merchant (API check plus
+  the phase 3 database trigger) and at least one opening interval. Assigned managers may change
+  hours and pause/resume only; everything else is the owner's. Coordinates and phone added.
+- **Hours and holidays**: intervals validated per weekday (no overlap, closes after opens;
+  overnight opening is sent as two intervals, so 23:59 is the latest closing time). The
+  existing exclusion constraint backs this up. `PUT …/exceptions/:date` sets a closed day or
+  replacement intervals for one local date (today or later).
+- **Pickup slots** (`apps/api/src/inventory`): 15-minute slots (sandbox D10) derived from the
+  hours or that day's exception, in the branch timezone (Asia/Dubai), stored as UTC. Slots are
+  reconciled per day: missing ones created, empty ones outside new hours removed, slots holding
+  orders always kept. Capacity changes apply to future slots but never below what they hold.
+  `SlotService.hold/release` are single conditional updates backed by the new
+  `reserved + confirmed <= capacity` CHECK. Merchant read endpoint only; the customer endpoint
+  comes in phase 5.
+- **Menu** (`apps/api/src/catalog`): categories, modifier groups with options, products.
+  Money is whole fils as decimal strings on the wire, BigInt in the database. Products are
+  created as drafts; edits need `expectedVersion` (stale → 409 with the current version).
+  Modifier groups are versioned too; options left out of an update are deactivated, never
+  deleted. No delete endpoints anywhere: products are archived.
+- **Publish rules**: approved merchant, active category, every attached option group
+  satisfiable by its active options (`minCount` ≤ active options, at least one). Checked on the
+  final state of every edit, so editing a published product cannot leave it invalid. A
+  category with published products cannot be deactivated.
+- **Branch overrides** (B05): `PUT …/products/:productId` (enabled/sold out, branch price,
+  optional tracked stock) and `PUT …/options/:optionId` (enabled, branch price), audited with
+  before/after. Stock cannot be set below units held (409). Archived products and removed
+  options cannot be enabled. `StockService.hold/release` for checkout: one conditional update,
+  backed by the existing CHECK, so the last unit cannot be sold twice.
+- **Staff** (`apps/api/src/staff`): owner lists members and pending invitations, invites a
+  manager/barista/analyst with branches, revokes invitations, changes role/branches, revokes
+  access (effective next request, reason audited). Invitations carry a one-time token shown
+  once and stored as a SHA-256 hash, expire after 72 hours, and can only be accepted by a user
+  signed in with the invited email. Owners can never be invited or edited here. Managers and
+  baristas need at least one branch; menu editing (`catalogDelegated`) is for managers only and
+  is dropped when the role changes.
+- **Access** (docs/10): menu reads for owner/manager, menu writes for owner or a delegated
+  manager, availability for owner or assigned manager, staff for owner only. Every merchant
+  ID in a request is a lookup key; cross-tenant IDs answer 404 with the resource's own name.
+- **Contracts and OpenAPI** (0.3.0): 21 new routes, all registered in `routes.ts` and checked
+  against Nest by the route test.
+
+### Database (migration `20261127194455_catalog_slots_staff`)
+
+New tables `slots`, `staff_invitations`; new columns `branches.phone`,
+`memberships.catalog_delegated`, `modifier_groups.version`. Hand-written: slot counts CHECK,
+modifier group version CHECK, invitation checks (no owner role, delegation only for managers,
+accepted ⇔ accepter set, lowercase email), one pending invitation per email per merchant.
+
+### Excluded / follow-ups
+
+- Product photos: uploads only accept merchant documents today; photo upload needs the
+  production storage provider (phase 3 blocker).
+- Invitation delivery: no email is sent. A `staff.invited` outbox event is written and the
+  owner shares the token. Real delivery waits for an approved notification provider.
+- Customer menu, branch list and slot availability endpoints are phase 5.
+- Portal screens for these endpoints still need a Supabase test project to sign in.
+
+### Decisions and spec notes
+
+- **D10**: 15-minute slots and per-branch capacity are the proposed sandbox values.
+- **Invitation expiry (72 hours)** is an operational default, not a commercial policy. Please
+  confirm or change.
+- **Invitation acceptance** compares the email stored at first sign-in. Supabase only issues
+  tokens for confirmed emails with the default settings; recheck once D12 picks sign-in methods.
+- **Role changes and MFA**: docs/10 asks for step-up on role changes for privileged users.
+  Merchant owners are not required to use MFA yet; recorded as an open item for D12.
+- **Added routes not in docs/07**: `GET …/branches/:id/slots`, `GET /merchant/products/:id`,
+  `POST /merchant/staff/invitations/:id/revoke`, `POST /merchant/invitations/accept`. Invite
+  and revoke need them to work end to end.
+- **Allergens** are free-form lowercase labels until a reviewed list exists (docs/09).
+
+### Commands and actual results (local run, 2026-11-27)
+
+| Command                                              | Result                                                         |
+| ---------------------------------------------------- | -------------------------------------------------------------- |
+| `pnpm lint` / `pnpm typecheck` / `pnpm format:check` | Pass                                                           |
+| `pnpm test`                                          | 37 passed: contracts 6, ui 5, api 26                           |
+| `pnpm test:integration`                              | 108 passed in 13 files                                         |
+| `pnpm build`                                         | All packages and apps build                                    |
+| Migrations on empty databases                        | Applied; `prisma migrate diff --exit-code` shows no difference |
+| `pnpm db:seed` twice                                 | Same counts both runs                                          |
+| `pnpm audit --prod --audit-level high`               | Passes (1 moderate, unchanged)                                 |
+| Built API smoke test                                 | `/health` 200; new merchant routes 401 without a token         |
+
+New integration coverage (37 tests), mapped to the phase gate:
+
+- **Publish rules**: draft → published; unapproved merchant refused by API and database;
+  inactive category; category deactivation blocked by published products; failed publish
+  rolls back; archived products must return to draft; stale versions; option min/max rules;
+  options deactivated not deleted; foreign IDs cannot be attached.
+- **Branch overrides**: branch price, sold out, tracked stock with audit; archived products
+  cannot be enabled; option overrides; barista, unassigned manager and other tenants refused.
+- **Stock constraints**: 12 concurrent holds on the last unit → exactly 1 succeeds;
+  multi-unit holds; release; untracked stock; stock cannot be set below held units; database
+  CHECK refuses oversell directly; 10 concurrent slot holds on capacity 3 → exactly 3.
+- **Staff assignment**: invite → accept → sees only assigned branch; one-time token stored
+  hashed; wrong email, unknown and expired tokens; no owner invitations or owner edits;
+  branches required and must belong to the merchant; owner-only management; reassignment
+  and revocation effective on the next request; menu delegation granted and dropped.
+- **Branches**: owner-only creation, interval validation, opening rules and transitions,
+  manager limits, holidays driving slots (07:00 Dubai = 03:00 UTC), schedule changes keeping
+  held slots.
+
+### Migration and rollback
+
+Forward-only and additive (new tables, defaulted columns), so existing rows are unaffected.
+Rollback before production: revert the merge and recreate development databases.
+
+### Next step
+
+Phase 05: discovery (customer branch list, branch details, menu and slot availability).
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.
@@ -310,6 +428,8 @@ Record date, author, decision ID, old/new behavior, approval and affected files.
 | 2026-11-27 | Claude | D13      | Neutral working name "Coffee Marketplace" used in all UI; no BEANZ marks            | Proposed default, not approved     |
 | 2026-11-27 | Claude | D02      | Seeded `commission/sandbox-v1` (10%, sandbox flag, unapproved) for development only | Proposed default, not approved     |
 | 2026-11-27 | Claude | D12      | Sign-in verified via any Supabase provider; admin routes require aal2 (MFA)         | Channels and SMS vendor not chosen |
+| 2026-11-27 | Claude | D10      | 15-minute pickup slots, capacity per branch (sandbox values)                        | Proposed default, not approved     |
+| 2026-11-27 | Claude | —        | Staff invitations expire after 72 hours; no email sent until a provider is approved | Proposed default, not approved     |
 
 ## Phase handoff template
 

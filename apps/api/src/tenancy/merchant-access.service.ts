@@ -6,6 +6,13 @@ import type { MembershipRole, Prisma } from "../generated/prisma/client.js";
 /** Merchants whose staff may still operate. Suspended or rejected tenants are locked out. */
 const OPERATING_MERCHANT_STATUSES = ["draft", "submitted", "review", "approved"] as const;
 
+export interface MemberAccess {
+  membershipId: string;
+  merchantId: string;
+  role: MembershipRole;
+  catalogDelegated: boolean;
+}
+
 export interface BranchAccess {
   branchId: string;
   merchantId: string;
@@ -65,5 +72,70 @@ export class MerchantAccessService {
     const role = branch?.merchant.memberships[0]?.role;
     if (!branch || !role) throw ApiError.notFound("Branch not found");
     return { branchId: branch.id, merchantId: branch.merchantId, role };
+  }
+
+  /**
+   * The caller's active membership in an operating merchant (not suspended or rejected).
+   * 404 when the caller does not belong to it, so merchant IDs cannot be probed.
+   */
+  async requireMember(userId: string, merchantId: string): Promise<MemberAccess> {
+    const membership = await this.prisma.membership.findFirst({
+      where: {
+        userId,
+        merchantId,
+        status: "active",
+        merchant: { status: { in: [...OPERATING_MERCHANT_STATUSES] } },
+      },
+      select: { id: true, merchantId: true, role: true, catalogDelegated: true },
+    });
+    if (!membership) throw ApiError.notFound("Merchant not found");
+    return { membershipId: membership.id, ...membership };
+  }
+
+  /** Read the menu: owners and managers (docs/10: baristas see only their queue). */
+  async requireCatalogReader(userId: string, merchantId: string): Promise<MemberAccess> {
+    const member = await this.requireMember(userId, merchantId);
+    if (member.role !== "owner" && member.role !== "manager") throw ApiError.forbidden();
+    return member;
+  }
+
+  /** Edit the menu: owners, and managers the owner delegated catalog work to. */
+  async requireCatalogWriter(userId: string, merchantId: string): Promise<MemberAccess> {
+    const member = await this.requireMember(userId, merchantId);
+    const allowed =
+      member.role === "owner" || (member.role === "manager" && member.catalogDelegated);
+    if (!allowed)
+      throw ApiError.forbidden("Only the owner or a delegated manager can edit the menu");
+    return member;
+  }
+
+  /** Owner of an operating merchant: branches, staff. */
+  async requireOperatingOwner(userId: string, merchantId: string): Promise<MemberAccess> {
+    const member = await this.requireMember(userId, merchantId);
+    if (member.role !== "owner") throw ApiError.forbidden("Only the merchant owner can do this");
+    return member;
+  }
+
+  /** Run one branch day to day (hours, pause, availability): owner or an assigned manager. */
+  async requireBranchManager(userId: string, branchId: string): Promise<BranchAccess> {
+    const access = await this.requireBranch(userId, branchId);
+    if (access.role !== "owner" && access.role !== "manager") {
+      throw ApiError.forbidden("Only the owner or a branch manager can change this branch");
+    }
+    return access;
+  }
+}
+
+/**
+ * Re-labels a tenant 404 with the resource the caller asked for, so a "Merchant not found"
+ * never reveals that a product or category ID exists in someone else's tenant.
+ */
+export async function within<T>(check: Promise<T>, resource: string): Promise<T> {
+  try {
+    return await check;
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "NOT_FOUND")
+      throw ApiError.notFound(`${resource} not found`);
+    throw error;
   }
 }

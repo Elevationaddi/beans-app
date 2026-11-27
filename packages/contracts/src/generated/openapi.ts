@@ -66,7 +66,8 @@ export interface paths {
     /** Branches the caller may operate, across their merchants */
     get: operations["listMerchantBranches"];
     put?: never;
-    post?: never;
+    /** Add a branch (starts as a draft) */
+    post: operations["createMerchantBranch"];
     delete?: never;
     options?: never;
     head?: never;
@@ -87,7 +88,8 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    patch?: never;
+    /** Edit a branch, replace its weekly hours, open, pause, resume or close it */
+    patch: operations["updateMerchantBranch"];
     trace?: never;
   };
   "/v1/admin/audit": {
@@ -273,6 +275,249 @@ export interface paths {
     put?: never;
     /** Review decision with a mandatory reason: start review, approve, reject, request changes, suspend, reinstate */
     post: operations["reviewMerchant"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/branches/{id}/exceptions/{date}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Set a holiday or special opening hours for one local date */
+    put: operations["putBranchException"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/branches/{id}/slots": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Pickup slots and their capacity for one local date */
+    get: operations["listBranchSlots"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/branches/{id}/products/{productId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Branch availability for a product: sold out, branch price, tracked stock (audited) */
+    put: operations["putBranchProduct"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/branches/{id}/options/{optionId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Branch availability and price for a drink option (audited) */
+    put: operations["putBranchOption"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/categories": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Menu categories of a merchant */
+    get: operations["listCategories"];
+    put?: never;
+    /** Add a menu category */
+    post: operations["createCategory"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/categories/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Rename, reorder or deactivate a category */
+    patch: operations["updateCategory"];
+    trace?: never;
+  };
+  "/v1/merchant/products": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Products of a merchant, optionally by category or status */
+    get: operations["listProducts"];
+    put?: never;
+    /** Add a product (starts as a draft) */
+    post: operations["createProduct"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/products/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One product */
+    get: operations["getProduct"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Edit, publish, unpublish or archive a product (needs the current version) */
+    patch: operations["updateProduct"];
+    trace?: never;
+  };
+  "/v1/merchant/modifier-groups": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Drink option groups (size, milk, extras) with their options */
+    get: operations["listModifierGroups"];
+    put?: never;
+    /** Add an option group with its options */
+    post: operations["createModifierGroup"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/modifier-groups/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Edit an option group; options left out are deactivated (needs the current version) */
+    patch: operations["updateModifierGroup"];
+    trace?: never;
+  };
+  "/v1/merchant/staff": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Members and pending invitations of a merchant */
+    get: operations["listStaff"];
+    put?: never;
+    /** Invite a manager, barista or analyst; returns a one-time invitation token */
+    post: operations["inviteStaff"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/staff/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Change a member's role or branches, or revoke access (effective next request) */
+    patch: operations["updateStaff"];
+    trace?: never;
+  };
+  "/v1/merchant/staff/invitations/{id}/revoke": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Cancel a pending invitation */
+    post: operations["revokeStaffInvitation"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/invitations/accept": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Accept an invitation with its token, signed in with the invited email */
+    post: operations["acceptStaffInvitation"];
     delete?: never;
     options?: never;
     head?: never;
@@ -581,6 +826,9 @@ export interface operations {
               nameEn: string;
               nameAr: string | null;
               address: string;
+              lat: number | null;
+              lng: number | null;
+              phone: string | null;
               timezone: string;
               /** @enum {string} */
               status: "draft" | "active" | "paused" | "closed";
@@ -590,6 +838,15 @@ export interface operations {
                 weekday: number;
                 opens: string;
                 closes: string;
+              }[];
+              exceptions: {
+                /** Format: date */
+                date: string;
+                closed: boolean;
+                intervals: {
+                  opens: string;
+                  closes: string;
+                }[];
               }[];
             }[];
             meta: {
@@ -627,19 +884,38 @@ export interface operations {
       };
     };
   };
-  getMerchantBranch: {
+  createMerchantBranch: {
     parameters: {
       query?: never;
       header?: never;
-      path: {
-        id: string;
-      };
+      path?: never;
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: uuid */
+          merchantId: string;
+          nameEn: string;
+          nameAr?: string | null;
+          address: string;
+          lat?: number | null;
+          lng?: number | null;
+          phone?: string | null;
+          modes: ("in_store" | "curbside" | "dine_in")[];
+          capacity: number;
+          /** @default [] */
+          hours?: {
+            weekday: number;
+            opens: string;
+            closes: string;
+          }[];
+        };
+      };
+    };
     responses: {
-      /** @description OK */
-      200: {
+      /** @description Created */
+      201: {
         headers: {
           [name: string]: unknown;
         };
@@ -653,6 +929,9 @@ export interface operations {
               nameEn: string;
               nameAr: string | null;
               address: string;
+              lat: number | null;
+              lng: number | null;
+              phone: string | null;
               timezone: string;
               /** @enum {string} */
               status: "draft" | "active" | "paused" | "closed";
@@ -662,6 +941,15 @@ export interface operations {
                 weekday: number;
                 opens: string;
                 closes: string;
+              }[];
+              exceptions: {
+                /** Format: date */
+                date: string;
+                closed: boolean;
+                intervals: {
+                  opens: string;
+                  closes: string;
+                }[];
               }[];
             };
           };
@@ -696,6 +984,224 @@ export interface operations {
       };
       /** @description Not found or outside the caller's scope */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  getMerchantBranch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              nameEn: string;
+              nameAr: string | null;
+              address: string;
+              lat: number | null;
+              lng: number | null;
+              phone: string | null;
+              timezone: string;
+              /** @enum {string} */
+              status: "draft" | "active" | "paused" | "closed";
+              modes: ("in_store" | "curbside" | "dine_in")[];
+              capacity: number;
+              hours: {
+                weekday: number;
+                opens: string;
+                closes: string;
+              }[];
+              exceptions: {
+                /** Format: date */
+                date: string;
+                closed: boolean;
+                intervals: {
+                  opens: string;
+                  closes: string;
+                }[];
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateMerchantBranch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          nameEn?: string;
+          nameAr?: string | null;
+          address?: string;
+          lat?: number | null;
+          lng?: number | null;
+          phone?: string | null;
+          modes?: ("in_store" | "curbside" | "dine_in")[];
+          capacity?: number;
+          hours?: {
+            weekday: number;
+            opens: string;
+            closes: string;
+          }[];
+          /** @enum {string} */
+          status?: "draft" | "active" | "paused" | "closed";
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              nameEn: string;
+              nameAr: string | null;
+              address: string;
+              lat: number | null;
+              lng: number | null;
+              phone: string | null;
+              timezone: string;
+              /** @enum {string} */
+              status: "draft" | "active" | "paused" | "closed";
+              modes: ("in_store" | "curbside" | "dine_in")[];
+              capacity: number;
+              hours: {
+                weekday: number;
+                opens: string;
+                closes: string;
+              }[];
+              exceptions: {
+                /** Format: date */
+                date: string;
+                closed: boolean;
+                intervals: {
+                  opens: string;
+                  closes: string;
+                }[];
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
         headers: {
           [name: string]: unknown;
         };
@@ -1863,6 +2369,1731 @@ export interface operations {
       };
       /** @description Semantically invalid */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  putBranchException: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        date: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          closed: boolean;
+          intervals: {
+            opens: string;
+            closes: string;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: date */
+              date: string;
+              closed: boolean;
+              intervals: {
+                opens: string;
+                closes: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  listBranchSlots: {
+    parameters: {
+      query: {
+        date: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: date */
+              date: string;
+              timezone: string;
+              slots: {
+                /** Format: uuid */
+                id: string;
+                /** Format: date-time */
+                startsAt: string;
+                capacity: number;
+                reserved: number;
+                confirmed: number;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  putBranchProduct: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        productId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          enabled: boolean;
+          /** @default null */
+          priceOverrideFils?: string | null;
+          /** @default null */
+          stockOnHand?: number | null;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              branchId: string;
+              /** Format: uuid */
+              productId: string;
+              enabled: boolean;
+              priceOverrideFils: string | null;
+              stockOnHand: number | null;
+              stockReserved: number;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  putBranchOption: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        optionId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          enabled: boolean;
+          /** @default null */
+          deltaOverrideFils?: string | null;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              branchId: string;
+              /** Format: uuid */
+              optionId: string;
+              enabled: boolean;
+              deltaOverrideFils: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  listCategories: {
+    parameters: {
+      query: {
+        cursor?: string;
+        limit?: number;
+        merchantId: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              sort: number;
+              active: boolean;
+            }[];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  createCategory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: uuid */
+          merchantId: string;
+          names: {
+            en: string;
+            ar?: string;
+          };
+          /** @default 0 */
+          sort?: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              sort: number;
+              active: boolean;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateCategory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          names?: {
+            en: string;
+            ar?: string;
+          };
+          sort?: number;
+          active?: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              sort: number;
+              active: boolean;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  listProducts: {
+    parameters: {
+      query: {
+        cursor?: string;
+        limit?: number;
+        merchantId: string;
+        categoryId?: string;
+        status?: "draft" | "published" | "archived";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              /** Format: uuid */
+              categoryId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              descriptions: {
+                en?: string;
+                ar?: string;
+              };
+              priceFils: string;
+              allergens: string[];
+              /** @enum {string} */
+              status: "draft" | "published" | "archived";
+              version: number;
+              groupIds: string[];
+            }[];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  createProduct: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: uuid */
+          merchantId: string;
+          /** Format: uuid */
+          categoryId: string;
+          names: {
+            en: string;
+            ar?: string;
+          };
+          /** @default {} */
+          descriptions?: {
+            en?: string;
+            ar?: string;
+          };
+          priceFils: string;
+          /** @default [] */
+          allergens?: string[];
+          /** @default [] */
+          groupIds?: string[];
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              /** Format: uuid */
+              categoryId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              descriptions: {
+                en?: string;
+                ar?: string;
+              };
+              priceFils: string;
+              allergens: string[];
+              /** @enum {string} */
+              status: "draft" | "published" | "archived";
+              version: number;
+              groupIds: string[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  getProduct: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              /** Format: uuid */
+              categoryId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              descriptions: {
+                en?: string;
+                ar?: string;
+              };
+              priceFils: string;
+              allergens: string[];
+              /** @enum {string} */
+              status: "draft" | "published" | "archived";
+              version: number;
+              groupIds: string[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateProduct: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          expectedVersion: number;
+          /** Format: uuid */
+          categoryId?: string;
+          names?: {
+            en: string;
+            ar?: string;
+          };
+          descriptions?: {
+            en?: string;
+            ar?: string;
+          };
+          priceFils?: string;
+          allergens?: string[];
+          groupIds?: string[];
+          /** @enum {string} */
+          status?: "draft" | "published" | "archived";
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              /** Format: uuid */
+              categoryId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              descriptions: {
+                en?: string;
+                ar?: string;
+              };
+              priceFils: string;
+              allergens: string[];
+              /** @enum {string} */
+              status: "draft" | "published" | "archived";
+              version: number;
+              groupIds: string[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  listModifierGroups: {
+    parameters: {
+      query: {
+        cursor?: string;
+        limit?: number;
+        merchantId: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              minCount: number;
+              maxCount: number;
+              sort: number;
+              version: number;
+              options: {
+                /** Format: uuid */
+                id: string;
+                names: {
+                  en: string;
+                  ar?: string;
+                };
+                deltaFils: string;
+                active: boolean;
+              }[];
+            }[];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  createModifierGroup: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: uuid */
+          merchantId: string;
+          names: {
+            en: string;
+            ar?: string;
+          };
+          minCount: number;
+          maxCount: number;
+          /** @default 0 */
+          sort?: number;
+          options: {
+            names: {
+              en: string;
+              ar?: string;
+            };
+            deltaFils: string;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              minCount: number;
+              maxCount: number;
+              sort: number;
+              version: number;
+              options: {
+                /** Format: uuid */
+                id: string;
+                names: {
+                  en: string;
+                  ar?: string;
+                };
+                deltaFils: string;
+                active: boolean;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateModifierGroup: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          expectedVersion: number;
+          names?: {
+            en: string;
+            ar?: string;
+          };
+          minCount?: number;
+          maxCount?: number;
+          sort?: number;
+          options?: {
+            /** Format: uuid */
+            id?: string;
+            names: {
+              en: string;
+              ar?: string;
+            };
+            deltaFils: string;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              minCount: number;
+              maxCount: number;
+              sort: number;
+              version: number;
+              options: {
+                /** Format: uuid */
+                id: string;
+                names: {
+                  en: string;
+                  ar?: string;
+                };
+                deltaFils: string;
+                active: boolean;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  listStaff: {
+    parameters: {
+      query: {
+        merchantId: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              members: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                userId: string;
+                displayName: string | null;
+                email: string | null;
+                /** @enum {string} */
+                role: "owner" | "manager" | "barista" | "analyst";
+                /** @enum {string} */
+                status: "invited" | "active" | "revoked";
+                branchIds: string[];
+                catalogDelegated: boolean;
+              }[];
+              invitations: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                merchantId: string;
+                email: string;
+                /** @enum {string} */
+                role: "manager" | "barista" | "analyst";
+                branchIds: string[];
+                catalogDelegated: boolean;
+                /** @enum {string} */
+                status: "pending" | "accepted" | "revoked" | "expired";
+                /** Format: date-time */
+                expiresAt: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  inviteStaff: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: uuid */
+          merchantId: string;
+          /** Format: email */
+          email: string;
+          /** @enum {string} */
+          role: "manager" | "barista" | "analyst";
+          /** @default [] */
+          branchIds?: string[];
+          /** @default false */
+          catalogDelegated?: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              invitation: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                merchantId: string;
+                email: string;
+                /** @enum {string} */
+                role: "manager" | "barista" | "analyst";
+                branchIds: string[];
+                catalogDelegated: boolean;
+                /** @enum {string} */
+                status: "pending" | "accepted" | "revoked" | "expired";
+                /** Format: date-time */
+                expiresAt: string;
+              };
+              token: string;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  updateStaff: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          role?: "manager" | "barista" | "analyst";
+          branchIds?: string[];
+          /** @enum {string} */
+          status?: "active" | "revoked";
+          catalogDelegated?: boolean;
+          reason?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              userId: string;
+              displayName: string | null;
+              email: string | null;
+              /** @enum {string} */
+              role: "owner" | "manager" | "barista" | "analyst";
+              /** @enum {string} */
+              status: "invited" | "active" | "revoked";
+              branchIds: string[];
+              catalogDelegated: boolean;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  revokeStaffInvitation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              email: string;
+              /** @enum {string} */
+              role: "manager" | "barista" | "analyst";
+              branchIds: string[];
+              catalogDelegated: boolean;
+              /** @enum {string} */
+              status: "pending" | "accepted" | "revoked" | "expired";
+              /** Format: date-time */
+              expiresAt: string;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  acceptStaffInvitation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          token: string;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              userId: string;
+              displayName: string | null;
+              email: string | null;
+              /** @enum {string} */
+              role: "owner" | "manager" | "barista" | "analyst";
+              /** @enum {string} */
+              status: "invited" | "active" | "revoked";
+              branchIds: string[];
+              catalogDelegated: boolean;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
         headers: {
           [name: string]: unknown;
         };
