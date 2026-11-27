@@ -1211,6 +1211,229 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/tickets": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The caller's tickets, or a merchant's tickets for its owner and managers */
+    get: operations["listTickets"];
+    put?: never;
+    /** Raise a support ticket (own orders only; merchant members may raise one for their merchant) */
+    post: operations["createTicket"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/tickets/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A ticket with its public messages */
+    get: operations["getTicket"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/tickets/{id}/messages": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add a public message to a ticket (append-only) */
+    post: operations["replyToTicket"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/me/privacy-requests": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Ask for access to, correction or deletion of your data; handled by support (no automatic deletion) */
+    post: operations["createPrivacyRequest"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/tickets": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Support queue */
+    get: operations["adminListTickets"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/tickets/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A ticket with public messages and internal notes */
+    get: operations["adminGetTicket"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Change status, priority or assignee (audited) */
+    patch: operations["adminUpdateTicket"];
+    trace?: never;
+  };
+  "/v1/admin/tickets/{id}/messages": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reply to the requester (public) or add an internal note */
+    post: operations["adminReplyToTicket"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/privacy-requests/{id}/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The requester's own data for an access request (audited) */
+    get: operations["adminExportPrivacyRequest"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/dashboard": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Orders, sales, refunds, prep time and live queue for the caller's branches */
+    get: operations["merchantDashboard"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/analytics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Completed orders per day and top products for the caller's branches */
+    get: operations["merchantAnalytics"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/dashboard": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Platform overview with alerts */
+    get: operations["adminDashboard"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/reports": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Aggregate report per merchant, no personal data (audited) */
+    get: operations["adminReport"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Feature switches, timeouts and policy versions in force (read only) */
+    get: operations["adminSettings"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -9506,6 +9729,1357 @@ export interface operations {
       };
       /** @description Conflict (stale version or idempotency key reuse) */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  listTickets: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+        status?: "open" | "pending" | "resolved" | "closed";
+        merchantId?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** @enum {string} */
+              channel: "customer" | "merchant";
+              /** @enum {string} */
+              category:
+                "order_issue" | "payment" | "account" | "privacy" | "merchant_support" | "other";
+              privacyKind: ("access" | "deletion" | "correction") | null;
+              /** @enum {string} */
+              status: "open" | "pending" | "resolved" | "closed";
+              /** @enum {string} */
+              priority: "low" | "normal" | "high" | "urgent";
+              orderId: string | null;
+              merchantId: string | null;
+              assigneeId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  createTicket: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          category: "order_issue" | "payment" | "account" | "merchant_support" | "other";
+          message: string;
+          /** Format: uuid */
+          orderId?: string;
+          /** Format: uuid */
+          merchantId?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** @enum {string} */
+              channel: "customer" | "merchant";
+              /** @enum {string} */
+              category:
+                "order_issue" | "payment" | "account" | "privacy" | "merchant_support" | "other";
+              privacyKind: ("access" | "deletion" | "correction") | null;
+              /** @enum {string} */
+              status: "open" | "pending" | "resolved" | "closed";
+              /** @enum {string} */
+              priority: "low" | "normal" | "high" | "urgent";
+              orderId: string | null;
+              merchantId: string | null;
+              assigneeId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              messages: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                authorRole: "customer" | "merchant" | "support";
+                /** @enum {string} */
+                visibility: "public" | "internal";
+                body: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  getTicket: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** @enum {string} */
+              channel: "customer" | "merchant";
+              /** @enum {string} */
+              category:
+                "order_issue" | "payment" | "account" | "privacy" | "merchant_support" | "other";
+              privacyKind: ("access" | "deletion" | "correction") | null;
+              /** @enum {string} */
+              status: "open" | "pending" | "resolved" | "closed";
+              /** @enum {string} */
+              priority: "low" | "normal" | "high" | "urgent";
+              orderId: string | null;
+              merchantId: string | null;
+              assigneeId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              messages: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                authorRole: "customer" | "merchant" | "support";
+                /** @enum {string} */
+                visibility: "public" | "internal";
+                body: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  replyToTicket: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          body: string;
+          /**
+           * @default public
+           * @enum {string}
+           */
+          visibility?: "public" | "internal";
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** @enum {string} */
+              channel: "customer" | "merchant";
+              /** @enum {string} */
+              category:
+                "order_issue" | "payment" | "account" | "privacy" | "merchant_support" | "other";
+              privacyKind: ("access" | "deletion" | "correction") | null;
+              /** @enum {string} */
+              status: "open" | "pending" | "resolved" | "closed";
+              /** @enum {string} */
+              priority: "low" | "normal" | "high" | "urgent";
+              orderId: string | null;
+              merchantId: string | null;
+              assigneeId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              messages: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                authorRole: "customer" | "merchant" | "support";
+                /** @enum {string} */
+                visibility: "public" | "internal";
+                body: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  createPrivacyRequest: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          kind: "access" | "deletion" | "correction";
+          message?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              ticketId: string;
+              /** @enum {string} */
+              kind: "access" | "deletion" | "correction";
+              /** @enum {string} */
+              status: "open" | "pending" | "resolved" | "closed";
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminListTickets: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+        status?: "open" | "pending" | "resolved" | "closed";
+        merchantId?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** @enum {string} */
+              channel: "customer" | "merchant";
+              /** @enum {string} */
+              category:
+                "order_issue" | "payment" | "account" | "privacy" | "merchant_support" | "other";
+              privacyKind: ("access" | "deletion" | "correction") | null;
+              /** @enum {string} */
+              status: "open" | "pending" | "resolved" | "closed";
+              /** @enum {string} */
+              priority: "low" | "normal" | "high" | "urgent";
+              orderId: string | null;
+              merchantId: string | null;
+              assigneeId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminGetTicket: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** @enum {string} */
+              channel: "customer" | "merchant";
+              /** @enum {string} */
+              category:
+                "order_issue" | "payment" | "account" | "privacy" | "merchant_support" | "other";
+              privacyKind: ("access" | "deletion" | "correction") | null;
+              /** @enum {string} */
+              status: "open" | "pending" | "resolved" | "closed";
+              /** @enum {string} */
+              priority: "low" | "normal" | "high" | "urgent";
+              orderId: string | null;
+              merchantId: string | null;
+              assigneeId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              messages: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                authorRole: "customer" | "merchant" | "support";
+                /** @enum {string} */
+                visibility: "public" | "internal";
+                body: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminUpdateTicket: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          status?: "open" | "pending" | "resolved" | "closed";
+          /** @enum {string} */
+          priority?: "low" | "normal" | "high" | "urgent";
+          assigneeId?: string | null;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** @enum {string} */
+              channel: "customer" | "merchant";
+              /** @enum {string} */
+              category:
+                "order_issue" | "payment" | "account" | "privacy" | "merchant_support" | "other";
+              privacyKind: ("access" | "deletion" | "correction") | null;
+              /** @enum {string} */
+              status: "open" | "pending" | "resolved" | "closed";
+              /** @enum {string} */
+              priority: "low" | "normal" | "high" | "urgent";
+              orderId: string | null;
+              merchantId: string | null;
+              assigneeId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              messages: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                authorRole: "customer" | "merchant" | "support";
+                /** @enum {string} */
+                visibility: "public" | "internal";
+                body: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminReplyToTicket: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          body: string;
+          /**
+           * @default public
+           * @enum {string}
+           */
+          visibility?: "public" | "internal";
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** @enum {string} */
+              channel: "customer" | "merchant";
+              /** @enum {string} */
+              category:
+                "order_issue" | "payment" | "account" | "privacy" | "merchant_support" | "other";
+              privacyKind: ("access" | "deletion" | "correction") | null;
+              /** @enum {string} */
+              status: "open" | "pending" | "resolved" | "closed";
+              /** @enum {string} */
+              priority: "low" | "normal" | "high" | "urgent";
+              orderId: string | null;
+              merchantId: string | null;
+              assigneeId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              messages: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                authorRole: "customer" | "merchant" | "support";
+                /** @enum {string} */
+                visibility: "public" | "internal";
+                body: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminExportPrivacyRequest: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              ticketId: string;
+              /** Format: date-time */
+              generatedAt: string;
+              user: {
+                /** Format: uuid */
+                id: string;
+                displayName: string | null;
+                email: string | null;
+                phone: string | null;
+                locale: string;
+                status: string;
+                /** Format: date-time */
+                createdAt: string;
+              };
+              vehicles: {
+                plate: string;
+                color: string;
+                model: string | null;
+              }[];
+              favorites: {
+                /** Format: uuid */
+                merchantId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              orders: {
+                /** Format: uuid */
+                id: string;
+                publicNumber: string;
+                /** @enum {string} */
+                status:
+                  | "pending_payment"
+                  | "payment_failed"
+                  | "received"
+                  | "accepted"
+                  | "rejected"
+                  | "cancelled"
+                  | "preparing"
+                  | "ready"
+                  | "completed";
+                totalFils: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              tickets: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                category:
+                  "order_issue" | "payment" | "account" | "privacy" | "merchant_support" | "other";
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  merchantDashboard: {
+    parameters: {
+      query: {
+        merchantId: string;
+        branchId?: string;
+        from: string;
+        to: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              period: {
+                /** Format: date-time */
+                from: string;
+                /** Format: date-time */
+                to: string;
+              };
+              branchIds: string[];
+              paidOrders: number;
+              completedOrders: number;
+              rejectedOrders: number;
+              cancelledOrders: number;
+              grossSalesFils: string;
+              refundedFils: string;
+              netSalesFils: string;
+              averagePrepSeconds: number | null;
+              liveQueue: {
+                received: number;
+                accepted: number;
+                preparing: number;
+                ready: number;
+              };
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  merchantAnalytics: {
+    parameters: {
+      query: {
+        merchantId: string;
+        branchId?: string;
+        from: string;
+        to: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              period: {
+                /** Format: date-time */
+                from: string;
+                /** Format: date-time */
+                to: string;
+              };
+              daily: {
+                /** Format: date */
+                date: string;
+                completedOrders: number;
+                grossSalesFils: string;
+              }[];
+              products: {
+                /** Format: uuid */
+                productId: string;
+                name: string;
+                units: number;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminDashboard: {
+    parameters: {
+      query: {
+        from: string;
+        to: string;
+        city?:
+          | "abu_dhabi"
+          | "dubai"
+          | "sharjah"
+          | "ajman"
+          | "umm_al_quwain"
+          | "ras_al_khaimah"
+          | "fujairah";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              period: {
+                /** Format: date-time */
+                from: string;
+                /** Format: date-time */
+                to: string;
+              };
+              city:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              gmvFils: string;
+              refundedFils: string;
+              paidOrders: number;
+              completedOrders: number;
+              activeShops: number;
+              pendingApprovals: number;
+              openTickets: number;
+              openCancellationRequests: number;
+              alerts: {
+                /** @enum {string} */
+                code:
+                  | "outbox_failed"
+                  | "webhooks_waiting"
+                  | "refunds_failed"
+                  | "payouts_failed"
+                  | "reconciliation_open"
+                  | "orders_waiting_acceptance";
+                count: number;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminReport: {
+    parameters: {
+      query: {
+        report: "orders_by_merchant" | "refunds_by_merchant";
+        from: string;
+        to: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {string} */
+              report: "orders_by_merchant" | "refunds_by_merchant";
+              period: {
+                /** Format: date-time */
+                from: string;
+                /** Format: date-time */
+                to: string;
+              };
+              rows: {
+                /** Format: uuid */
+                merchantId: string;
+                brandName: string;
+                count: number;
+                amountFils: string;
+              }[];
+              totals: {
+                count: number;
+                amountFils: string;
+              };
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              features: {
+                livePayments: boolean;
+                rewards: boolean;
+                gifts: boolean;
+                dineIn: boolean;
+                promoCodes: boolean;
+                wallet: boolean;
+              };
+              timeouts: {
+                quoteSeconds: number;
+                holdSeconds: number;
+                acceptSeconds: number;
+              };
+              /** @constant */
+              currency: "AED";
+              /** @constant */
+              timezone: "Asia/Dubai";
+              paymentProvider: string;
+              policies: {
+                type: string;
+                version: string;
+                /** Format: date-time */
+                effectiveAt: string;
+                sandbox: boolean;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
         headers: {
           [name: string]: unknown;
         };
