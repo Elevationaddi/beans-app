@@ -14,6 +14,7 @@ export function testEnv(overrides: NodeJS.ProcessEnv = {}): Env {
     OUTBOX_RELAY_ENABLED: "false",
     OUTBOX_WORKER_ENABLED: "false",
     CHECKOUT_SWEEP_ENABLED: "false",
+    RATE_LIMIT_ENABLED: "false",
     STORAGE_LOCAL_DIR: ".storage-test",
     ...overrides,
   });

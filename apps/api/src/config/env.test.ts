@@ -70,6 +70,13 @@ describe("loadEnv", () => {
     ]);
   });
 
+  it("refuses switching rate limits off in production", () => {
+    const issues = issuesFor({ ...base, NODE_ENV: "production", RATE_LIMIT_ENABLED: "false" });
+    expect(issues).toContain(
+      "RATE_LIMIT_ENABLED: rate limits cannot be switched off with NODE_ENV=production",
+    );
+  });
+
   it("requires token verification settings in production", () => {
     const issues = issuesFor({ ...base, NODE_ENV: "production" });
     expect(issues).toContain("SUPABASE_JWKS_URL: required in production");

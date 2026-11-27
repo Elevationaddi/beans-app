@@ -25,6 +25,7 @@ import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
 import { PrismaService } from "../database/prisma.service.js";
 import { InsightsService } from "./insights.service.js";
+import { LIMITS, RateLimit } from "../security/rate-limit.js";
 
 const idParams = new ZodValidationPipe(z.strictObject({ id: uuidSchema }));
 const merchantQuery = new ZodValidationPipe(merchantDashboardQuerySchema);
@@ -85,6 +86,7 @@ export class AdminInsightsController {
 
   /** Aggregates only. Each view is audited (docs/04 A08: log downloads). */
   @Get("reports")
+  @RateLimit(LIMITS.export)
   @RequireAdmin("operations", "finance_maker", "finance_checker", "analyst")
   async report(
     @CurrentActor() actor: Actor,
@@ -145,6 +147,7 @@ export class AdminInsightsController {
    * Only for privacy tickets asking for access; every export is audited.
    */
   @Get("privacy-requests/:id/export")
+  @RateLimit(LIMITS.export)
   @RequireAdmin("support", "security")
   async privacyExport(
     @CurrentActor() actor: Actor,

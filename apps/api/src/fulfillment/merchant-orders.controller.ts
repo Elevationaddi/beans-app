@@ -34,6 +34,7 @@ import { RealtimeService } from "../realtime/realtime.service.js";
 import { FulfillmentService } from "./fulfillment.service.js";
 import { liveStream } from "./live-stream.js";
 import { merchantOrderInclude, toMerchantOrder } from "./order-views.js";
+import { LIMITS, RateLimit } from "../security/rate-limit.js";
 
 const idParams = new ZodValidationPipe(z.strictObject({ id: uuidSchema }));
 
@@ -103,6 +104,7 @@ export class MerchantOrdersController {
   }
 
   @Post("orders/:id/transition")
+  @RateLimit(LIMITS.staffAction)
   @HttpCode(200)
   @Idempotent()
   async transition(
@@ -116,6 +118,7 @@ export class MerchantOrdersController {
   }
 
   @Post("orders/:id/ack-arrival")
+  @RateLimit(LIMITS.staffAction)
   @HttpCode(200)
   @Idempotent()
   async acknowledgeArrival(

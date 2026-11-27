@@ -17,9 +17,9 @@ export class MerchantWorld {
     readonly issuer: TestIssuer,
   ) {}
 
-  static async create(): Promise<MerchantWorld> {
+  static async create(env: NodeJS.ProcessEnv = {}): Promise<MerchantWorld> {
     const issuer = await TestIssuer.create();
-    const app = await createTestApp(testEnv(), {
+    const app = await createTestApp(testEnv(env), {
       overrides: [{ provide: JWKS, useValue: issuer.jwks }],
     });
     return new MerchantWorld(app, issuer);

@@ -23,6 +23,7 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe.js";
 import { PrismaService } from "../database/prisma.service.js";
 import type { Prisma, TicketStatus } from "../generated/prisma/client.js";
 import { TicketsService, toTicket, toTicketDetail } from "./tickets.service.js";
+import { LIMITS, RateLimit } from "../security/rate-limit.js";
 
 const idParams = new ZodValidationPipe(z.strictObject({ id: uuidSchema }));
 type TicketQuery = { cursor?: string; limit: number; status?: TicketStatus; merchantId?: string };
@@ -65,6 +66,7 @@ export class TicketsController {
   ) {}
 
   @Post()
+  @RateLimit(LIMITS.ticket)
   async create(
     @CurrentActor() actor: Actor,
     @Body(new ZodValidationPipe(createTicketRequestSchema)) body: CreateTicketRequest,
@@ -95,6 +97,7 @@ export class TicketsController {
   }
 
   @Post(":id/messages")
+  @RateLimit(LIMITS.ticket)
   async reply(
     @CurrentActor() actor: Actor,
     @Param(idParams) params: { id: string },
@@ -111,6 +114,7 @@ export class PrivacyRequestsController {
   constructor(@Inject(TicketsService) private readonly tickets: TicketsService) {}
 
   @Post()
+  @RateLimit(LIMITS.privacy)
   async create(
     @CurrentActor() actor: Actor,
     @RequestId() requestId: string,
