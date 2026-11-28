@@ -143,6 +143,49 @@ test.describe("Admin console", () => {
     );
   });
 
+  test("operations adds a manually verified merchant and records notes", async ({
+    watched: page,
+  }) => {
+    const suffix = Date.now().toString(36);
+    await signIn(page, `${ADMIN}/merchants`, "ops@example.test");
+    await page.getByTestId("add-verified-merchant").click();
+    const form = page.getByTestId("create-merchant-form");
+    await expect(form).toContainText("not automatic government verification");
+    const fill = (label: string, value: string) =>
+      form.getByLabel(label, { exact: true }).fill(value);
+    await fill("Brand", `E2E Café ${suffix}`);
+    await fill("Legal name", `E2E Café ${suffix} LLC`);
+    await fill("Trade licence number", `E2E-${suffix}`);
+    await fill("Licence issuing authority", "Fictional economic department");
+    await fill("Licence expiry date", "2031-12-31");
+    await form.getByLabel("Emirate").selectOption("abu_dhabi");
+    await fill("Contact name", "E2E Owner");
+    await fill("Contact email", "owner-e2e@example.test");
+    await fill("Contact phone", "+971 50 000 0000");
+    await fill("Declared number of branches", "2");
+    await fill("Authorized representative", "E2E Owner");
+    await fill("Representative position", "Owner");
+    await fill("Representative email", "owner-e2e@example.test");
+    await fill("Representative phone", "+971 50 000 0000");
+    await fill("Owner sign-in email", "owner-e2e@example.test");
+    await fill("How it was checked", "Fictional public register search");
+    await fill("Reason (saved to the audit log)", "E2E pilot café");
+    await page.getByTestId("create-merchant-save").click();
+    await expect(page.getByTestId("owner-invite-path")).toContainText("/invite?token=");
+    await page.keyboard.press("Escape");
+
+    await page.getByTestId("merchant-status-filter").selectOption("approved");
+    await page.getByRole("row", { name: new RegExp(`E2E Café ${suffix}`) }).click();
+    await expect(page.getByTestId("licence-checks")).toContainText("Fictional public register");
+    await page.getByLabel("Add a note").fill("E2E: called the owner.");
+    await page.getByRole("button", { name: "Save note" }).click();
+    await expect(page.getByTestId("internal-notes")).toContainText("E2E: called the owner.");
+    await expect(page.getByTestId("merchant-history")).toContainText("Internal note added");
+    await expect(page.getByTestId("merchant-history")).toContainText(
+      "Created as verified by an administrator",
+    );
+  });
+
   test("security reads the audit log of setting changes", async ({ watched: page }) => {
     await signIn(page, `${ADMIN}/audit`, "security@example.test");
     await page.getByTestId("audit-prefix").selectOption("platform.");

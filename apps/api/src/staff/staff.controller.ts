@@ -1,5 +1,6 @@
 import { SettingsService } from "../platform/settings.service.js";
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
+import { hashInvitationToken } from "./invitation-token.js";
 import {
   Body,
   Controller,
@@ -79,9 +80,7 @@ function toInvitationView(row: InvitationRow, now = new Date()): StaffInvitation
   };
 }
 
-export function hashInvitationToken(token: string): string {
-  return createHash("sha256").update(token, "utf8").digest("hex");
-}
+export { hashInvitationToken };
 
 function conflict(message: string): ApiError {
   return new ApiError(HttpStatus.CONFLICT, "CONFLICT", message);

@@ -75,6 +75,8 @@ model User {
   giftsReceived         Gift[]                    @relation("GiftRecipient")
   promotionsReviewed    Promotion[]               @relation("PromotionReviewer")
   ticketMessages        TicketMessage[]
+  merchantVerifications MerchantVerification[]    @relation("MerchantVerifier")
+  merchantNotes         MerchantNote[]            @relation("MerchantNoteAuthor")
 
   @@map("users")
 }
@@ -114,20 +116,28 @@ enum MerchantStatus {
 }
 
 model Merchant {
-  id                 String         @id @default(uuid()) @db.Uuid
-  legalName          String         @map("legal_name")
-  brandName          String         @map("brand_name")
-  licenseNumber      String         @unique @map("license_number")
-  status             MerchantStatus @default(draft)
-  providerAccountRef String?        @map("provider_account_ref")
+  id                  String         @id @default(uuid()) @db.Uuid
+  legalName           String         @map("legal_name")
+  brandName           String         @map("brand_name")
+  licenseNumber       String         @unique @map("license_number")
+  status              MerchantStatus @default(draft)
+  providerAccountRef  String?        @map("provider_account_ref")
   /// Applicant contact: { "name", "email", "phone" }. Not in docs/06; needed by B01.
-  contact            Json           @default("{}")
+  contact             Json           @default("{}")
   /// Latest reviewer note shown to the applicant (e.g. requested corrections).
-  reviewNote         String?        @map("review_note")
-  submittedAt        DateTime?      @map("submitted_at") @db.Timestamptz(6)
-  reviewedAt         DateTime?      @map("reviewed_at") @db.Timestamptz(6)
-  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  reviewNote          String?        @map("review_note")
+  /// Cycle 4 manual verification fields (no documents while malware scanning is unavailable).
+  licenseAuthority    String?        @map("license_authority")
+  licenseExpiresOn    DateTime?      @map("license_expires_on") @db.Date
+  emirate             Emirate?
+  /// Authorized representative: { "name", "position", "email", "phone" }.
+  representative      Json           @default("{}")
+  declaredBranchCount Int?           @map("declared_branch_count")
+  description         String?
+  submittedAt         DateTime?      @map("submitted_at") @db.Timestamptz(6)
+  reviewedAt          DateTime?      @map("reviewed_at") @db.Timestamptz(6)
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   branches       Branch[]
   memberships    Membership[]
@@ -145,9 +155,58 @@ model Merchant {
   promotions     Promotion[]
   gifts          Gift[]
   tickets        Ticket[]
+  verifications  MerchantVerification[]
+  internalNotes  MerchantNote[]
 
   @@index([status, submittedAt])
   @@map("merchants")
+}
+
+enum Emirate {
+  abu_dhabi
+  dubai
+  sharjah
+  ajman
+  umm_al_quwain
+  ras_al_khaimah
+  fujairah
+}
+
+/// An administrator's record that a trade licence was checked by hand against an outside
+/// source (for example the issuing authority's public register). Never an automatic check.
+model MerchantVerification {
+  id               String   @id @default(uuid()) @db.Uuid
+  merchantId       String   @map("merchant_id") @db.Uuid
+  verifiedById     String   @map("verified_by") @db.Uuid
+  verifiedOn       DateTime @map("verified_on") @db.Date
+  licenseNumber    String   @map("license_number")
+  licenseAuthority String   @map("license_authority")
+  licenseExpiresOn DateTime @map("license_expires_on") @db.Date
+  /// Where the administrator checked, in their words.
+  source           String
+  notes            String?
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  verifiedBy User     @relation("MerchantVerifier", fields: [verifiedById], references: [id], onDelete: Restrict)
+
+  @@index([merchantId, createdAt])
+  @@map("merchant_verifications")
+}
+
+/// Internal review notes; never shown to the applicant.
+model MerchantNote {
+  id         String   @id @default(uuid()) @db.Uuid
+  merchantId String   @map("merchant_id") @db.Uuid
+  authorId   String   @map("author_id") @db.Uuid
+  body       String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  author   User     @relation("MerchantNoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([merchantId, createdAt])
+  @@map("merchant_notes")
 }
 
 enum BranchStatus {

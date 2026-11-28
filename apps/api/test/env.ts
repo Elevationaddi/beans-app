@@ -15,6 +15,8 @@ export function testEnv(overrides: NodeJS.ProcessEnv = {}): Env {
     CHECKOUT_SWEEP_ENABLED: "false",
     RATE_LIMIT_ENABLED: "false",
     STORAGE_LOCAL_DIR: ".storage-test",
+    // Document tests need uploads on; the uploads-off default has its own tests.
+    FILE_SCANNER: "basic",
     ...overrides,
   });
 }

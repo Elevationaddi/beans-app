@@ -1,4 +1,5 @@
 import { promotionsAr, promotionsEn } from "./i18n-promotions";
+import { verificationAr, verificationEn } from "./i18n-verification";
 import { commonDictionaries, mergeDictionaries, type Dictionary, type Locale } from "@beans/web";
 
 /**
@@ -83,7 +84,8 @@ const en: Dictionary = {
 
   // Merchants
   "merchants.title": "Merchants",
-  "merchants.subtitle": "Review registrations, check documents, approve, suspend or restore.",
+  "merchants.subtitle":
+    "Review registrations, record manual licence checks, approve, suspend or reactivate.",
   "merchants.empty": "No merchants with this status.",
   "merchants.brand": "Brand",
   "merchants.legal": "Legal name",
@@ -554,7 +556,7 @@ const ar: Dictionary = {
   "alert.orders_waiting_acceptance": "{count} طلبات بانتظار قبول المقهى",
 
   "merchants.title": "التجار",
-  "merchants.subtitle": "مراجعة التسجيلات والمستندات والموافقة أو الإيقاف.",
+  "merchants.subtitle": "مراجعة التسجيلات وتسجيل التحقق اليدوي من الرخص والموافقة أو الإيقاف.",
   "merchants.empty": "لا يوجد تجار بهذه الحالة.",
   "merchants.brand": "العلامة التجارية",
   "merchants.legal": "الاسم القانوني",
@@ -925,7 +927,7 @@ const ar: Dictionary = {
 };
 
 export const adminDictionaries: Record<Locale, Dictionary> = {
-  en: { ...en, ...promotionsEn },
-  ar: { ...ar, ...promotionsAr },
+  en: { ...en, ...promotionsEn, ...verificationEn },
+  ar: { ...ar, ...promotionsAr, ...verificationAr },
 };
 export const dictionaries = mergeDictionaries(commonDictionaries, adminDictionaries);

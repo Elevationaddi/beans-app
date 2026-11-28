@@ -1,6 +1,7 @@
 "use client";
 import {
   MAX_DOCUMENT_BYTES,
+  emirateSchema,
   merchantApplicationListResponseSchema,
   merchantApplicationResponseSchema,
   uploadResponseSchema,
@@ -17,6 +18,7 @@ import {
   QueryView,
   SelectField,
   StatusChip,
+  TextArea,
   TextField,
   formatDateTime,
   useAction,
@@ -88,6 +90,15 @@ function ApplicationForm({ app, onSaved }: { app?: MerchantApplication; onSaved:
     name: app?.contact.name ?? profile?.displayName ?? "",
     email: app?.contact.email ?? profile?.email ?? "",
     phone: app?.contact.phone ?? "",
+    licenseAuthority: app?.licenseAuthority ?? "",
+    licenseExpiresOn: app?.licenseExpiresOn ?? "",
+    emirate: app?.emirate ?? "",
+    declaredBranchCount: app?.declaredBranchCount ? String(app.declaredBranchCount) : "",
+    description: app?.description ?? "",
+    repName: app?.representative.name ?? "",
+    repPosition: app?.representative.position ?? "",
+    repEmail: app?.representative.email ?? "",
+    repPhone: app?.representative.phone ?? "",
   });
   const save = useAction(async (e: FormEvent) => {
     e.preventDefault();
@@ -96,6 +107,19 @@ function ApplicationForm({ app, onSaved }: { app?: MerchantApplication; onSaved:
       brandName: form.brandName,
       licenseNumber: form.licenseNumber,
       contact: { name: form.name, email: form.email, phone: form.phone },
+      ...(form.licenseAuthority && { licenseAuthority: form.licenseAuthority }),
+      ...(form.licenseExpiresOn && { licenseExpiresOn: form.licenseExpiresOn }),
+      ...(form.emirate && { emirate: emirateSchema.parse(form.emirate) }),
+      ...(form.declaredBranchCount && { declaredBranchCount: Number(form.declaredBranchCount) }),
+      ...(form.description && { description: form.description }),
+      ...((form.repName || form.repPosition || form.repEmail || form.repPhone) && {
+        representative: {
+          name: form.repName,
+          position: form.repPosition,
+          email: form.repEmail,
+          phone: form.repPhone,
+        },
+      }),
     };
     if (app)
       await api.patch(
@@ -110,6 +134,7 @@ function ApplicationForm({ app, onSaved }: { app?: MerchantApplication; onSaved:
   const fe = save.error?.fieldErrors ?? {};
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm({ ...form, [k]: e.target.value });
+  const rep = (k: string) => fe[`representative.${k}`] ?? fe["representative"];
   return (
     <Card title={app ? t("onboarding.edit") : t("onboarding.start")}>
       <form onSubmit={(e) => void save.run(e)} noValidate data-testid="application-form">
@@ -159,7 +184,88 @@ function ApplicationForm({ app, onSaved }: { app?: MerchantApplication; onSaved:
             hint="+971 50 000 0000"
             required
           />
+          <TextField
+            label={t("verify.licenseAuthority")}
+            hint={t("verify.licenseAuthorityHint")}
+            value={form.licenseAuthority}
+            onChange={set("licenseAuthority")}
+            error={fe["licenseAuthority"]}
+            required
+          />
+          <TextField
+            label={t("verify.licenseExpiresOn")}
+            type="date"
+            value={form.licenseExpiresOn}
+            onChange={set("licenseExpiresOn")}
+            error={fe["licenseExpiresOn"]}
+            required
+          />
+          <SelectField
+            label={t("verify.emirate")}
+            value={form.emirate}
+            onChange={set("emirate")}
+            error={fe["emirate"]}
+            options={[
+              { value: "", label: t("verify.chooseEmirate") },
+              ...emirateSchema.options.map((v) => ({ value: v, label: t(`emirate.${v}`) })),
+            ]}
+            required
+          />
+          <TextField
+            label={t("verify.branchCount")}
+            type="number"
+            min={1}
+            max={500}
+            inputMode="numeric"
+            value={form.declaredBranchCount}
+            onChange={set("declaredBranchCount")}
+            error={fe["declaredBranchCount"]}
+            required
+          />
         </div>
+        <TextArea
+          label={t("verify.description")}
+          value={form.description}
+          onChange={set("description")}
+          error={fe["description"]}
+          maxLength={1000}
+        />
+        <fieldset className="fieldset">
+          <legend>{t("verify.representative")}</legend>
+          <div className="grid-2">
+            <TextField
+              label={t("verify.repName")}
+              value={form.repName}
+              onChange={set("repName")}
+              error={rep("name")}
+              required
+            />
+            <TextField
+              label={t("verify.repPosition")}
+              value={form.repPosition}
+              onChange={set("repPosition")}
+              error={rep("position")}
+              required
+            />
+            <TextField
+              label={t("verify.repEmail")}
+              type="email"
+              value={form.repEmail}
+              onChange={set("repEmail")}
+              error={rep("email")}
+              required
+            />
+            <TextField
+              label={t("verify.repPhone")}
+              type="tel"
+              value={form.repPhone}
+              onChange={set("repPhone")}
+              error={rep("phone")}
+              hint="+971 50 000 0000"
+              required
+            />
+          </div>
+        </fieldset>
         <ActionError error={save.error} />
         <Button type="submit" loading={save.pending}>
           {t("common.save")}
@@ -204,7 +310,11 @@ function Application({ app, onChanged }: { app: MerchantApplication; onChanged: 
     await api.post(
       `/v1/merchant/applications/${app.id}/submit`,
       merchantApplicationResponseSchema,
-      { documentIds: app.documents.filter((d) => d.reviewStatus !== "rejected").map((d) => d.id) },
+      {
+        documentIds: app.documentsAccepted
+          ? app.documents.filter((d) => d.reviewStatus !== "rejected").map((d) => d.id)
+          : [],
+      },
     );
     toast(t("onboarding.submitted"));
     onChanged();
@@ -229,6 +339,11 @@ function Application({ app, onChanged }: { app: MerchantApplication; onChanged: 
           items={[
             [t("onboarding.legalName"), app.legalName],
             [t("onboarding.license"), app.licenseNumber],
+            [t("verify.licenseAuthority"), app.licenseAuthority ?? "—"],
+            [t("verify.licenseExpiresOn"), app.licenseExpiresOn ?? "—"],
+            [t("verify.emirate"), app.emirate ? t(`emirate.${app.emirate}`) : "—"],
+            [t("verify.branchCount"), app.declaredBranchCount ?? "—"],
+            [t("verify.representative"), app.representative.name ?? "—"],
             [t("onboarding.contactName"), app.contact.name ?? "—"],
             [t("onboarding.contactEmail"), app.contact.email ?? "—"],
             [t("onboarding.submittedAt"), formatDateTime(app.submittedAt, locale)],
@@ -252,8 +367,9 @@ function Application({ app, onChanged }: { app: MerchantApplication; onChanged: 
             </div>
           )
         ) : null}
-        <h3>{t("onboarding.documents")}</h3>
-        {app.documents.length === 0 ? (
+        {!app.documentsAccepted ? <Banner tone="info">{t("verify.manualCheck")}</Banner> : null}
+        {app.documentsAccepted ? <h3>{t("onboarding.documents")}</h3> : null}
+        {!app.documentsAccepted ? null : app.documents.length === 0 ? (
           <p className="muted">{t("onboarding.noDocuments")}</p>
         ) : (
           <ul>
@@ -286,7 +402,7 @@ function Application({ app, onChanged }: { app: MerchantApplication; onChanged: 
             ))}
           </ul>
         )}
-        {editable ? (
+        {editable && app.documentsAccepted ? (
           <div className="row">
             <SelectField
               label={t("onboarding.docType")}
@@ -315,14 +431,14 @@ function Application({ app, onChanged }: { app: MerchantApplication; onChanged: 
             </Button>
           </div>
         ) : null}
-        <p className="muted small">{t("onboarding.fileRules")}</p>
+        {app.documentsAccepted ? <p className="muted small">{t("onboarding.fileRules")}</p> : null}
         <ActionError error={upload.error ?? submit.error} />
         {editable ? (
           <div>
             <Button
               onClick={() => void submit.run()}
               loading={submit.pending}
-              disabled={app.documents.length === 0}
+              disabled={app.documentsAccepted && app.documents.length === 0}
               data-testid="submit-application"
             >
               {t("onboarding.submit")}

@@ -257,7 +257,8 @@ export interface paths {
     /** Merchant applications and accounts, oldest submission first */
     get: operations["listAdminMerchants"];
     put?: never;
-    post?: never;
+    /** Create an approved merchant verified outside the platform; returns a one-time owner invitation token */
+    post: operations["createVerifiedMerchant"];
     delete?: never;
     options?: never;
     head?: never;
@@ -292,6 +293,40 @@ export interface paths {
     put?: never;
     /** Review decision with a mandatory reason: start review, approve, reject, request changes, suspend, reinstate */
     post: operations["reviewMerchant"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/merchants/{id}/verifications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Record that an administrator checked the trade licence by hand against an outside source (not an automatic or government check) */
+    post: operations["recordMerchantVerification"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/merchants/{id}/notes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Add an internal review note (never shown to the applicant) */
+    post: operations["addMerchantNote"];
     delete?: never;
     options?: never;
     head?: never;
@@ -3207,6 +3242,28 @@ export interface operations {
                 email?: string;
                 phone?: string;
               };
+              licenseAuthority: string | null;
+              licenseExpiresOn: string | null;
+              emirate:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              representative: {
+                name?: string;
+                position?: string;
+                email?: string;
+                phone?: string;
+              };
+              declaredBranchCount: number | null;
+              description: string | null;
+              documentsAccepted: boolean;
               /** @enum {string} */
               status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
               reviewNote: string | null;
@@ -3281,6 +3338,27 @@ export interface operations {
             email: string;
             phone: string;
           };
+          licenseAuthority?: string;
+          /** Format: date */
+          licenseExpiresOn?: string;
+          /** @enum {string} */
+          emirate?:
+            | "abu_dhabi"
+            | "dubai"
+            | "sharjah"
+            | "ajman"
+            | "umm_al_quwain"
+            | "ras_al_khaimah"
+            | "fujairah";
+          representative?: {
+            name: string;
+            /** Format: email */
+            email: string;
+            phone: string;
+            position: string;
+          };
+          declaredBranchCount?: number;
+          description?: string;
         };
       };
     };
@@ -3303,6 +3381,28 @@ export interface operations {
                 email?: string;
                 phone?: string;
               };
+              licenseAuthority: string | null;
+              licenseExpiresOn: string | null;
+              emirate:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              representative: {
+                name?: string;
+                position?: string;
+                email?: string;
+                phone?: string;
+              };
+              declaredBranchCount: number | null;
+              description: string | null;
+              documentsAccepted: boolean;
               /** @enum {string} */
               status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
               reviewNote: string | null;
@@ -3393,6 +3493,28 @@ export interface operations {
                 email?: string;
                 phone?: string;
               };
+              licenseAuthority: string | null;
+              licenseExpiresOn: string | null;
+              emirate:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              representative: {
+                name?: string;
+                position?: string;
+                email?: string;
+                phone?: string;
+              };
+              declaredBranchCount: number | null;
+              description: string | null;
+              documentsAccepted: boolean;
               /** @enum {string} */
               status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
               reviewNote: string | null;
@@ -3475,6 +3597,27 @@ export interface operations {
             email: string;
             phone: string;
           };
+          licenseAuthority?: string;
+          /** Format: date */
+          licenseExpiresOn?: string;
+          /** @enum {string} */
+          emirate?:
+            | "abu_dhabi"
+            | "dubai"
+            | "sharjah"
+            | "ajman"
+            | "umm_al_quwain"
+            | "ras_al_khaimah"
+            | "fujairah";
+          representative?: {
+            name: string;
+            /** Format: email */
+            email: string;
+            phone: string;
+            position: string;
+          };
+          declaredBranchCount?: number;
+          description?: string;
         };
       };
     };
@@ -3497,6 +3640,28 @@ export interface operations {
                 email?: string;
                 phone?: string;
               };
+              licenseAuthority: string | null;
+              licenseExpiresOn: string | null;
+              emirate:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              representative: {
+                name?: string;
+                position?: string;
+                email?: string;
+                phone?: string;
+              };
+              declaredBranchCount: number | null;
+              description: string | null;
+              documentsAccepted: boolean;
               /** @enum {string} */
               status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
               reviewNote: string | null;
@@ -3579,7 +3744,8 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": {
-          documentIds: string[];
+          /** @default [] */
+          documentIds?: string[];
         };
       };
     };
@@ -3602,6 +3768,28 @@ export interface operations {
                 email?: string;
                 phone?: string;
               };
+              licenseAuthority: string | null;
+              licenseExpiresOn: string | null;
+              emirate:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              representative: {
+                name?: string;
+                position?: string;
+                email?: string;
+                phone?: string;
+              };
+              declaredBranchCount: number | null;
+              description: string | null;
+              documentsAccepted: boolean;
               /** @enum {string} */
               status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
               reviewNote: string | null;
@@ -4019,6 +4207,19 @@ export interface operations {
               status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
               submittedAt: string | null;
               branchCount: number;
+              emirate:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              licenseExpiresOn: string | null;
+              lastVerifiedOn: string | null;
             }[];
             meta: {
               nextCursor: string | null;
@@ -4046,6 +4247,216 @@ export interface operations {
       };
       /** @description Authenticated but not permitted (role, MFA or account status) */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  createVerifiedMerchant: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          legalName: string;
+          brandName: string;
+          licenseNumber: string;
+          licenseAuthority: string;
+          /** Format: date */
+          licenseExpiresOn: string;
+          /** @enum {string} */
+          emirate:
+            | "abu_dhabi"
+            | "dubai"
+            | "sharjah"
+            | "ajman"
+            | "umm_al_quwain"
+            | "ras_al_khaimah"
+            | "fujairah";
+          contact: {
+            name: string;
+            /** Format: email */
+            email: string;
+            phone: string;
+          };
+          representative: {
+            name: string;
+            /** Format: email */
+            email: string;
+            phone: string;
+            position: string;
+          };
+          declaredBranchCount: number;
+          description?: string;
+          /** Format: email */
+          ownerEmail: string;
+          verification: {
+            /** Format: date */
+            verifiedOn: string;
+            source: string;
+            notes?: string;
+          };
+          reason: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              merchant: {
+                /** Format: uuid */
+                id: string;
+                legalName: string;
+                brandName: string;
+                licenseNumber: string;
+                contact: {
+                  name?: string;
+                  email?: string;
+                  phone?: string;
+                };
+                licenseAuthority: string | null;
+                licenseExpiresOn: string | null;
+                emirate:
+                  | (
+                      | "abu_dhabi"
+                      | "dubai"
+                      | "sharjah"
+                      | "ajman"
+                      | "umm_al_quwain"
+                      | "ras_al_khaimah"
+                      | "fujairah"
+                    )
+                  | null;
+                representative: {
+                  name?: string;
+                  position?: string;
+                  email?: string;
+                  phone?: string;
+                };
+                declaredBranchCount: number | null;
+                description: string | null;
+                documentsAccepted: boolean;
+                /** @enum {string} */
+                status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+                reviewNote: string | null;
+                submittedAt: string | null;
+                reviewedAt: string | null;
+                documents: {
+                  /** Format: uuid */
+                  id: string;
+                  /** Format: uuid */
+                  uploadId: string;
+                  /** @enum {string} */
+                  type: "trade_license" | "owner_id" | "vat_certificate" | "other";
+                  /** @enum {string} */
+                  fileStatus: "pending" | "quarantined" | "clean" | "rejected";
+                  /** @enum {string} */
+                  reviewStatus: "pending" | "accepted" | "rejected";
+                  /** Format: date-time */
+                  createdAt: string;
+                  downloadUrl: string | null;
+                }[];
+                branchCount: number;
+                verifications: {
+                  /** Format: uuid */
+                  id: string;
+                  /** @constant */
+                  method: "manual_external_check";
+                  /** Format: date */
+                  verifiedOn: string;
+                  verifiedBy: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string | null;
+                  };
+                  licenseNumber: string;
+                  licenseAuthority: string;
+                  /** Format: date */
+                  licenseExpiresOn: string;
+                  source: string;
+                  notes: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                notes: {
+                  /** Format: uuid */
+                  id: string;
+                  author: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string | null;
+                  };
+                  body: string;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                history: {
+                  /** Format: uuid */
+                  id: string;
+                  action: string;
+                  actorName: string | null;
+                  reason: string | null;
+                  /** Format: date-time */
+                  at: string;
+                }[];
+              };
+              ownerInvitationToken: string;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
         headers: {
           [name: string]: unknown;
         };
@@ -4084,6 +4495,28 @@ export interface operations {
                 email?: string;
                 phone?: string;
               };
+              licenseAuthority: string | null;
+              licenseExpiresOn: string | null;
+              emirate:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              representative: {
+                name?: string;
+                position?: string;
+                email?: string;
+                phone?: string;
+              };
+              declaredBranchCount: number | null;
+              description: string | null;
+              documentsAccepted: boolean;
               /** @enum {string} */
               status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
               reviewNote: string | null;
@@ -4105,6 +4538,48 @@ export interface operations {
                 downloadUrl: string | null;
               }[];
               branchCount: number;
+              verifications: {
+                /** Format: uuid */
+                id: string;
+                /** @constant */
+                method: "manual_external_check";
+                /** Format: date */
+                verifiedOn: string;
+                verifiedBy: {
+                  /** Format: uuid */
+                  id: string;
+                  name: string | null;
+                };
+                licenseNumber: string;
+                licenseAuthority: string;
+                /** Format: date */
+                licenseExpiresOn: string;
+                source: string;
+                notes: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              notes: {
+                /** Format: uuid */
+                id: string;
+                author: {
+                  /** Format: uuid */
+                  id: string;
+                  name: string | null;
+                };
+                body: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              history: {
+                /** Format: uuid */
+                id: string;
+                action: string;
+                actorName: string | null;
+                reason: string | null;
+                /** Format: date-time */
+                at: string;
+              }[];
             };
           };
         };
@@ -4187,6 +4662,28 @@ export interface operations {
                 email?: string;
                 phone?: string;
               };
+              licenseAuthority: string | null;
+              licenseExpiresOn: string | null;
+              emirate:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              representative: {
+                name?: string;
+                position?: string;
+                email?: string;
+                phone?: string;
+              };
+              declaredBranchCount: number | null;
+              description: string | null;
+              documentsAccepted: boolean;
               /** @enum {string} */
               status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
               reviewNote: string | null;
@@ -4208,6 +4705,48 @@ export interface operations {
                 downloadUrl: string | null;
               }[];
               branchCount: number;
+              verifications: {
+                /** Format: uuid */
+                id: string;
+                /** @constant */
+                method: "manual_external_check";
+                /** Format: date */
+                verifiedOn: string;
+                verifiedBy: {
+                  /** Format: uuid */
+                  id: string;
+                  name: string | null;
+                };
+                licenseNumber: string;
+                licenseAuthority: string;
+                /** Format: date */
+                licenseExpiresOn: string;
+                source: string;
+                notes: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              notes: {
+                /** Format: uuid */
+                id: string;
+                author: {
+                  /** Format: uuid */
+                  id: string;
+                  name: string | null;
+                };
+                body: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              history: {
+                /** Format: uuid */
+                id: string;
+                action: string;
+                actorName: string | null;
+                reason: string | null;
+                /** Format: date-time */
+                at: string;
+              }[];
             };
           };
         };
@@ -4259,6 +4798,355 @@ export interface operations {
       };
       /** @description Semantically invalid */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  recordMerchantVerification: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: date */
+          verifiedOn: string;
+          licenseNumber: string;
+          licenseAuthority: string;
+          /** Format: date */
+          licenseExpiresOn: string;
+          source: string;
+          notes?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              legalName: string;
+              brandName: string;
+              licenseNumber: string;
+              contact: {
+                name?: string;
+                email?: string;
+                phone?: string;
+              };
+              licenseAuthority: string | null;
+              licenseExpiresOn: string | null;
+              emirate:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              representative: {
+                name?: string;
+                position?: string;
+                email?: string;
+                phone?: string;
+              };
+              declaredBranchCount: number | null;
+              description: string | null;
+              documentsAccepted: boolean;
+              /** @enum {string} */
+              status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+              reviewNote: string | null;
+              submittedAt: string | null;
+              reviewedAt: string | null;
+              documents: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                uploadId: string;
+                /** @enum {string} */
+                type: "trade_license" | "owner_id" | "vat_certificate" | "other";
+                /** @enum {string} */
+                fileStatus: "pending" | "quarantined" | "clean" | "rejected";
+                /** @enum {string} */
+                reviewStatus: "pending" | "accepted" | "rejected";
+                /** Format: date-time */
+                createdAt: string;
+                downloadUrl: string | null;
+              }[];
+              branchCount: number;
+              verifications: {
+                /** Format: uuid */
+                id: string;
+                /** @constant */
+                method: "manual_external_check";
+                /** Format: date */
+                verifiedOn: string;
+                verifiedBy: {
+                  /** Format: uuid */
+                  id: string;
+                  name: string | null;
+                };
+                licenseNumber: string;
+                licenseAuthority: string;
+                /** Format: date */
+                licenseExpiresOn: string;
+                source: string;
+                notes: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              notes: {
+                /** Format: uuid */
+                id: string;
+                author: {
+                  /** Format: uuid */
+                  id: string;
+                  name: string | null;
+                };
+                body: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              history: {
+                /** Format: uuid */
+                id: string;
+                action: string;
+                actorName: string | null;
+                reason: string | null;
+                /** Format: date-time */
+                at: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  addMerchantNote: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          body: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              legalName: string;
+              brandName: string;
+              licenseNumber: string;
+              contact: {
+                name?: string;
+                email?: string;
+                phone?: string;
+              };
+              licenseAuthority: string | null;
+              licenseExpiresOn: string | null;
+              emirate:
+                | (
+                    | "abu_dhabi"
+                    | "dubai"
+                    | "sharjah"
+                    | "ajman"
+                    | "umm_al_quwain"
+                    | "ras_al_khaimah"
+                    | "fujairah"
+                  )
+                | null;
+              representative: {
+                name?: string;
+                position?: string;
+                email?: string;
+                phone?: string;
+              };
+              declaredBranchCount: number | null;
+              description: string | null;
+              documentsAccepted: boolean;
+              /** @enum {string} */
+              status: "draft" | "submitted" | "review" | "approved" | "rejected" | "suspended";
+              reviewNote: string | null;
+              submittedAt: string | null;
+              reviewedAt: string | null;
+              documents: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                uploadId: string;
+                /** @enum {string} */
+                type: "trade_license" | "owner_id" | "vat_certificate" | "other";
+                /** @enum {string} */
+                fileStatus: "pending" | "quarantined" | "clean" | "rejected";
+                /** @enum {string} */
+                reviewStatus: "pending" | "accepted" | "rejected";
+                /** Format: date-time */
+                createdAt: string;
+                downloadUrl: string | null;
+              }[];
+              branchCount: number;
+              verifications: {
+                /** Format: uuid */
+                id: string;
+                /** @constant */
+                method: "manual_external_check";
+                /** Format: date */
+                verifiedOn: string;
+                verifiedBy: {
+                  /** Format: uuid */
+                  id: string;
+                  name: string | null;
+                };
+                licenseNumber: string;
+                licenseAuthority: string;
+                /** Format: date */
+                licenseExpiresOn: string;
+                source: string;
+                notes: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              notes: {
+                /** Format: uuid */
+                id: string;
+                author: {
+                  /** Format: uuid */
+                  id: string;
+                  name: string | null;
+                };
+                body: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              history: {
+                /** Format: uuid */
+                id: string;
+                action: string;
+                actorName: string | null;
+                reason: string | null;
+                /** Format: date-time */
+                at: string;
+              }[];
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
         headers: {
           [name: string]: unknown;
         };

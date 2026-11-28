@@ -56,6 +56,17 @@ describe("merchant onboarding: applications, documents and review", () => {
     brandName: "Test Roasters",
     licenseNumber: `LIC-${randomUUID().slice(0, 12)}`,
     contact: { name: "Test Owner", email: "owner@example.test", phone: "+971 50 000 0000" },
+    licenseAuthority: "Abu Dhabi Department of Economic Development (fictional)",
+    licenseExpiresOn: "2030-12-31",
+    emirate: "abu_dhabi",
+    representative: {
+      name: "Test Owner",
+      position: "Managing partner",
+      email: "owner@example.test",
+      phone: "+971 50 000 0000",
+    },
+    declaredBranchCount: 2,
+    description: "Fictional test café",
   });
 
   async function apply(token: string) {

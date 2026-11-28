@@ -52,3 +52,13 @@
   border-radius: 8px;
   padding: 6px 10px;
 }
+.card-lite {
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.break {
+  display: block;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
