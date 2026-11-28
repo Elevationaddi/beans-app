@@ -18,6 +18,8 @@ export const platformSettingSchemas = {
     quoteSeconds: z.number().int().min(60).max(1800),
     holdSeconds: z.number().int().min(60).max(3600),
     invitationHours: z.number().int().min(1).max(336),
+    /** Sandbox gifts: days a gift stays valid to claim and use. */
+    giftValidDays: z.number().int().min(1).max(365),
   }),
   /** Emergency platform pause: no new quotes or checkouts while on. */
   pause: z.strictObject({

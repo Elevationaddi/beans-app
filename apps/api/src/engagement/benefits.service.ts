@@ -30,6 +30,20 @@ interface QuoteContext {
 
 const benefitError = (field: string, message: string) => semantic(message, { [field]: [message] });
 
+/** Inside the card's optional campaign window. */
+function inWindow(card: { startsAt: Date | null; endsAt: Date | null }, now: Date): boolean {
+  return (!card.startsAt || now >= card.startsAt) && (!card.endsAt || now < card.endsAt);
+}
+
+/** Whether a product earns stamps on this card. */
+function earnsStamps(
+  card: { eligibleProductIds: string[]; excludedProductIds: string[] },
+  productId: string,
+): boolean {
+  if (card.excludedProductIds.includes(productId)) return false;
+  return card.eligibleProductIds.length === 0 || card.eligibleProductIds.includes(productId);
+}
+
 function capped(field: string, raw: bigint, subtotal: bigint): bigint {
   const room = subtotal - MIN_CHARGE_FILS;
   if (room <= 0n) {
@@ -42,8 +56,8 @@ function capped(field: string, raw: bigint, subtotal: bigint): bigint {
  * Phase 9 benefits (sandbox, merchant-funded): stamp-card rewards, approved promo codes and
  * claimed gifts. The server works out the discount at quote time, holds the benefit when the
  * order is created, confirms it when payment succeeds and gives it back when the order ends
- * unfulfilled. Stamps are earned once per completed order and reversed once when the order
- * is fully refunded. Every step is idempotent per order (unique keys), so replays are safe.
+ * unfulfilled. Stamps are earned once per completed order (card rules: eligible products,
+ * stamps per item, dates) and reversed in proportion to each refund. Every step is idempotent per order (unique keys), so replays are safe.
  */
 @Injectable()
 export class BenefitsService {
@@ -102,16 +116,34 @@ export class BenefitsService {
     const card = await this.prisma.stampCard.findFirst({
       where: { id: cardId, merchantId: ctx.merchantId, active: true },
     });
-    if (!card) throw benefitError("rewardId", "This café's stamp card is not available");
+    if (!card || !inWindow(card, ctx.now)) {
+      throw benefitError("rewardId", "This café's stamp card is not available");
+    }
     const account = await this.prisma.stampAccount.findUnique({
       where: { userId_merchantId: { userId: ctx.userId, merchantId: ctx.merchantId } },
     });
     if ((account?.balance ?? 0) < card.stampsRequired) {
       throw benefitError("rewardId", "Not enough stamps for a reward yet");
     }
-    const cheapest = ctx.lines.reduce(
+    if (ctx.subtotalFils < card.redeemMinSubtotalFils) {
+      throw benefitError("rewardId", "Your order is below the minimum for using a reward");
+    }
+    if (
+      (await this.rewardsToday(this.prisma, ctx.userId, ctx.merchantId, ctx.now)) >=
+      card.redeemDailyLimit
+    ) {
+      throw benefitError("rewardId", "You have used today's rewards at this café");
+    }
+    const candidates =
+      card.rewardProductIds.length === 0
+        ? ctx.lines
+        : ctx.lines.filter((l) => card.rewardProductIds.includes(l.productId));
+    if (candidates.length === 0) {
+      throw benefitError("rewardId", "Add one of the reward items to your cart to use the reward");
+    }
+    const cheapest = candidates.reduce(
       (min, l) => (BigInt(l.unitFils) < min ? BigInt(l.unitFils) : min),
-      BigInt(ctx.lines[0]?.unitFils ?? "0"),
+      BigInt(candidates[0]!.unitFils),
     );
     const raw = cheapest < card.rewardMaxFils ? cheapest : card.rewardMaxFils;
     return {
@@ -121,6 +153,24 @@ export class BenefitsService {
       label: { en: card.rewardEn, ...(card.rewardAr && { ar: card.rewardAr }) },
       discountFils: capped("rewardId", raw, ctx.subtotalFils).toString(),
     };
+  }
+
+  /** Rewards used today (Dubai calendar day) at this café, not counting released ones. */
+  private async rewardsToday(
+    db: Tx | PrismaService,
+    userId: string,
+    merchantId: string,
+    now: Date,
+    exceptOrderId?: string,
+  ): Promise<number> {
+    const [row] = await db.$queryRaw<{ n: bigint }[]>`
+      SELECT count(*)::bigint AS n FROM stamp_events e
+      WHERE e.user_id = ${userId}::uuid AND e.merchant_id = ${merchantId}::uuid
+        AND e.kind = 'redeem'
+        AND (e.created_at AT TIME ZONE 'Asia/Dubai')::date = (${now}::timestamptz AT TIME ZONE 'Asia/Dubai')::date
+        AND (${exceptOrderId ?? null}::uuid IS NULL OR e.order_id <> ${exceptOrderId ?? null}::uuid)
+        AND NOT EXISTS (SELECT 1 FROM stamp_events r WHERE r.order_id = e.order_id AND r.kind = 'release')`;
+    return Number(row?.n ?? 0n);
   }
 
   private async promotionQuote(ctx: QuoteContext, rawCode: string): Promise<Benefit> {
@@ -211,6 +261,17 @@ export class BenefitsService {
         WHERE user_id = ${order.userId}::uuid AND merchant_id = ${order.merchantId}::uuid
           AND balance >= ${benefit.stamps}::int`;
       if (moved !== 1) throw benefitError("rewardId", "Not enough stamps for a reward yet");
+      // The balance row is now locked, so concurrent checkouts see each other's redemptions.
+      const card = await tx.stampCard.findUnique({ where: { id: benefit.stampCardId } });
+      if (!card || !card.active || !inWindow(card, now)) {
+        throw benefitError("rewardId", "This café's stamp card is not available");
+      }
+      if (
+        (await this.rewardsToday(tx, order.userId, order.merchantId, now, order.id)) >=
+        card.redeemDailyLimit
+      ) {
+        throw benefitError("rewardId", "You have used today's rewards at this café");
+      }
       await this.appendEvent(tx, order, "redeem", -benefit.stamps, benefit.stampCardId);
       return;
     }
@@ -304,7 +365,7 @@ export class BenefitsService {
       data: { status: "claimed", orderId: null },
     });
     const redeemed = await tx.stampEvent.findUnique({
-      where: { orderId_kind: { orderId, kind: "redeem" } },
+      where: { orderId_kind_ref: { orderId, kind: "redeem", ref: "" } },
     });
     if (redeemed) {
       const order = { id: orderId, userId: redeemed.userId, merchantId: redeemed.merchantId };
@@ -314,18 +375,30 @@ export class BenefitsService {
     }
   }
 
-  /** One stamp per item of a completed order, once, on the café's active card. */
+  /**
+   * Stamps for a completed order, once, on the café's active card inside its window:
+   * `stampsPerItem` for each eligible item (the eligible list, or every product when it is
+   * empty, minus the excluded products).
+   */
   private async earn(tx: Tx, orderId: string): Promise<void> {
     if (!(await this.settings.get("features")).stampCards) return;
     const order = await tx.order.findUniqueOrThrow({
       where: { id: orderId },
-      select: { id: true, userId: true, merchantId: true, items: { select: { quantity: true } } },
+      select: {
+        id: true,
+        userId: true,
+        merchantId: true,
+        items: { select: { productId: true, quantity: true } },
+      },
     });
     const card = await tx.stampCard.findFirst({
       where: { merchantId: order.merchantId, active: true },
     });
-    if (!card) return;
-    const stamps = order.items.reduce((sum, i) => sum + i.quantity, 0);
+    if (!card || !inWindow(card, new Date())) return;
+    const stamps = order.items.reduce(
+      (sum, i) => sum + (earnsStamps(card, i.productId) ? i.quantity * card.stampsPerItem : 0),
+      0,
+    );
     if (stamps <= 0) return;
     if (await this.appendEvent(tx, order, "earn", stamps, card.id)) {
       await this.addToBalance(tx, order, stamps);
@@ -333,23 +406,52 @@ export class BenefitsService {
   }
 
   /**
-   * After a refund succeeds: once the order is refunded in full, the stamps it earned are taken
-   * back, once. The balance may go below zero if they were already spent; nobody is charged.
+   * After a refund succeeds, the stamps the order earned are taken back in proportion to the
+   * amount refunded so far (rounded down; all of them on a full refund), once per refund. A
+   * full refund also gives back stamps spent on a reward for that order. The balance may go
+   * below zero if earned stamps were already spent; nobody is charged.
    */
-  async onRefundSucceeded(tx: Tx, orderId: string): Promise<void> {
-    const earned = await tx.stampEvent.findUnique({
-      where: { orderId_kind: { orderId, kind: "earn" } },
-    });
-    if (!earned) return;
+  async onRefundSucceeded(tx: Tx, orderId: string, refundId: string): Promise<void> {
     const [paid, refunded] = await Promise.all([
       tx.payment.aggregate({ where: { orderId, status: "captured" }, _sum: { amountFils: true } }),
       tx.refund.aggregate({ where: { orderId, status: "succeeded" }, _sum: { amountFils: true } }),
     ]);
     const paidFils = paid._sum.amountFils ?? 0n;
-    if (paidFils <= 0n || (refunded._sum.amountFils ?? 0n) < paidFils) return;
-    const order = { id: orderId, userId: earned.userId, merchantId: earned.merchantId };
-    if (await this.appendEvent(tx, order, "reverse", -earned.stamps, earned.cardId)) {
-      await this.addToBalance(tx, order, -earned.stamps);
+    const refundedFils = refunded._sum.amountFils ?? 0n;
+    if (paidFils <= 0n || refundedFils <= 0n) return;
+    const full = refundedFils >= paidFils;
+
+    const earned = await tx.stampEvent.findUnique({
+      where: { orderId_kind_ref: { orderId, kind: "earn", ref: "" } },
+    });
+    if (earned) {
+      const target = full
+        ? earned.stamps
+        : Number((BigInt(earned.stamps) * refundedFils) / paidFils);
+      const reversed = await tx.stampEvent.aggregate({
+        where: { orderId, kind: "reverse" },
+        _sum: { stamps: true },
+      });
+      const delta = target + (reversed._sum.stamps ?? 0);
+      const order = { id: orderId, userId: earned.userId, merchantId: earned.merchantId };
+      if (
+        delta > 0 &&
+        (await this.appendEvent(tx, order, "reverse", -delta, earned.cardId, refundId))
+      ) {
+        await this.addToBalance(tx, order, -delta);
+      }
+    }
+
+    if (full) {
+      const redeemed = await tx.stampEvent.findUnique({
+        where: { orderId_kind_ref: { orderId, kind: "redeem", ref: "" } },
+      });
+      if (redeemed) {
+        const order = { id: orderId, userId: redeemed.userId, merchantId: redeemed.merchantId };
+        if (await this.appendEvent(tx, order, "release", -redeemed.stamps, redeemed.cardId)) {
+          await this.addToBalance(tx, order, -redeemed.stamps);
+        }
+      }
     }
   }
 
@@ -360,12 +462,13 @@ export class BenefitsService {
     kind: StampEventKind,
     stamps: number,
     cardId: string | null,
+    ref = "",
   ): Promise<boolean> {
     const inserted = await tx.$executeRaw`
-      INSERT INTO stamp_events (id, user_id, merchant_id, card_id, order_id, kind, stamps)
+      INSERT INTO stamp_events (id, user_id, merchant_id, card_id, order_id, kind, stamps, ref)
       VALUES (gen_random_uuid(), ${order.userId}::uuid, ${order.merchantId}::uuid,
-              ${cardId}::uuid, ${order.id}::uuid, ${kind}::"StampEventKind", ${stamps}::int)
-      ON CONFLICT (order_id, kind) DO NOTHING`;
+              ${cardId}::uuid, ${order.id}::uuid, ${kind}::"StampEventKind", ${stamps}::int, ${ref})
+      ON CONFLICT (order_id, kind, ref) DO NOTHING`;
     return inserted === 1;
   }
 

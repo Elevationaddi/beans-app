@@ -1,5 +1,5 @@
 import { SettingsService } from "../platform/settings.service.js";
-import { BenefitsService } from "../engagement/benefits.service.js";
+import { BenefitsService, MIN_CHARGE_FILS } from "../engagement/benefits.service.js";
 import { Inject, Injectable } from "@nestjs/common";
 import type {
   Benefit,
@@ -162,6 +162,10 @@ export class QuoteService {
     const lines = priceLines(menu, cart.items);
     await this.checkStock(this.prisma, branch.id, lines);
     const subtotal = lines.reduce((sum, l) => sum + BigInt(l.lineFils), 0n);
+    // Sandbox business rule (founder, 2026-11-28): minimum order AED 1, before any discount.
+    if (subtotal < MIN_CHARGE_FILS) {
+      throw semantic("The minimum order is AED 1.00", { cartId: ["Minimum order is AED 1.00"] });
+    }
     const benefit = await this.benefits.forQuote({
       userId,
       merchantId: branch.merchantId,

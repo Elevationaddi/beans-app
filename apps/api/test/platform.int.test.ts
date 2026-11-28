@@ -83,6 +83,7 @@ describe("platform administration", () => {
         quoteSeconds: 240,
         holdSeconds: 600,
         invitationHours: 48,
+        giftValidDays: 14,
       };
 
       await send("put", "/v1/admin/platform-settings/operations", marketing.token, {

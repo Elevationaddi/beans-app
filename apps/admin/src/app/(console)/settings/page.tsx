@@ -220,6 +220,7 @@ const TIMERS = [
   { key: "quoteSeconds", unit: "seconds" },
   { key: "holdSeconds", unit: "seconds" },
   { key: "invitationHours", unit: "hours" },
+  { key: "giftValidDays", unit: "days" },
 ] as const;
 
 function OperationsCard({ setting, onSaved }: { setting: PlatformSetting; onSaved: () => void }) {

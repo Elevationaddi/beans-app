@@ -2,6 +2,7 @@
 import {
   branchTableListResponseSchema,
   branchTableResponseSchema,
+  productListResponseSchema,
   promotionListResponseSchema,
   promotionResponseSchema,
   stampCardResponseSchema,
@@ -103,10 +104,34 @@ function StampCardForm({ card, onSaved }: { card: StampCard | null; onSaved: () 
   const [rewardAr, setRewardAr] = useState(card?.reward.ar ?? "");
   const [max, setMax] = useState(card ? filsToAedInput(card.rewardMaxFils) : "");
   const [active, setActive] = useState(card?.active ?? true);
+  const [perItem, setPerItem] = useState(String(card?.stampsPerItem ?? 1));
+  const [eligible, setEligible] = useState<string[]>(card?.eligibleProductIds ?? []);
+  const [excluded, setExcluded] = useState<string[]>(card?.excludedProductIds ?? []);
+  const [rewardItems, setRewardItems] = useState<string[]>(card?.rewardProductIds ?? []);
+  const [startsAt, setStartsAt] = useState(card?.startsAt ? toLocalInput(card.startsAt) : "");
+  const [endsAt, setEndsAt] = useState(card?.endsAt ? toLocalInput(card.endsAt) : "");
+  const [minSpend, setMinSpend] = useState(
+    card && card.redeemMinSubtotalFils !== "0" ? filsToAedInput(card.redeemMinSubtotalFils) : "",
+  );
+  const [dailyLimit, setDailyLimit] = useState(String(card?.redeemDailyLimit ?? 1));
+  const products = useQuery(
+    async (signal) =>
+      (
+        await api.get(
+          "/v1/merchant/products",
+          productListResponseSchema,
+          { merchantId, limit: 100 },
+          signal,
+        )
+      ).data,
+    [merchantId],
+    { enabled: Boolean(merchantId) },
+  );
   const [local, setLocal] = useState<string | null>(null);
   const save = useAction(async () => {
     const rewardMaxFils = aedToFils(max);
-    if (!rewardMaxFils) {
+    const redeemMinSubtotalFils = minSpend.trim() ? aedToFils(minSpend) : "0";
+    if (!rewardMaxFils || !redeemMinSubtotalFils) {
       setLocal(t("loyalty.amountInvalid"));
       return;
     }
@@ -120,6 +145,14 @@ function StampCardForm({ card, onSaved }: { card: StampCard | null; onSaved: () 
         reward: { en: rewardEn, ...(rewardAr ? { ar: rewardAr } : {}) },
         rewardMaxFils,
         active,
+        stampsPerItem: Number(perItem),
+        eligibleProductIds: eligible,
+        excludedProductIds: excluded,
+        rewardProductIds: rewardItems,
+        startsAt: fromLocalInput(startsAt) || null,
+        endsAt: fromLocalInput(endsAt) || null,
+        redeemMinSubtotalFils,
+        redeemDailyLimit: Number(dailyLimit),
       },
     );
     toast(t("common.saved"));
@@ -184,6 +217,90 @@ function StampCardForm({ card, onSaved }: { card: StampCard | null; onSaved: () 
           dir="rtl"
         />
       </div>
+      <h3>{t("loyalty.rules")}</h3>
+      <div className="grid-2">
+        <TextField
+          label={t("loyalty.perItem")}
+          type="number"
+          min={1}
+          max={10}
+          value={perItem}
+          onChange={(e) => setPerItem(e.target.value)}
+          error={err["stampsPerItem"]}
+          hint={t("loyalty.perItemHint")}
+          data-testid="card-per-item"
+        />
+        <TextField
+          label={t("loyalty.dailyLimit")}
+          type="number"
+          min={1}
+          max={10}
+          value={dailyLimit}
+          onChange={(e) => setDailyLimit(e.target.value)}
+          error={err["redeemDailyLimit"]}
+          hint={t("loyalty.dailyLimitHint")}
+          data-testid="card-daily-limit"
+        />
+        <TextField
+          label={t("loyalty.minSpend")}
+          inputMode="decimal"
+          value={minSpend}
+          onChange={(e) => setMinSpend(e.target.value)}
+          error={err["redeemMinSubtotalFils"]}
+          hint={t("loyalty.minSpendHint")}
+          data-testid="card-min-spend"
+        />
+        <div />
+        <TextField
+          label={t("loyalty.startsAt")}
+          type="datetime-local"
+          value={startsAt}
+          onChange={(e) => setStartsAt(e.target.value)}
+          error={err["startsAt"]}
+          hint={t("loyalty.windowHint")}
+          data-testid="card-starts"
+        />
+        <TextField
+          label={t("loyalty.endsAt")}
+          type="datetime-local"
+          value={endsAt}
+          onChange={(e) => setEndsAt(e.target.value)}
+          error={err["endsAt"]}
+          data-testid="card-ends"
+        />
+      </div>
+      <QueryView query={products}>
+        {(list) => (
+          <div className="grid-3">
+            <ProductPicker
+              title={t("loyalty.eligible")}
+              hint={t("loyalty.eligibleHint")}
+              products={list}
+              selected={eligible}
+              onChange={setEligible}
+              testId="eligible"
+            />
+            <ProductPicker
+              title={t("loyalty.excluded")}
+              hint={t("loyalty.excludedHint")}
+              products={list}
+              selected={excluded}
+              onChange={setExcluded}
+              testId="excluded"
+              error={err["excludedProductIds"]}
+            />
+            <ProductPicker
+              title={t("loyalty.rewardItems")}
+              hint={t("loyalty.rewardItemsHint")}
+              products={list}
+              selected={rewardItems}
+              onChange={setRewardItems}
+              testId="reward-items"
+            />
+          </div>
+        )}
+      </QueryView>
+      {err["products"] ? <Banner tone="error">{err["products"].join(" ")}</Banner> : null}
       <Checkbox label={t("loyalty.cardActive")} checked={active} onChange={setActive} />
       <ActionError error={save.error} />
       <div className="row">
@@ -192,6 +309,46 @@ function StampCardForm({ card, onSaved }: { card: StampCard | null; onSaved: () 
         </Button>
       </div>
     </Card>
+  );
+}
+
+function ProductPicker({
+  title,
+  hint,
+  products,
+  selected,
+  onChange,
+  testId,
+  error,
+}: {
+  title: string;
+  hint: string;
+  products: { id: string; names: { en: string; ar?: string | undefined } }[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+  testId: string;
+  error?: string[] | undefined;
+}) {
+  const { locale } = useI18n();
+  return (
+    <fieldset className="picker" data-testid={`picker-${testId}`}>
+      <legend>{title}</legend>
+      <p className="small muted">{hint}</p>
+      <div className="picker-list">
+        {products.map((p) => (
+          <Checkbox
+            key={p.id}
+            label={(locale === "ar" && p.names.ar) || p.names.en}
+            checked={selected.includes(p.id)}
+            onChange={(on) =>
+              onChange(on ? [...selected, p.id] : selected.filter((id) => id !== p.id))
+            }
+            testId={`${testId}-${p.id}`}
+          />
+        ))}
+      </div>
+      {error ? <p className="field-error">{error.join(" ")}</p> : null}
+    </fieldset>
   );
 }
 

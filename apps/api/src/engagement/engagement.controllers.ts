@@ -70,9 +70,6 @@ import { MerchantAccessService } from "../tenancy/merchant-access.service.js";
 import { BenefitsService } from "./benefits.service.js";
 import { TableTokens } from "./table-tokens.js";
 
-/** SANDBOX: how long a gift can be claimed and used. Not approved (D08 is open). */
-export const GIFT_VALID_DAYS = 30;
-
 const text = (en: string, ar: string | null): LocalizedText => ({ en, ...(ar && { ar }) });
 const conflict = (message: string) => new ApiError(HttpStatus.CONFLICT, "CONFLICT", message);
 const staleVersion = (current: number) =>
@@ -108,6 +105,14 @@ export function toStampCard(row: StampCardRow): StampCard {
     reward: text(row.rewardEn, row.rewardAr),
     rewardMaxFils: row.rewardMaxFils.toString(),
     active: row.active,
+    eligibleProductIds: row.eligibleProductIds,
+    excludedProductIds: row.excludedProductIds,
+    stampsPerItem: row.stampsPerItem,
+    rewardProductIds: row.rewardProductIds,
+    startsAt: row.startsAt?.toISOString() ?? null,
+    endsAt: row.endsAt?.toISOString() ?? null,
+    redeemMinSubtotalFils: row.redeemMinSubtotalFils.toString(),
+    redeemDailyLimit: row.redeemDailyLimit,
     termsVersion: row.termsVersion,
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -359,6 +364,8 @@ export class EngagementController {
       },
     });
     if (!product) throw ApiError.notFound("Drink not found");
+    // SANDBOX: validity is an admin setting (operations.giftValidDays, 30 days by default).
+    const { giftValidDays } = await this.settings.get("operations");
     const claimToken = randomBytes(24).toString("base64url");
     const gift = await this.prisma.gift.create({
       data: {
@@ -368,7 +375,7 @@ export class EngagementController {
         valueFils: product.baseFils,
         message: body.message ?? null,
         claimTokenHash: sha256(claimToken),
-        expiresAt: new Date(Date.now() + GIFT_VALID_DAYS * 86_400_000),
+        expiresAt: new Date(Date.now() + giftValidDays * 86_400_000),
       },
       include: giftInclude,
     });
@@ -456,7 +463,31 @@ export class MerchantEngagementController {
       rewardAr: body.reward.ar ?? null,
       rewardMaxFils: BigInt(body.rewardMaxFils),
       active: body.active,
+      eligibleProductIds: [...new Set(body.eligibleProductIds)],
+      excludedProductIds: [...new Set(body.excludedProductIds)],
+      stampsPerItem: body.stampsPerItem,
+      rewardProductIds: [...new Set(body.rewardProductIds)],
+      startsAt: body.startsAt ? new Date(body.startsAt) : null,
+      endsAt: body.endsAt ? new Date(body.endsAt) : null,
+      redeemMinSubtotalFils: BigInt(body.redeemMinSubtotalFils),
+      redeemDailyLimit: body.redeemDailyLimit,
     };
+    // Every product named must belong to this café (never trust client product IDs).
+    const named = [
+      ...new Set([
+        ...data.eligibleProductIds,
+        ...data.excludedProductIds,
+        ...data.rewardProductIds,
+      ]),
+    ];
+    if (named.length > 0) {
+      const owned = await this.prisma.product.count({
+        where: { id: { in: named }, merchantId: query.merchantId },
+      });
+      if (owned !== named.length) {
+        throw ApiError.validation({ products: ["Choose products from this café's menu"] });
+      }
+    }
     return this.prisma.$transaction(async (tx) => {
       const before = await tx.stampCard.findUnique({ where: { merchantId: query.merchantId } });
       const saved = before

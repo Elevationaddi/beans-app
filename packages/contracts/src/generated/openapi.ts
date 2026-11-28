@@ -14801,6 +14801,14 @@ export interface operations {
               };
               rewardMaxFils: string;
               active: boolean;
+              eligibleProductIds: string[];
+              excludedProductIds: string[];
+              stampsPerItem: number;
+              rewardProductIds: string[];
+              startsAt: string | null;
+              endsAt: string | null;
+              redeemMinSubtotalFils: string;
+              redeemDailyLimit: number;
               termsVersion: number;
               /** Format: date-time */
               updatedAt: string;
@@ -14929,6 +14937,14 @@ export interface operations {
                 };
                 rewardMaxFils: string;
                 active: boolean;
+                eligibleProductIds: string[];
+                excludedProductIds: string[];
+                stampsPerItem: number;
+                rewardProductIds: string[];
+                startsAt: string | null;
+                endsAt: string | null;
+                redeemMinSubtotalFils: string;
+                redeemDailyLimit: number;
                 termsVersion: number;
                 /** Format: date-time */
                 updatedAt: string;
@@ -15310,6 +15326,14 @@ export interface operations {
               };
               rewardMaxFils: string;
               active: boolean;
+              eligibleProductIds: string[];
+              excludedProductIds: string[];
+              stampsPerItem: number;
+              rewardProductIds: string[];
+              startsAt: string | null;
+              endsAt: string | null;
+              redeemMinSubtotalFils: string;
+              redeemDailyLimit: number;
               termsVersion: number;
               /** Format: date-time */
               updatedAt: string;
@@ -15380,6 +15404,22 @@ export interface operations {
           };
           rewardMaxFils: string;
           active: boolean;
+          /** @default [] */
+          eligibleProductIds?: string[];
+          /** @default [] */
+          excludedProductIds?: string[];
+          /** @default 1 */
+          stampsPerItem?: number;
+          /** @default [] */
+          rewardProductIds?: string[];
+          /** @default null */
+          startsAt?: string | null;
+          /** @default null */
+          endsAt?: string | null;
+          /** @default 0 */
+          redeemMinSubtotalFils?: string;
+          /** @default 1 */
+          redeemDailyLimit?: number;
         };
       };
     };
@@ -15407,6 +15447,14 @@ export interface operations {
               };
               rewardMaxFils: string;
               active: boolean;
+              eligibleProductIds: string[];
+              excludedProductIds: string[];
+              stampsPerItem: number;
+              rewardProductIds: string[];
+              startsAt: string | null;
+              endsAt: string | null;
+              redeemMinSubtotalFils: string;
+              redeemDailyLimit: number;
               termsVersion: number;
               /** Format: date-time */
               updatedAt: string;

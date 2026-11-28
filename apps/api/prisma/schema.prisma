@@ -1337,18 +1337,32 @@ enum StampEventKind {
 
 /// One merchant-funded stamp card per business. Every change bumps the terms version.
 model StampCard {
-  id             String   @id @default(uuid()) @db.Uuid
-  merchantId     String   @unique @map("merchant_id") @db.Uuid
-  nameEn         String   @map("name_en")
-  nameAr         String?  @map("name_ar")
-  stampsRequired Int      @map("stamps_required")
-  rewardEn       String   @map("reward_en")
-  rewardAr       String?  @map("reward_ar")
-  rewardMaxFils  BigInt   @map("reward_max_fils")
-  active         Boolean  @default(true)
-  termsVersion   Int      @default(1) @map("terms_version")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                    String    @id @default(uuid()) @db.Uuid
+  merchantId            String    @unique @map("merchant_id") @db.Uuid
+  nameEn                String    @map("name_en")
+  nameAr                String?   @map("name_ar")
+  stampsRequired        Int       @map("stamps_required")
+  rewardEn              String    @map("reward_en")
+  rewardAr              String?   @map("reward_ar")
+  rewardMaxFils         BigInt    @map("reward_max_fils")
+  active                Boolean   @default(true)
+  termsVersion          Int       @default(1) @map("terms_version")
+  /// Products that earn stamps. Empty: every product except the excluded ones.
+  eligibleProductIds    String[]  @default([]) @map("eligible_product_ids") @db.Uuid
+  /// Products that never earn stamps, even when eligibleProductIds is empty.
+  excludedProductIds    String[]  @default([]) @map("excluded_product_ids") @db.Uuid
+  /// Stamps per eligible item in a completed order.
+  stampsPerItem         Int       @default(1) @map("stamps_per_item")
+  /// Products the reward can be taken on. Empty: any item in the order.
+  rewardProductIds      String[]  @default([]) @map("reward_product_ids") @db.Uuid
+  /// Optional campaign window: stamps are earned and rewards redeemed only inside it.
+  startsAt              DateTime? @map("starts_at") @db.Timestamptz(6)
+  endsAt                DateTime? @map("ends_at") @db.Timestamptz(6)
+  /// Redemption restrictions: order subtotal floor and rewards per customer per Dubai day.
+  redeemMinSubtotalFils BigInt    @default(0) @map("redeem_min_subtotal_fils")
+  redeemDailyLimit      Int       @default(1) @map("redeem_daily_limit")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   merchant Merchant     @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   events   StampEvent[]
@@ -1381,13 +1395,16 @@ model StampEvent {
   kind       StampEventKind
   /// Signed change to the balance.
   stamps     Int
+  /// Empty for earn, redeem and release (one each per order); the refund ID for a reversal,
+  /// so each partial refund reverses its share once.
+  ref        String         @default("")
   createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user  User       @relation(fields: [userId], references: [id], onDelete: Restrict)
   card  StampCard? @relation(fields: [cardId], references: [id], onDelete: Restrict)
   order Order?     @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
-  @@unique([orderId, kind])
+  @@unique([orderId, kind, ref])
   @@index([userId, merchantId, createdAt])
   @@map("stamp_events")
 }
