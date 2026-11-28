@@ -268,7 +268,16 @@ export const en = {
   "table.title": "Order at a table",
   "table.open": "Order at a table",
   "table.intro":
-    "Scan the QR code on your table with your phone's camera, or type the code printed under it.",
+    "Scan the QR code on your table, here in the app or with your phone's camera, or type the code printed under it.",
+  "scan.open": "Scan table QR code",
+  "scan.starting": "Starting the camera…",
+  "scan.permission":
+    "To scan the table's QR code, allow the camera. It is only used while this scanner is open.",
+  "scan.allow": "Allow camera",
+  "scan.settings": "Open settings to allow the camera",
+  "scan.cameraLabel": "Camera view for scanning a table QR code",
+  "scan.hint": "Point the camera at the QR code on your table.",
+  "scan.notTable": "That QR code is not a table code from this app.",
   "table.code": "Table code",
   "table.codeHint": "The code printed under the QR",
   "table.check": "Find my table",

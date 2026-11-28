@@ -1386,6 +1386,23 @@ approves the final infrastructure plan.
   Phoenix/Realtime stand-in (join, filtering, signal, dropped connection and rejoin);
   `apps/mobile/src/screens/live.test.tsx` (2).
 
+### Part 6: in-app table QR scanner
+
+- Customer app "Scan table QR code" (Table screen) uses the open-source `expo-camera` 58.0.14
+  barcode reader on the device; there is no scanning service or subscription. It reads QR codes
+  only, asks for the camera only when opened (or points to Settings if refused for good), and
+  takes just the table code from the printed link (`…/?table=<code>`) or a bare code. The link
+  itself is never opened, so a look-alike QR cannot redirect the customer; anything that is not a
+  table code shows a warning. The server then checks the signed code as before (active table,
+  current version, branch).
+- Phone-camera scanning keeps working: the printed QR opens the customer web app, which reads
+  `?table=`. Opening the native app straight from the phone camera needs universal links / app
+  links on a real domain (Apple App Site Association and Android asset links); that comes with
+  the domain and the store apps, and is listed in the launch checklist.
+- Deactivating and replacing codes was already built: the portal can switch a table off or
+  rotate its code, and old codes stop working.
+- Tests: `apps/mobile/src/screens/scanner.test.tsx` (4). The customer web build still exports.
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.

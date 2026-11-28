@@ -25,7 +25,15 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow location to sort caf\u00e9s by distance. You can choose your emirate instead."
+          "locationWhenInUsePermission": "Allow location to sort cafés by distance. You can choose your emirate instead."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow the camera to scan the QR code on your café table.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ]
     ]
