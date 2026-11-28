@@ -1403,6 +1403,29 @@ approves the final infrastructure plan.
   rotate its code, and old codes stop working.
 - Tests: `apps/mobile/src/screens/scanner.test.tsx` (4). The customer web build still exports.
 
+### Part 7: sandbox business rules (loyalty rules, refund reversals, minimum order, gift expiry)
+
+- Stamp cards are configurable per café in the portal (Loyalty → Stamp card → Rules): products
+  that earn stamps (none ticked = all), products that never earn, stamps per item (1-10), the
+  products a reward can be used on (none ticked = any), optional start and end dates (Dubai time),
+  a minimum order for using a reward, and rewards per customer per Dubai day (1-10). Every product
+  named must belong to the café. Saving still bumps the terms version and is audited.
+- Stamps are given only when an order is completed, once. Each successful refund takes back the
+  earned stamps in proportion to the total refunded so far (rounded down, so a goodwill refund
+  smaller than one stamp's share takes nothing; a full refund takes them all), once per refund.
+  A full refund also gives back the stamps spent on a reward for that order. Duplicate issuance,
+  redemption and reversal are blocked by unique keys (`order_id, kind, ref`) and row locks; the
+  daily redemption limit is checked again inside checkout under the balance row lock.
+- One benefit per order (reward, promo code or gift) was already enforced; promo codes are still
+  café-funded and admin-approved.
+- Minimum order AED 1.00 (subtotal before discounts) is refused at quote time; discounts already
+  could not take an order below AED 1.00.
+- Gift validity is an admin setting (`operations.giftValidDays`, default 30, 1-365) in Admin →
+  Settings. Gifts remain sandbox-only and refused in production.
+- Migration `20261128140000_loyalty_rules` (additive; rollback notes in the file). Applied to the
+  local development and test databases; `prisma migrate diff` shows no drift.
+- Tests: `test/loyalty-rules.int.test.ts` (7). API integration 29 files / 226 tests passed.
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.

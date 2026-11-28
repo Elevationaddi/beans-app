@@ -429,6 +429,8 @@ const en: Dictionary = {
   "settings.invitationHours": "Staff invitation valid for",
   "settings.range.seconds": "{min} to {max} seconds",
   "settings.range.hours": "{min} to {max} hours",
+  "settings.range.days": "{min} to {max} days",
+  "settings.giftValidDays": "Sandbox gift valid for",
   "settings.features": "Loyalty and dine-in features",
   "settings.featuresHint":
     "Sandbox switches for stamp cards, promotions, QR dine-in and test gifts. Production gifting and the wallet stay off.",
@@ -875,6 +877,8 @@ const ar: Dictionary = {
   "settings.invitationHours": "صلاحية دعوة الموظف",
   "settings.range.seconds": "من {min} إلى {max} ثانية",
   "settings.range.hours": "من {min} إلى {max} ساعة",
+  "settings.range.days": "من {min} إلى {max} يوم",
+  "settings.giftValidDays": "صلاحية الهدية التجريبية",
   "settings.features": "ميزات الولاء والتناول في المكان",
   "settings.featuresHint": "مفاتيح بيئة الاختبار. الإهداء الحقيقي والمحفظة متوقفان.",
   "feature.stampCards": "بطاقات الأختام",

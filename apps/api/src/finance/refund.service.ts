@@ -282,8 +282,8 @@ export class RefundService {
       });
       if (result.status === "succeeded") {
         await this.ledger.postRefund(tx, refund);
-        // Phase 9: a full refund takes back the stamps the order earned (once).
-        await this.benefits.onRefundSucceeded(tx, refund.orderId);
+        // Stamps earned by the order are taken back in proportion to what is refunded (once per refund).
+        await this.benefits.onRefundSucceeded(tx, refund.orderId, refund.id);
       }
       await this.outbox.enqueue(tx, {
         topic: "refund.updated",

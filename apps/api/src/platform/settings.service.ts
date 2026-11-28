@@ -45,6 +45,8 @@ export class SettingsService {
         quoteSeconds: this.env.QUOTE_TTL_SECONDS,
         holdSeconds: this.env.RESERVATION_TTL_SECONDS,
         invitationHours: 72,
+        // Sandbox gifts (founder, 2026-11-28): unclaimed or unused gifts expire after 30 days.
+        giftValidDays: 30,
       },
       pause: { ordersPaused: false, message: null },
       // Phase 9 is built (sandbox). Off by default everywhere; the sandbox seed and a super
@@ -58,7 +60,12 @@ export class SettingsService {
     const hit = this.cache.get(key);
     if (hit && Date.now() - hit.at < CACHE_MS) return hit.value as PlatformSettingValues[K];
     const row = await this.prisma.platformSetting.findUnique({ where: { key } });
-    const parsed = row ? platformSettingSchemas[key].safeParse(row.value) : null;
+    // Fields added later take their default, so older stored values keep working.
+    const stored =
+      row && typeof row.value === "object" && row.value !== null && !Array.isArray(row.value)
+        ? { ...(this.defaults()[key] as object), ...(row.value as object) }
+        : row?.value;
+    const parsed = row ? platformSettingSchemas[key].safeParse(stored) : null;
     // A stored value that no longer fits the schema falls back to the default, never crashes.
     const value = (
       parsed?.success ? parsed.data : this.defaults()[key]

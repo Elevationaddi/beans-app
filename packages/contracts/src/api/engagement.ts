@@ -51,12 +51,25 @@ export const stampCardSchema = z.object({
   id: uuidSchema,
   merchantId: uuidSchema,
   names: localizedTextSchema,
-  /** Stamps needed for one reward. One stamp per item in a completed order. */
+  /** Stamps needed for one reward. */
   stampsRequired: z.number().int(),
   reward: localizedTextSchema,
   /** The reward takes the price of one item off the order, up to this amount. */
   rewardMaxFils: filsSchema,
   active: z.boolean(),
+  /** Products that earn stamps; empty means every product except the excluded ones. */
+  eligibleProductIds: z.array(uuidSchema),
+  excludedProductIds: z.array(uuidSchema),
+  /** Stamps per eligible item, given once the order is completed. */
+  stampsPerItem: z.number().int(),
+  /** Products the reward can be taken on; empty means any item in the order. */
+  rewardProductIds: z.array(uuidSchema),
+  /** Optional campaign window for earning and redeeming. */
+  startsAt: z.iso.datetime().nullable(),
+  endsAt: z.iso.datetime().nullable(),
+  /** Redemption restrictions: order subtotal floor and rewards per customer per day (Dubai). */
+  redeemMinSubtotalFils: filsSchema,
+  redeemDailyLimit: z.number().int(),
   /** Bumped whenever the terms change, so customers can see which terms applied. */
   termsVersion: z.number().int(),
   updatedAt: z.iso.datetime(),
@@ -66,13 +79,31 @@ export const stampCardResponseSchema = dataEnvelope(stampCardSchema.nullable());
 
 export const stampCardQuerySchema = z.strictObject({ merchantId: uuidSchema });
 
-export const putStampCardRequestSchema = z.strictObject({
-  names: localizedTextSchema,
-  stampsRequired: z.number().int().min(2).max(20),
-  reward: localizedTextSchema,
-  rewardMaxFils: filsSchema,
-  active: z.boolean(),
-});
+const productIdList = z.array(uuidSchema).max(200);
+export const putStampCardRequestSchema = z
+  .strictObject({
+    names: localizedTextSchema,
+    stampsRequired: z.number().int().min(2).max(20),
+    reward: localizedTextSchema,
+    rewardMaxFils: filsSchema,
+    active: z.boolean(),
+    eligibleProductIds: productIdList.default([]),
+    excludedProductIds: productIdList.default([]),
+    stampsPerItem: z.number().int().min(1).max(10).default(1),
+    rewardProductIds: productIdList.default([]),
+    startsAt: z.iso.datetime().nullable().default(null),
+    endsAt: z.iso.datetime().nullable().default(null),
+    redeemMinSubtotalFils: filsSchema.default("0"),
+    redeemDailyLimit: z.number().int().min(1).max(10).default(1),
+  })
+  .refine((v) => !v.startsAt || !v.endsAt || v.startsAt < v.endsAt, {
+    message: "The end must be after the start",
+    path: ["endsAt"],
+  })
+  .refine((v) => !v.eligibleProductIds.some((id) => v.excludedProductIds.includes(id)), {
+    message: "A product cannot be both eligible and excluded",
+    path: ["excludedProductIds"],
+  });
 export type PutStampCardRequest = z.infer<typeof putStampCardRequestSchema>;
 
 /** One merchant's stamps for the signed-in customer. Balance can be negative after a reversal. */
