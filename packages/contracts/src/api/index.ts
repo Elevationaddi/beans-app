@@ -15,3 +15,5 @@ export * from "./operations.js";
 export * from "./ordering.js";
 export * from "./routes.js";
 export * from "./uploads.js";
+export * from "./platform.js";
+export * from "./admin-console.js";

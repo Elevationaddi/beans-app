@@ -1,3 +1,4 @@
+import { SettingsService } from "../platform/settings.service.js";
 import { Inject, Injectable } from "@nestjs/common";
 import type {
   BranchMenu,
@@ -109,9 +110,11 @@ export class QuoteService {
     @Inject(DiscoveryService) private readonly discovery: DiscoveryService,
     @Inject(SlotService) private readonly slots: SlotService,
     @Inject(ENV) private readonly env: Env,
+    @Inject(SettingsService) private readonly settings: SettingsService,
   ) {}
 
   async create(userId: string, body: CreateQuoteRequest): Promise<Quote> {
+    await this.settings.assertOrderingOpen();
     // Phase-two features stay off until approved (D07, D14, D16).
     if (body.tableToken !== undefined) throw featureDisabled("tableToken", "Dine-in by table QR");
     if (body.promoCode !== undefined) throw featureDisabled("promoCode", "Promo codes");
@@ -171,7 +174,9 @@ export class QuoteService {
         fulfillment: fulfillment as unknown as Prisma.InputJsonObject,
         menuVersion: menu.version,
         policyVersion: SANDBOX_PRICING_POLICY.version,
-        expiresAt: new Date(now.getTime() + this.env.QUOTE_TTL_SECONDS * 1000),
+        expiresAt: new Date(
+          now.getTime() + (await this.settings.get("operations")).quoteSeconds * 1000,
+        ),
       },
     });
     return quoteView(row);

@@ -34,6 +34,7 @@ export class AdminAuditController {
     const where: Prisma.AuditEventWhereInput = {
       ...(query.actorId && { actorId: query.actorId }),
       ...(query.targetId && { targetId: query.targetId }),
+      ...(query.actionPrefix && { action: { startsWith: query.actionPrefix } }),
       ...((query.from || query.to) && {
         createdAt: {
           ...(query.from && { gte: new Date(query.from) }),

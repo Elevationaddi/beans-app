@@ -29,6 +29,8 @@ export const errorCodeSchema = z.enum([
   "PAYMENT_FAILED",
   "FEATURE_DISABLED",
   "REFUND_LIMIT",
+  /** Emergency platform pause (A09): no new orders for now. */
+  "PLATFORM_PAUSED",
 ]);
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
 

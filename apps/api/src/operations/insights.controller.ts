@@ -1,3 +1,4 @@
+import { SettingsService } from "../platform/settings.service.js";
 import { Controller, Get, Inject, Param, Query } from "@nestjs/common";
 import { z } from "zod";
 import {
@@ -74,6 +75,7 @@ export class AdminInsightsController {
     @Inject(InsightsService) private readonly insights: InsightsService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(ENV) private readonly env: Env,
+    @Inject(SettingsService) private readonly platformSettings: SettingsService,
   ) {}
 
   @Get("dashboard")
@@ -105,10 +107,14 @@ export class AdminInsightsController {
     return { data };
   }
 
-  /** Read only: switches and versions in force. Changing them needs an approved decision. */
+  /** Switches, timers and policy versions in force. Edit them under admin/platform-settings. */
   @Get("settings")
   @RequireAdmin("operations", "security", "super_admin")
   async settings(): Promise<{ data: AdminSettings }> {
+    const [ops, features] = await Promise.all([
+      this.platformSettings.get("operations"),
+      this.platformSettings.get("features"),
+    ]);
     const policies = await this.prisma.policy.findMany({
       orderBy: [{ type: "asc" }, { effectiveAt: "desc" }],
     });
@@ -116,16 +122,17 @@ export class AdminInsightsController {
       data: {
         features: {
           livePayments: this.env.LIVE_PAYMENTS_ENABLED,
-          rewards: false,
-          gifts: false,
-          dineIn: false,
-          promoCodes: false,
+          rewards: features.stampCards,
+          gifts: features.sandboxGifts,
+          dineIn: features.dineIn,
+          promoCodes: features.promotions,
+          // No stored-value wallet at this stage (founder decision 2026-11-28).
           wallet: false,
         },
         timeouts: {
-          quoteSeconds: this.env.QUOTE_TTL_SECONDS,
-          holdSeconds: this.env.RESERVATION_TTL_SECONDS,
-          acceptSeconds: this.env.ACCEPT_TIMEOUT_SECONDS,
+          quoteSeconds: ops.quoteSeconds,
+          holdSeconds: ops.holdSeconds,
+          acceptSeconds: ops.acceptSeconds,
         },
         currency: "AED",
         timezone: "Asia/Dubai",

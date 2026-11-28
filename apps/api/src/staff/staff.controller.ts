@@ -1,3 +1,4 @@
+import { SettingsService } from "../platform/settings.service.js";
 import { createHash, randomBytes } from "node:crypto";
 import {
   Body,
@@ -40,7 +41,6 @@ const idParams = new ZodValidationPipe(z.strictObject({ id: uuidSchema }));
  * How long an invitation stays valid. Operational sandbox default, not a commercial policy;
  * recorded in docs/13-progress.md for confirmation.
  */
-export const INVITATION_TTL_HOURS = 72;
 
 /** Merchants that can still take on staff (suspended or rejected tenants cannot). */
 const OPERATING = ["draft", "submitted", "review", "approved"] as const;
@@ -118,6 +118,7 @@ export class StaffController {
     @Inject(MerchantAccessService) private readonly access: MerchantAccessService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(OutboxService) private readonly outbox: OutboxService,
+    @Inject(SettingsService) private readonly settings: SettingsService,
   ) {}
 
   @Get("staff")
@@ -154,6 +155,7 @@ export class StaffController {
   ): Promise<{ data: { invitation: StaffInvitation; token: string } }> {
     await this.access.requireOperatingOwner(actor.userId, body.merchantId);
     const token = randomBytes(32).toString("base64url");
+    const { invitationHours } = await this.settings.get("operations");
 
     const row = await this.prisma
       .$transaction(async (tx) => {
@@ -194,7 +196,7 @@ export class StaffController {
             catalogDelegated: body.catalogDelegated,
             tokenHash: hashInvitationToken(token),
             invitedById: actor.userId,
-            expiresAt: new Date(Date.now() + INVITATION_TTL_HOURS * 3_600_000),
+            expiresAt: new Date(Date.now() + invitationHours * 3_600_000),
           },
         });
         // No email is sent: delivery waits for an approved notification provider.

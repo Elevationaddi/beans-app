@@ -1,3 +1,4 @@
+import { SettingsService } from "../platform/settings.service.js";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
@@ -47,6 +48,7 @@ export class PaymentReconciler {
     @Inject(RefundService) private readonly refunds: RefundService,
     @Inject(PickupCodes) private readonly pickupCodes: PickupCodes,
     @Inject(ENV) private readonly env: Env,
+    @Inject(SettingsService) private readonly settings: SettingsService,
   ) {}
 
   /** Records a provider answer for one attempt. Safe to call repeatedly. */
@@ -214,7 +216,9 @@ export class PaymentReconciler {
       metadata: { paymentId },
       data: {
         pickupCodeHash: this.pickupCodes.hashFor(order.id),
-        acceptBy: new Date(Date.now() + this.env.ACCEPT_TIMEOUT_SECONDS * 1000),
+        acceptBy: new Date(
+          Date.now() + (await this.settings.get("operations")).acceptSeconds * 1000,
+        ),
       },
     });
   }

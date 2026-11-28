@@ -1,3 +1,4 @@
+import { SettingsService } from "../platform/settings.service.js";
 import { randomInt } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import type {
@@ -62,9 +63,11 @@ export class CheckoutService {
     @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
     @Inject(PaymentReconciler) private readonly reconciler: PaymentReconciler,
     @Inject(ENV) private readonly env: Env,
+    @Inject(SettingsService) private readonly settings: SettingsService,
   ) {}
 
   async checkout(userId: string, body: CheckoutRequest): Promise<CheckoutResult> {
+    await this.settings.assertOrderingOpen();
     if (body.sandboxOutcome !== undefined && this.provider.name !== "fake") {
       throw featureDisabled("sandboxOutcome", "Sandbox payment outcomes");
     }
@@ -96,6 +99,7 @@ export class CheckoutService {
     const totals = quote.totals as unknown as Totals;
     const fulfillment = quote.fulfillment as unknown as Fulfillment;
     const now = new Date();
+    const { holdSeconds } = await this.settings.get("operations");
 
     return this.prisma.$transaction(async (tx) => {
       // Q05: the cart must be exactly the one that was quoted.
@@ -173,7 +177,7 @@ export class CheckoutService {
         data: {
           quoteId: quote.id,
           slotId: slot.id,
-          expiresAt: new Date(now.getTime() + this.env.RESERVATION_TTL_SECONDS * 1000),
+          expiresAt: new Date(now.getTime() + holdSeconds * 1000),
           items: { create: held },
         },
       });

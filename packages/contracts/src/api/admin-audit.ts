@@ -4,6 +4,14 @@ import { listEnvelope, pageQuerySchema, uuidSchema } from "./common.js";
 export const auditQuerySchema = pageQuerySchema.extend({
   actorId: uuidSchema.optional(),
   targetId: z.string().min(1).max(200).optional(),
+  /** Actions starting with this text, e.g. "admin." or "platform." (A10 security logs). */
+  actionPrefix: z
+    .string()
+    .trim()
+    .min(1)
+    .max(60)
+    .regex(/^[a-z_.]+$/)
+    .optional(),
   from: z.iso.datetime().optional(),
   to: z.iso.datetime().optional(),
 });
