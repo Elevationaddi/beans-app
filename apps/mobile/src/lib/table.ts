@@ -47,3 +47,24 @@ export function tableTokenFromLink(): string | null {
     return null;
   }
 }
+
+const TOKEN = /^t1\.[A-Za-z0-9_-]{4,64}\.[1-9]\d{0,8}\.[A-Za-z0-9_-]{8,128}$/;
+
+/**
+ * The table code inside a scanned QR: either the printed link (`…?table=<code>`) or the bare
+ * code. The link is never opened; only its code is taken and then checked by the server, so a
+ * look-alike QR pointing elsewhere cannot send the customer to another site. Anything else
+ * (another app's QR, a payment code, plain text) returns null.
+ */
+export function tableTokenFromScan(data: string): string | null {
+  const text = data.trim();
+  if (TOKEN.test(text)) return text;
+  try {
+    const url = new URL(text);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    const token = url.searchParams.get("table");
+    return token && TOKEN.test(token) ? token : null;
+  } catch {
+    return null;
+  }
+}
