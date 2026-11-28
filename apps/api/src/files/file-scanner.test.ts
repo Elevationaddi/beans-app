@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BasicFileScanner } from "./file-scanner.js";
+import { BasicFileScanner, DisabledFileScanner } from "./file-scanner.js";
 
 const pdf = (body = "") => Buffer.from(`%PDF-1.7\n${body}\n%%EOF`, "latin1");
 const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
@@ -37,5 +37,12 @@ describe("BasicFileScanner", () => {
       (await scanner.scan(pdf("<< /S /Launch /F (cmd.exe) >>"), "application/pdf")).clean,
     ).toBe(false);
     expect((await scanner.scan(pdf(), "text/html")).clean).toBe(false);
+  });
+});
+
+describe("DisabledFileScanner", () => {
+  it("never passes a file, even a valid PDF", async () => {
+    const verdict = await new DisabledFileScanner().scan();
+    expect(verdict).toEqual({ clean: false, reason: "Document checks are not available yet" });
   });
 });

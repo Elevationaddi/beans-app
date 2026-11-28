@@ -758,3 +758,45 @@ describe("file check runs through the outbox and worker", () => {
     }
   });
 });
+
+describe("document uploads without an approved malware scanner (FILE_SCANNER=disabled)", () => {
+  it("refuses the upload before any bytes are accepted and stores nothing", async () => {
+    const issuer = await TestIssuer.create();
+    const app = await createTestApp(testEnv({ FILE_SCANNER: "disabled" }), {
+      overrides: [{ provide: JWKS, useValue: issuer.jwks }],
+    });
+    const prisma = testPrisma();
+    try {
+      const owner = await createUser(prisma);
+      const token = await issuer.token({ sub: owner.authSubject, aal: "aal1" });
+      const created = await request(app.getHttpServer())
+        .post("/v1/merchant/applications")
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          legalName: "Scanner Off LLC",
+          brandName: "Scanner Off",
+          licenseNumber: `LIC-${randomUUID().slice(0, 12)}`,
+          contact: { name: "Test Owner", email: "owner@example.test", phone: "+971 50 000 0000" },
+        })
+        .expect(201);
+      const merchantId = merchantApplicationResponseSchema.parse(created.body).data.id;
+      const refused = await request(app.getHttpServer())
+        .post("/v1/uploads")
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          purpose: "merchant_document",
+          merchantId,
+          documentType: "trade_license",
+          mime: "application/pdf",
+          size: PDF.length,
+        })
+        .expect(403);
+      expect(errorResponseSchema.parse(refused.body).error.code).toBe("FEATURE_DISABLED");
+      expect(await prisma.upload.count({ where: { merchantId } })).toBe(0);
+      expect(await prisma.merchantDocument.count({ where: { merchantId } })).toBe(0);
+    } finally {
+      await app.close();
+      await prisma.$disconnect();
+    }
+  });
+});

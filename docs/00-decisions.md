@@ -21,3 +21,24 @@ All items below are proposed, not approved by the founder. Sandbox values must b
 | D16 | Funding | No platform-funded promotions at MVP | Agree campaign budgets and accounting |
 
 Do not enable production financial features until D02–D08 and applicable D11 are approved. Keep a decision log with date, approver, rationale, policy version and migration impact.
+
+## Founder decision log
+
+Entries are the founder's written decisions, in date order. They authorise development and
+sandbox testing only unless an entry says otherwise. The table above keeps the original handoff
+proposals; where an entry below differs, the entry wins.
+
+| Date (Dubai) | Decision | Covers | Status |
+|---|---|---|---|
+| 2026-11-28 10:14 | D02-D08 sandbox values: 10% commission on net merchandise value excluding VAT and refunds; no registration, subscription or customer fee; weekly payouts; AED only; tax-inclusive prices; refund rules as written; all configurable and auditable | D02-D08 | Approved for sandbox. Live money still blocked (env check `LIVE_PAYMENTS_ENABLED`) |
+| 2026-11-28 10:14 | D03: Tap Payments preferred; keep the sandbox provider | D03 | Approved for sandbox. Commercial terms not agreed |
+| 2026-11-28 10:14 | D10: accept 120 s, quote 5 min, reservation 10 min, 15-min slots, invitations 72 h; launch city Abu Dhabi; 14-day pilot with 2-3 cafés | D01, D10 | Approved for sandbox |
+| 2026-11-28 10:14 | Phase 9 in scope: stamp cards, promotions, QR dine-in, sandbox gifting. No reloadable wallet | D07, D08, D09, D14 | Approved for sandbox |
+| 2026-11-28 10:14 | D13: temporary name "Coffee Marketplace"; centralised branding; English and Arabic with RTL; no BEANZ copying | D13 | Approved |
+| 2026-11-28 13:28 | Cost policy: no paid software or services beyond the existing Vercel, ChatGPT and Claude subscriptions; free tiers, open source or own code otherwise; no paid plans, trials, auto-upgrades or recurring commitments without written approval; payment fees and unavoidable regulatory or store costs presented separately | All | Approved, in force |
+| 2026-11-28 13:28 | Hosting: Vercel (existing subscription) with Supabase Free, GitHub Free, Resend Free, Expo Free with local builds, Firebase Cloud Messaging. No AWS, Azure or Oracle. Supersedes the earlier D11 hosting evaluation (docs/20) | D11 | Approved. Staging prepared, not deployed |
+| 2026-11-28 13:28 | D12 changed: email sign-in for everyone (customers by emailed code; businesses, staff and admins by email and password); admins must use authenticator-app MFA; no SMS provider | D12 | Approved and built |
+| 2026-11-28 13:28 | Data residency: do not assume UAE residency is required or unnecessary; fictional data only in staging until privacy review; present UAE-only hosting as a launch blocker if needed | D11 | Open: legal review needed (docs/28) |
+| 2026-11-28 13:28 | Files in Supabase Storage (private buckets); evaluate ClamAV; keep the production upload block if scanning is not reliable | D11 | Built; production uploads still blocked (no reliable free scanner) |
+| 2026-11-28 13:28 | Sandbox rules: minimum order AED 1; loyalty configurable per café; stamps only after completion; refunds reverse rewards; gifts expire after a configurable 30 days; one discount or reward per order; promotions café-funded and admin-approved | D07, D08, D16 | Approved for sandbox and built |
+| 2026-11-28 13:28 | No professional services (security testing, accessibility, translation, legal, tax, hosting consultation) to be arranged or bought | D06, D11, D15 | In force. Internal checks are not a substitute for independent review |

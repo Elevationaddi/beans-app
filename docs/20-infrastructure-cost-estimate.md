@@ -1,3 +1,7 @@
+> **Superseded on 2026-11-28.** The founder ruled out paid hosting (AWS, Azure, Oracle and
+> others). The approved stack and its costs are in docs/23 (free-tier register) and docs/24
+> (monthly costs and unavoidable future expenses). This file is kept only as a record.
+
 # Infrastructure cost estimate (list prices checked 2026-11-28)
 
 **Estimates only. Nothing has been bought, and no account has been created.** Prices are public

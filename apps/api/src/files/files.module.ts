@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { Global, Logger, Module } from "@nestjs/common";
 import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
-import { BasicFileScanner, FILE_SCANNER } from "./file-scanner.js";
+import { BasicFileScanner, DisabledFileScanner, FILE_SCANNER } from "./file-scanner.js";
 import { FilesService } from "./files.service.js";
 import { LocalObjectStorage, OBJECT_STORAGE } from "./object-storage.js";
 import { FileTokenSigner } from "./signed-token.js";
@@ -37,7 +37,12 @@ function signingSecret(env: Env): string {
             ),
       inject: [ENV],
     },
-    { provide: FILE_SCANNER, useClass: BasicFileScanner },
+    {
+      provide: FILE_SCANNER,
+      useFactory: (env: Env) =>
+        env.FILE_SCANNER === "disabled" ? new DisabledFileScanner() : new BasicFileScanner(),
+      inject: [ENV],
+    },
     FilesService,
   ],
   exports: [FilesService, OBJECT_STORAGE],

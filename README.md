@@ -40,7 +40,7 @@ for test evidence and docs/15-release-plan.md for the path to staging and a pilo
 
 | Path                 | What it is                                                  | Local URL                           |
 | -------------------- | ----------------------------------------------------------- | ----------------------------------- |
-| `apps/api`           | NestJS API (Prisma + PostgreSQL, Redis)                     | http://localhost:3000               |
+| `apps/api`           | NestJS API (Prisma + PostgreSQL)                            | http://localhost:3000               |
 | `apps/merchant`      | Next.js merchant portal, branch tablet at `/tablet`         | http://localhost:3001               |
 | `apps/admin`         | Next.js admin console                                       | http://localhost:3002               |
 | `apps/mobile`        | Expo customer app (iOS/Android)                             | `pnpm --filter @beans/mobile start` |
@@ -52,7 +52,7 @@ Requirements: Node 22.13+, pnpm 10 (`corepack enable`), Docker.
 
 ```sh
 pnpm install                       # also builds packages/contracts and packages/ui
-pnpm db:up                         # PostgreSQL 16 + Redis 7 via docker-compose.yml
+pnpm db:up                         # PostgreSQL 16 via docker-compose.yml
 cp .env.example apps/api/.env
 pnpm db:migrate                    # applies prisma/migrations
 pnpm db:seed                       # synthetic merchants, branches, menu and staff
@@ -68,7 +68,7 @@ API reference: `packages/contracts/openapi.json` (regenerate with
 `pnpm --filter @beans/contracts openapi`). Signing in locally needs a Supabase project; see
 "Signing in locally" in docs/13-progress.md.
 
-`GET /health` answers 200 when PostgreSQL and Redis are reachable and 503 otherwise.
+`GET /health` answers 200 when PostgreSQL is reachable and 503 otherwise.
 `GET /health/live` only confirms the process is running.
 
 The API refuses to start with invalid settings, with the fake payment provider in production,

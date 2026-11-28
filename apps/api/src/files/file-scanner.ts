@@ -38,3 +38,14 @@ export class BasicFileScanner implements FileScanner {
     return { clean: true };
   }
 }
+
+/**
+ * No scanner available (production until a real malware scanner is approved): document uploads
+ * are refused before any bytes are accepted, and anything that still reaches a check is
+ * rejected, so no unscanned document can ever be opened.
+ */
+export class DisabledFileScanner implements FileScanner {
+  async scan(): Promise<ScanVerdict> {
+    return { clean: false, reason: "Document checks are not available yet" };
+  }
+}

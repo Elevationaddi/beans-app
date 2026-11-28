@@ -9,7 +9,7 @@ import { PrismaService } from "../database/prisma.service.js";
 import type { Upload } from "../generated/prisma/client.js";
 import { OutboxService } from "../outbox/outbox.service.js";
 import { MerchantAccessService } from "../tenancy/merchant-access.service.js";
-import { FILE_SCANNER, type FileScanner } from "./file-scanner.js";
+import { DisabledFileScanner, FILE_SCANNER, type FileScanner } from "./file-scanner.js";
 import {
   LocalObjectStorage,
   OBJECT_STORAGE,
@@ -51,6 +51,14 @@ export class FilesService {
 
   async createMerchantDocumentUpload(actor: Actor, input: CreateUploadRequest) {
     const merchant = await this.access.requireOwner(actor.userId, input.merchantId);
+    if (this.scanner instanceof DisabledFileScanner) {
+      // No malware scanner approved yet: refuse before any bytes are accepted (docs/27 L1).
+      throw new ApiError(
+        HttpStatus.FORBIDDEN,
+        "FEATURE_DISABLED",
+        "Document uploads are not available yet. Please contact the platform team.",
+      );
+    }
     if (merchant.status !== "draft") {
       throw new ApiError(
         HttpStatus.CONFLICT,

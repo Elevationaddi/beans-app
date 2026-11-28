@@ -94,7 +94,7 @@ export const envSchema = z
     /** HMAC secret for signed file links (32+ chars). Random per process when unset outside production. */
     FILE_SIGNING_SECRET: z.string().min(32).optional(),
     /** Uploaded-file check. Only the basic development checker exists so far. */
-    FILE_SCANNER: z.enum(["basic"]).default("basic"),
+    FILE_SCANNER: z.enum(["basic", "disabled"]).default("basic"),
     PAYMENT_PROVIDER: z.enum(["fake", "tap"]).default("fake"),
     /** Tap test secret key (sk_test_…), only with PAYMENT_PROVIDER=tap. Never commit it. */
     TAP_SECRET_KEY: z
