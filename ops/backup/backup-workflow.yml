@@ -1,0 +1,75 @@
+# Daily encrypted staging backup (docs/30).
+#
+# COPY THIS FILE into a separate PRIVATE repository (for example "beans-backups") as
+# .github/workflows/backup.yml. Never run it in the public application repository: artifacts of
+# a public repository can be downloaded by anyone signed in to GitHub.
+#
+# Repository secrets in the private repository (Settings > Secrets and variables > Actions):
+#   STAGING_DATABASE_URL       Supabase session pooler URL (IPv4), read access is enough
+#   SUPABASE_URL               https://<project>.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY  staging service role key (to read the private bucket)
+#   SUPABASE_STORAGE_BUCKET    bucket name, for example merchant-documents
+# Repository variable:
+#   AGE_RECIPIENT              the backup PUBLIC key (age1...). The private key never goes to GitHub.
+name: staging-backup
+
+on:
+  schedule:
+    - cron: "15 22 * * *" # 02:15 Asia/Dubai, daily
+  workflow_dispatch: {} # manual backup: Actions > staging-backup > Run workflow
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      scratch:
+        image: postgres:17
+        env:
+          POSTGRES_USER: check
+          POSTGRES_PASSWORD: check
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U check" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - name: Get the backup scripts from the application repository
+        uses: actions/checkout@v4
+        with:
+          repository: Elevationaddi/beans-app
+          ref: main
+          sparse-checkout: ops/backup
+          path: app
+      - name: Install PostgreSQL 17 client and age
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+          sudo apt-get install -y -qq postgresql-client-17 age jq
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+      - name: Back up, verify by restoring, encrypt
+        id: backup
+        env:
+          SOURCE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          CHECK_URL: postgresql://check:check@localhost:5432/backup_restore_check
+          AGE_RECIPIENT: ${{ vars.AGE_RECIPIENT }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_STORAGE_BUCKET: ${{ secrets.SUPABASE_STORAGE_BUCKET }}
+          OUT_DIR: ${{ runner.temp }}/out
+        run: app/ops/backup/backup.sh
+      - name: Keep the encrypted backup for 7 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.backup.outputs.name }}
+          path: ${{ runner.temp }}/out/
+          retention-days: 7
+          if-no-files-found: error
+          compression-level: 0
