@@ -71,6 +71,7 @@ describe("phase 11: hardening", () => {
     for (const res of [await http().get("/health/live"), await http().get("/v1/me")]) {
       expect(res.headers["x-content-type-options"]).toBe("nosniff");
       expect(res.headers["x-frame-options"]).toBe("DENY");
+      expect(res.headers["x-robots-tag"]).toBe("noindex, nofollow");
       expect(res.headers["content-security-policy"]).toContain("default-src 'none'");
       expect(res.headers["x-powered-by"]).toBeUndefined();
     }

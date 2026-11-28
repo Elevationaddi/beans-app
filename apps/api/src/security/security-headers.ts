@@ -14,6 +14,8 @@ export function securityHeaders(env: Env) {
     res.setHeader("Referrer-Policy", "no-referrer");
     res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
     res.setHeader("Cross-Origin-Resource-Policy", "same-site");
+    // Pre-launch: keep every deployment out of search engines, whatever host serves it.
+    res.setHeader("X-Robots-Tag", "noindex, nofollow");
     if (env.NODE_ENV === "production") {
       res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     }

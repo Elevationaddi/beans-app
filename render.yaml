@@ -1,0 +1,101 @@
+# Private STAGING on Render Free (founder decision, 2026-11-28). Fictional data only.
+#
+# - Database, sign-in, files and live updates: Supabase Free (Mumbai). Render runs the code only.
+# - Free web services sleep after 15 minutes without traffic and wake in about a minute.
+#   All free services in the workspace share 750 instance hours a month. There are no free cron
+#   jobs: the API runs its timers in-process while awake (see docs/31).
+# - No paid plan, no payment method. If a free limit is reached, Render suspends the service
+#   until the next month; it does not bill.
+# - Secrets are "sync: false": the founder types them in the Render dashboard. Generated ones
+#   are random per service. Never put a real value in this file.
+# - Deploys are manual (autoDeployTrigger: off) to save free build minutes.
+services:
+  - type: web
+    name: cm-staging-api
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    autoDeployTrigger: "off"
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter "@beans/api..." build
+    startCommand: node --enable-source-maps apps/api/dist/main.js
+    healthCheckPath: /health
+    envVars:
+      - { key: NODE_VERSION, value: "22" }
+      - { key: NODE_ENV, value: production }
+      - { key: DEPLOY_ENV, value: staging }
+      - { key: PAYMENT_PROVIDER, value: fake }
+      - { key: LIVE_PAYMENTS_ENABLED, value: "false" }
+      - { key: FILE_SCANNER, value: disabled }
+      - { key: STORAGE_DRIVER, value: supabase }
+      - { key: SUPABASE_STORAGE_BUCKET, value: merchant-documents }
+      - { key: REALTIME_DRIVER, value: supabase }
+      - { key: RATE_LIMIT_ENABLED, value: "true" }
+      - { key: CHECKOUT_SWEEP_ENABLED, value: "true" }
+      - { key: OUTBOX_RELAY_ENABLED, value: "true" }
+      - { key: DATABASE_POOL_MAX, value: "5" }
+      - { key: DATABASE_URL, sync: false }
+      - { key: SUPABASE_URL, sync: false }
+      - { key: SUPABASE_SERVICE_ROLE_KEY, sync: false }
+      - { key: SUPABASE_JWKS_URL, sync: false }
+      - { key: SUPABASE_JWT_ISSUER, sync: false }
+      - { key: API_PUBLIC_URL, sync: false }
+      - { key: CORS_ORIGINS, sync: false }
+      - { key: PAYMENT_WEBHOOK_SECRET, generateValue: true }
+      - { key: PICKUP_CODE_SECRET, generateValue: true }
+      - { key: TABLE_TOKEN_SECRET, generateValue: true }
+      - { key: FILE_SIGNING_SECRET, generateValue: true }
+      - { key: REALTIME_CHANNEL_SECRET, generateValue: true }
+      - { key: CRON_SECRET, generateValue: true }
+
+  - type: web
+    name: cm-staging-portal
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    autoDeployTrigger: "off"
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter "@beans/merchant..." build
+    startCommand: cd apps/merchant && npx next start -p $PORT
+    envVars:
+      - { key: NODE_VERSION, value: "22" }
+      - { key: NEXT_PUBLIC_API_URL, sync: false }
+      - { key: NEXT_PUBLIC_SUPABASE_URL, sync: false }
+      - { key: NEXT_PUBLIC_SUPABASE_ANON_KEY, sync: false }
+
+  - type: web
+    name: cm-staging-admin
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    autoDeployTrigger: "off"
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter "@beans/admin..." build
+    startCommand: cd apps/admin && npx next start -p $PORT
+    envVars:
+      - { key: NODE_VERSION, value: "22" }
+      - { key: NEXT_PUBLIC_API_URL, sync: false }
+      - { key: NEXT_PUBLIC_SUPABASE_URL, sync: false }
+      - { key: NEXT_PUBLIC_SUPABASE_ANON_KEY, sync: false }
+      - { key: NEXT_PUBLIC_MERCHANT_URL, sync: false }
+
+  # Customer app web preview: a static site (no instance hours, does not sleep).
+  - type: web
+    name: cm-staging-customer
+    runtime: static
+    branch: main
+    autoDeployTrigger: "off"
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter "@beans/mobile^..." build && pnpm --filter @beans/mobile export:web
+    staticPublishPath: apps/mobile/dist-web
+    headers:
+      - { path: /*, name: X-Robots-Tag, value: "noindex, nofollow" }
+      - { path: /*, name: X-Frame-Options, value: DENY }
+      - { path: /*, name: Referrer-Policy, value: no-referrer }
+    routes:
+      - { type: rewrite, source: /*, destination: /index.html }
+    envVars:
+      - { key: NODE_VERSION, value: "22" }
+      - { key: EXPO_PUBLIC_API_URL, sync: false }
+      - { key: EXPO_PUBLIC_SUPABASE_URL, sync: false }
+      - { key: EXPO_PUBLIC_SUPABASE_ANON_KEY, sync: false }
+      - { key: EXPO_PUBLIC_DEMO_PASSWORD_SIGNIN, value: "true" }
