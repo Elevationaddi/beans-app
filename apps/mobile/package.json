@@ -5,6 +5,7 @@
   "dependencies": {
     "@beans/contracts": "workspace:*",
     "@beans/ui": "workspace:*",
+    "@expo/metro-runtime": "~58.0.17",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "7.22.0",
     "@react-navigation/native": "7.5.2",
@@ -12,11 +13,14 @@
     "expo": "~58.1.0",
     "expo-localization": "~58.0.5",
     "expo-location": "~58.0.23",
+    "expo-secure-store": "~58.0.3",
     "expo-status-bar": "~58.0.5",
     "react": "19.3.0",
+    "react-dom": "19.3.0",
     "react-native": "0.88.1",
     "react-native-safe-area-context": "~5.11.1",
-    "react-native-screens": "~4.30.1"
+    "react-native-screens": "~4.30.1",
+    "react-native-web": "~0.21.4"
   },
   "devDependencies": {
     "@react-native/jest-preset": "^0.88.1",
@@ -34,6 +38,7 @@
     "ios": "expo start --ios",
     "typecheck": "tsc --noEmit",
     "build": "expo export --platform android --output-dir dist",
+    "export:web": "expo export --platform web --output-dir dist-web",
     "test": "jest --ci"
   },
   "private": true,

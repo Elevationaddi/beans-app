@@ -7,9 +7,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  type TextInputProps,
   View,
 } from "react-native";
 import { useI18n } from "../i18n";
+import type { ApiFailure } from "../lib/api";
 import type { Remote } from "../lib/use-remote";
 
 /** Root of every screen: background, padding, and the Arabic review notice. */
@@ -42,9 +45,17 @@ export function Screen({
   );
 }
 
-export function Heading({ children, level = 1 }: { children: ReactNode; level?: 1 | 2 }) {
+export function Heading({
+  children,
+  level = 1,
+  testID,
+}: {
+  children: ReactNode;
+  level?: 1 | 2;
+  testID?: string;
+}) {
   return (
-    <Text accessibilityRole="header" style={level === 1 ? styles.h1 : styles.h2}>
+    <Text accessibilityRole="header" style={level === 1 ? styles.h1 : styles.h2} testID={testID}>
       {children}
     </Text>
   );
@@ -237,7 +248,90 @@ export function ConfirmDialog({
   );
 }
 
+/** A labelled text field; the label is also the accessible name. */
+export function Field({
+  label,
+  hint,
+  error,
+  testID,
+  ...input
+}: TextInputProps & { label: string; hint?: string; error?: string | null; testID?: string }) {
+  return (
+    <View style={{ gap: space[1] }}>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput
+        testID={testID}
+        accessibilityLabel={label}
+        {...(hint !== undefined && { accessibilityHint: hint })}
+        placeholderTextColor={colors.primary}
+        style={[styles.input, input.multiline && { minHeight: 96, textAlignVertical: "top" }]}
+        {...input}
+      />
+      {hint ? <Body muted>{hint}</Body> : null}
+      {error ? (
+        <Text style={styles.error} accessibilityLiveRegion="assertive">
+          {error}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+/** A coloured notice with text (never colour alone). */
+export function Notice({
+  children,
+  tone = "info",
+  testID,
+}: {
+  children: ReactNode;
+  tone?: "info" | "warning" | "error" | "success";
+  testID?: string;
+}) {
+  const border =
+    tone === "error"
+      ? colors.error
+      : tone === "warning"
+        ? colors.warning
+        : tone === "success"
+          ? colors.success
+          : colors.border;
+  return (
+    <View
+      testID={testID}
+      style={[styles.card, { borderColor: border, borderWidth: 2 }]}
+      accessibilityLiveRegion={tone === "error" ? "assertive" : "polite"}
+    >
+      {typeof children === "string" ? <Body>{children}</Body> : children}
+    </View>
+  );
+}
+
+/** The server's message for a failed action, or the offline message. */
+export function FailureText({ failure }: { failure: ApiFailure | Error | null }) {
+  const { t } = useI18n();
+  if (!failure) return null;
+  const offline = "kind" in failure && failure.kind === "offline";
+  return (
+    <Text style={styles.error} accessibilityLiveRegion="assertive" testID="failure">
+      {offline ? t("common.offline") : failure.message}
+    </Text>
+  );
+}
+
 export const styles = StyleSheet.create({
+  label: { color: colors.ink, fontSize: typography.size.secondary, fontWeight: "600" },
+  input: {
+    minHeight: touchTarget.android,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: space[3],
+    backgroundColor: colors.surface,
+    color: colors.ink,
+    fontSize: typography.size.body,
+    textAlign: "auto",
+  },
+  error: { color: colors.error, fontSize: typography.size.secondary },
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: space[4], gap: space[3] },
   notice: {

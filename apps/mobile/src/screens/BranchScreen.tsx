@@ -1,10 +1,20 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { availabilityText } from "../components/branch-card";
-import { Body, Button, Heading, RemoteState, Screen, StatusChip, styles } from "../components/ui";
+import {
+  Body,
+  Button,
+  FailureText,
+  Heading,
+  RemoteState,
+  Screen,
+  StatusChip,
+  styles,
+} from "../components/ui";
 import { localized, useI18n } from "../i18n";
 import { api, call } from "../lib/api";
 import { formatFils } from "../lib/money";
+import { useAction } from "../lib/use-action";
 import { useRemote } from "../lib/use-remote";
 import type { RootScreen } from "../navigation/types";
 import { useAppState } from "../state/app-state";
@@ -25,6 +35,22 @@ export function BranchScreen({ navigation, route }: RootScreen<"Branch">) {
     return { branch: detail.data, menu: menu.data };
   }, [branchId]);
   const count = itemCount(cart);
+  // Whether this café is saved: the server is the source; null until known.
+  const saved = useRemote(async () => {
+    if (!signedIn || !remote.data) return null;
+    const merchantId = remote.data.branch.merchantId;
+    const list = await call(api.GET("/v1/favorites", { params: { query: { limit: 100 } } }));
+    return list.data.some((f) => f.merchantId === merchantId);
+  }, [signedIn, remote.data?.branch.merchantId]);
+  const toggleSave = useAction(async (merchantId: string, save: boolean) => {
+    const path = { params: { path: { merchantId } } };
+    await call(
+      save
+        ? api.PUT("/v1/favorites/{merchantId}", path)
+        : api.DELETE("/v1/favorites/{merchantId}", path),
+    );
+    saved.reload();
+  });
 
   return (
     <Screen testID="branch">
@@ -51,8 +77,22 @@ export function BranchScreen({ navigation, route }: RootScreen<"Branch">) {
                 <StatusChip key={m} label={t(`explore.mode.${m}`)} tone="success" />
               ))}
             </View>
-            {/* Saving needs an account; the save button arrives with sign-in (D12). */}
-            {signedIn ? null : <Body muted>{t("branch.saveSignIn")}</Body>}
+            {signedIn ? (
+              saved.data === null ? null : (
+                <>
+                  <Button
+                    label={saved.data ? t("branch.unsave") : t("branch.save")}
+                    variant="secondary"
+                    disabled={toggleSave.pending}
+                    onPress={() => void toggleSave.run(branch.merchantId, !saved.data)}
+                    testID="toggle-favorite"
+                  />
+                  <FailureText failure={toggleSave.failure} />
+                </>
+              )
+            ) : (
+              <Body muted>{t("branch.saveSignIn")}</Body>
+            )}
             <Button
               label={t("branch.hours")}
               variant="secondary"
