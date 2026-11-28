@@ -1,0 +1,91 @@
+/* Portal-only additions on top of @beans/web/styles.css. */
+.hours-grid {
+  display: grid;
+  grid-template-columns: 120px repeat(2, minmax(100px, 160px)) auto;
+  gap: 8px;
+  align-items: center;
+}
+.option-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 140px auto;
+  gap: 8px;
+  align-items: end;
+}
+@media (max-width: 640px) {
+  .option-row,
+  .hours-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.order-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-inline-start: 6px solid var(--c-border);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.order-card.status-received {
+  border-inline-start-color: var(--c-accent);
+}
+.order-card.status-preparing {
+  border-inline-start-color: var(--c-warning);
+}
+.order-card.status-ready {
+  border-inline-start-color: var(--c-success);
+}
+.order-card.delayed {
+  border-inline-start-color: var(--c-error);
+}
+.order-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.order-head h3 {
+  font-size: 22px;
+}
+.order-lines {
+  margin: 0;
+  padding-inline-start: 18px;
+}
+.order-lines.large {
+  font-size: 18px;
+}
+.note {
+  background: color-mix(in srgb, var(--c-warning) 15%, white);
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: 4px 0;
+  font-weight: 600;
+}
+.vehicle {
+  font-size: 17px;
+}
+.arrival {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--c-success) 10%, white);
+}
+.arrival.alert {
+  background: color-mix(in srgb, var(--c-accent) 25%, white);
+  font-weight: 700;
+}
+.order-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.code-input {
+  font-size: 32px;
+  letter-spacing: 8px;
+  text-align: center;
+  max-width: 260px;
+}
+.order-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}

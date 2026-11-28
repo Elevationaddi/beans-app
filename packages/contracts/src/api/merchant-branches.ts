@@ -5,8 +5,15 @@ import {
   filsSchema,
   listEnvelope,
   localDateSchema,
+  pageQuerySchema,
   uuidSchema,
 } from "./common.js";
+
+/** Branches the caller may operate; `merchantId` narrows the list to one of their businesses. */
+export const merchantBranchListQuerySchema = pageQuerySchema.extend({
+  merchantId: uuidSchema.optional(),
+});
+export type MerchantBranchListQuery = z.infer<typeof merchantBranchListQuerySchema>;
 
 export const branchStatusSchema = z.enum(["draft", "active", "paused", "closed"]);
 export const fulfilmentModeSchema = z.enum(["in_store", "curbside", "dine_in"]);
@@ -180,3 +187,36 @@ export const branchOptionSchema = z.object({
 });
 export type BranchOptionAvailability = z.infer<typeof branchOptionSchema>;
 export const branchOptionResponseSchema = dataEnvelope(branchOptionSchema);
+
+/** Everything a branch can sell, with its branch-level availability (B05). */
+export const merchantBranchAvailabilitySchema = z.object({
+  branchId: uuidSchema,
+  products: z.array(
+    z.object({
+      productId: uuidSchema,
+      categoryId: uuidSchema,
+      names: z.object({ en: z.string(), ar: z.string().optional() }),
+      basePriceFils: filsSchema,
+      productStatus: z.enum(["draft", "published", "archived"]),
+      enabled: z.boolean(),
+      priceOverrideFils: filsSchema.nullable(),
+      stockOnHand: z.number().int().nullable(),
+      stockReserved: z.number().int(),
+    }),
+  ),
+  options: z.array(
+    z.object({
+      optionId: uuidSchema,
+      groupId: uuidSchema,
+      groupNames: z.object({ en: z.string(), ar: z.string().optional() }),
+      names: z.object({ en: z.string(), ar: z.string().optional() }),
+      baseDeltaFils: filsSchema,
+      enabled: z.boolean(),
+      deltaOverrideFils: filsSchema.nullable(),
+    }),
+  ),
+});
+export type MerchantBranchAvailability = z.infer<typeof merchantBranchAvailabilitySchema>;
+export const merchantBranchAvailabilityResponseSchema = dataEnvelope(
+  merchantBranchAvailabilitySchema,
+);

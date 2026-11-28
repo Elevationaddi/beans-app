@@ -46,6 +46,26 @@ function divideHalfUp(numerator: bigint, denominator: bigint): bigint {
   return (numerator * 2n + denominator) / (denominator * 2n);
 }
 
+/**
+ * The amount commission is charged on. Founder decision D02 (sandbox default, 2026-11-28): net
+ * merchandise value excluding VAT and refunded amounts. Prices are tax-inclusive, so the VAT
+ * inside the kept amount is taken in proportion to the order's VAT, rounded half up.
+ */
+export function commissionBase(
+  keptFils: bigint,
+  order: { totalFils: bigint; taxIncludedFils: bigint },
+  basis: "gross_of_vat" | "net_of_vat",
+): bigint {
+  if (keptFils < 0n || order.totalFils < 0n || order.taxIncludedFils < 0n) {
+    throw new RangeError("invalid commission base inputs");
+  }
+  if (basis === "gross_of_vat" || order.totalFils === 0n || order.taxIncludedFils === 0n) {
+    return keptFils;
+  }
+  const vat = divideHalfUp(keptFils * order.taxIncludedFils, order.totalFils);
+  return keptFils - (vat > keptFils ? keptFils : vat);
+}
+
 /** Commission on an order total at a rate in basis points, rounded half up. */
 export function commissionFor(totalFils: bigint, rateBasisPoints: bigint): bigint {
   if (totalFils < 0n || rateBasisPoints < 0n || rateBasisPoints > 10_000n) {
