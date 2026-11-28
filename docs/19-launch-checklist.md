@@ -50,19 +50,19 @@ Legend: ✅ done with evidence · 🟡 built, needs a real-world check · ⛔ no
 
 ## D. Infrastructure and operations
 
-| #   | Item                                             | State | Evidence / blocker                                  | Signs   |
-| --- | ------------------------------------------------ | ----- | --------------------------------------------------- | ------- |
-| D1  | Hosting: Vercel + Supabase Free, Mumbai          | 🟡    | Founder decision 2026-11-28; plan approval pending  | Founder |
-| D1a | Vercel plan confirmed as Pro                     | ⛔    | Hobby cannot run per-minute cron (docs/27 L3)       | Founder |
-| D1b | Spend Management hard pause set                  | ⛔    | docs/25 section 2                                   | Founder |
-| D2  | Staging built per docs/18 and checks passed      | ⛔    | Prepared; needs approval to deploy                  | Eng     |
-| D3  | Supabase staging and production projects         | ⛔    | Free plan, Mumbai (docs/25 section 3)               | Founder |
-| D4  | Sign-in emails: Resend with a verified domain    | ⛔    | Needs a domain (docs/25 section 4)                  | Founder |
-| D5  | Monitoring and alerts (docs/15 section 6)        | 🟡    | Vercel and Supabase built-in logs only (docs/27 L6) | Eng     |
-| D6  | Backup restore and rollback rehearsed in staging | 🟡    | Drill passes locally (docs/27); repeat on staging   | Eng     |
-| D9  | Managed database backups before real data        | ⛔    | Supabase Free has none (docs/24)                    | Founder |
-| D7  | Load test in staging                             | ⛔    | Needs D2                                            | Eng     |
-| D8  | On-call owner, support hours, escalation (G11)   | ⛔    | Founder                                             | Founder |
+| #   | Item                                             | State | Evidence / blocker                                                            | Signs   |
+| --- | ------------------------------------------------ | ----- | ----------------------------------------------------------------------------- | ------- |
+| D1  | Hosting: Vercel + Supabase Free, Mumbai          | 🟡    | Founder decision 2026-11-28; plan approval pending                            | Founder |
+| D1a | Vercel plan confirmed as Pro                     | ⛔    | Hobby cannot run per-minute cron (docs/27 L3)                                 | Founder |
+| D1b | Spend Management hard pause set                  | ⛔    | docs/25 section 2                                                             | Founder |
+| D2  | Staging built per docs/18 and checks passed      | ⛔    | Prepared; needs approval to deploy                                            | Eng     |
+| D3  | Supabase staging and production projects         | ⛔    | Free plan, Mumbai (docs/25 section 3)                                         | Founder |
+| D4  | Sign-in emails: Resend with a verified domain    | ⛔    | Needs a domain (docs/25 section 4)                                            | Founder |
+| D5  | Monitoring and alerts (docs/15 section 6)        | 🟡    | Vercel and Supabase built-in logs only (docs/27 L6)                           | Eng     |
+| D6  | Backup restore and rollback rehearsed in staging | 🟡    | Encrypted backup drill runs in CI on every build (docs/30); repeat on staging | Eng     |
+| D9  | Managed database backups before real data        | ⛔    | Supabase Free has none; free daily encrypted export is staging-only (docs/30) | Founder |
+| D7  | Load test in staging                             | ⛔    | Needs D2                                                                      | Eng     |
+| D8  | On-call owner, support hours, escalation (G11)   | ⛔    | Founder                                                                       | Founder |
 
 ## E. Stores and legal
 
