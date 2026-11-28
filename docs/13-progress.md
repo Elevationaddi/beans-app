@@ -1041,6 +1041,44 @@ No database change. Rollback: revert the commit (documents, a script and a CI st
 Not met, as expected: the phase 12 gate needs explicit owner signoff, approved decisions, pilot
 and external review evidence. These are listed as gates G1–G12 in docs/15.
 
+## Cycle 2 — Four interfaces against the backend (2026-11-28, in progress)
+
+Founder instruction of 2026-11-28: complete and test the customer app, business portal, barista
+tablet and admin console against the backend, sandbox only. Evidence per screen is in
+docs/16-completion-matrix.md.
+
+| Part                                                                                                         | PR      | Tests added                                                  |
+| ------------------------------------------------------------------------------------------------------------ | ------- | ------------------------------------------------------------ |
+| Development sign-in, business portal, merchant finance                                                       | #12     | dev-auth, finance B09, tenancy                               |
+| Barista tablet                                                                                               | #13     | tablet.int (3)                                               |
+| Admin back end: settings, pause, homepage, customers, orders, roles, moderation, disputes, broadcasts, inbox | #14     | platform.int (10)                                            |
+| Admin console screens, browser test suite and CI job                                                         | this PR | e2e: 13 admin, 3 portal, 2 tablet; API: privacy queue filter |
+
+### Admin console
+
+- Fourteen screens in `apps/admin`, each shown only to the admin roles the API accepts for it.
+  Every session must complete two-step verification (aal2) before any screen loads, and the
+  API checks the same on every admin route. super_admin has no implicit access.
+- Every decision asks for a written reason that goes to the audit log. Money decisions are
+  maker/checker. Refund and dispute amounts are entered in AED and converted to integer fils
+  without floating point.
+- Announcements reach in-app inboxes only. No SMS, email or push is sent.
+- Arabic strings are drafts for layout testing and need native review.
+
+### Browser tests (`e2e/`)
+
+- Playwright against the real API, PostgreSQL and Redis with seeded fictional accounts and
+  development sign-in. `pnpm test:e2e` starts the three servers when they are not running.
+- Global setup keeps the seeded test branch open around the clock and reopens ordering if an
+  earlier run left the platform paused.
+- CI job "Browser tests" migrates and seeds an empty database, builds everything, generates
+  per-run random signing secrets and keeps the HTML report when a test fails.
+
+### Rollback
+
+Revert the PR. No migration in this part. The two contract additions (`category` filter on
+ticket lists, `version` on admin orders) are additive.
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.

@@ -44,6 +44,8 @@ export const ticketQuerySchema = pageQuerySchema.extend({
   status: ticketStatusSchema.optional(),
   /** Merchant members: tickets of this merchant instead of their own customer tickets. */
   merchantId: uuidSchema.optional(),
+  /** Narrow to one category, e.g. "privacy" for the admin privacy request queue. */
+  category: ticketCategorySchema.optional(),
 });
 
 export const ticketMessageSchema = z.object({

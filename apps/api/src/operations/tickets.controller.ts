@@ -21,12 +21,18 @@ import { decodeCursor, encodeCursor } from "../common/cursor.js";
 import type { Actor } from "../common/request-context.js";
 import { ZodValidationPipe } from "../common/zod-validation.pipe.js";
 import { PrismaService } from "../database/prisma.service.js";
-import type { Prisma, TicketStatus } from "../generated/prisma/client.js";
+import type { Prisma, TicketCategory, TicketStatus } from "../generated/prisma/client.js";
 import { TicketsService, toTicket, toTicketDetail } from "./tickets.service.js";
 import { LIMITS, RateLimit } from "../security/rate-limit.js";
 
 const idParams = new ZodValidationPipe(z.strictObject({ id: uuidSchema }));
-type TicketQuery = { cursor?: string; limit: number; status?: TicketStatus; merchantId?: string };
+type TicketQuery = {
+  cursor?: string;
+  limit: number;
+  status?: TicketStatus;
+  merchantId?: string;
+  category?: TicketCategory;
+};
 
 async function page(
   prisma: PrismaService,
@@ -39,6 +45,7 @@ async function page(
     where: {
       ...where,
       ...(query.status && { status: query.status }),
+      ...(query.category && { category: query.category }),
       ...(cursor && {
         OR: [
           { createdAt: { lt: cursor.createdAt } },

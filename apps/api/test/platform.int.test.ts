@@ -326,6 +326,8 @@ describe("platform administration", () => {
         (await get(`/v1/admin/orders/${order.orderId}`, ops.token).expect(200)).body,
       ).data;
       expect(detail.events.map((e) => e.toStatus)).toContain("received");
+      // The version lets an admin cancel without overwriting a concurrent change.
+      expect(detail.version).toBeGreaterThanOrEqual(1);
       expect(detail.payments[0]).toMatchObject({ status: "captured", provider: "fake" });
       const customer = await admin(["marketing"]);
       await get("/v1/admin/orders", customer.token).expect(403);

@@ -20,16 +20,16 @@ Legend: **Yes** working and tested (evidence column) · **Part** some of it · *
 
 ## Authentication (D12)
 
-| Screen / capability                         | API  | Screen | Plan                                                    | Evidence |
-| ------------------------------------------- | ---- | ------ | ------------------------------------------------------- | -------- |
-| Token verification, DB roles, admin MFA     | Yes  | —      | Keep                                                    |          |
-| Local development sign-in (fictional users) | No   | No     | Dev-only issuer, refused in production                  |          |
-| Customer phone OTP, email, Apple, Google    | Part | No     | Supabase client screens; dev sign-in locally            |          |
-| Business email and password                 | Part | No     | Portal sign-in, register, reset                         |          |
-| Staff individual accounts                   | Yes  | No     | Tablet sign-in and branch choice                        |          |
-| Admin email, password and MFA               | Yes  | No     | Admin sign-in with MFA step                             |          |
-| Password reset, recovery, session expiry    | No   | No     | Screens on each surface; expiry handling in API clients |          |
-| Account deletion                            | Part | No     | Deletion request flow (privacy request) plus screen     |          |
+| Screen / capability                         | API  | Screen | Plan                                                    | Evidence       |
+| ------------------------------------------- | ---- | ------ | ------------------------------------------------------- | -------------- |
+| Token verification, DB roles, admin MFA     | Yes  | —      | Keep                                                    |                |
+| Local development sign-in (fictional users) | No   | No     | Dev-only issuer, refused in production                  |                |
+| Customer phone OTP, email, Apple, Google    | Part | No     | Supabase client screens; dev sign-in locally            |                |
+| Business email and password                 | Part | No     | Portal sign-in, register, reset                         |                |
+| Staff individual accounts                   | Yes  | No     | Tablet sign-in and branch choice                        |                |
+| Admin email, password and MFA               | Yes  | Yes    | Admin sign-in with MFA step                             | e2e admin.spec |
+| Password reset, recovery, session expiry    | No   | No     | Screens on each surface; expiry handling in API clients |                |
+| Account deletion                            | Part | No     | Deletion request flow (privacy request) plus screen     |                |
 
 ## Customer app (docs/02)
 
@@ -81,16 +81,17 @@ Legend: **Yes** working and tested (evidence column) · **Part** some of it · *
 
 ## Admin console (docs/04)
 
-| ID  | Screen                                         | API  | Screen | Plan                                 | Evidence |
-| --- | ---------------------------------------------- | ---- | ------ | ------------------------------------ | -------- |
-| A01 | Platform overview                              | Yes  | No     | Build                                |          |
-| A02 | Merchants, verification, branches              | Yes  | No     | Build; suspend                       |          |
-| A03 | Customers                                      | No   | No     | API and screen                       |          |
-| A04 | Order monitoring                               | Part | No     | Admin order list API and screen      |          |
-| A05 | Finance, refunds, payouts, reconciliation      | Yes  | No     | Build; disputes and chargebacks      |          |
-| A06 | Customer and merchant support                  | Yes  | No     | Build                                |          |
-| A07 | Promotions, gifts, loyalty, homepage, featured | No   | No     | Phase 9 and content API              |          |
-| A08 | Reports and exports                            | Yes  | No     | Build                                |          |
-| A09 | Settings, commission, feature flags, pause     | Part | No     | Writable, audited settings and flags |          |
-| A10 | Audit, security logs, admin permissions        | Part | No     | Build; admin roles API               |          |
-| —   | Menu moderation, staff, notifications, privacy | Part | No     | Build                                |          |
+| ID  | Screen                                         | API  | Screen | Plan                                 | Evidence                                                                 |
+| --- | ---------------------------------------------- | ---- | ------ | ------------------------------------ | ------------------------------------------------------------------------ |
+| —   | Admin sign-in with mandatory two-step check    | Yes  | Yes    | Build                                | e2e admin.spec "requires two-step verification"; role-scoped navigation  |
+| A01 | Platform overview                              | Yes  | Yes    | Build                                | e2e admin.spec "overview"; live figures and alerts from the API          |
+| A02 | Merchants, verification, branches              | Yes  | Yes    | Build; suspend                       | PR #14 platform.int; review, documents, suspend and restore screen       |
+| A03 | Customers                                      | Yes  | Yes    | API and screen                       | PR #14 platform.int; search, audited detail, suspend and restore         |
+| A04 | Order monitoring                               | Yes  | Yes    | Admin order list API and screen      | e2e admin.spec "cancel an order"; cancellation requests tab              |
+| A05 | Finance, refunds, payouts, reconciliation      | Yes  | Yes    | Build; disputes and chargebacks      | e2e admin.spec "maker and a different checker"; disputes (sandbox)       |
+| A06 | Customer and merchant support                  | Yes  | Yes    | Build                                | e2e admin.spec "support replies"; internal notes, assignment             |
+| A07 | Promotions, gifts, loyalty, homepage, featured | Part | Part   | Phase 9 and content API              | e2e admin.spec "homepage"; promotions, gifts and loyalty wait on phase 9 |
+| A08 | Reports and exports                            | Yes  | Yes    | Build                                | Browser walk 2026-11-28; audited per view                                |
+| A09 | Settings, commission, feature flags, pause     | Yes  | Yes    | Writable, audited settings and flags | e2e admin.spec "emergency pause", "order timers"; commission read only   |
+| A10 | Audit, security logs, admin permissions        | Yes  | Yes    | Build; admin roles API               | e2e admin.spec "audit log", "grants and removes a role"                  |
+| —   | Menu moderation, announcements, privacy        | Yes  | Yes    | Build                                | e2e admin.spec "moderation", "announcements"; privacy export (audited)   |
