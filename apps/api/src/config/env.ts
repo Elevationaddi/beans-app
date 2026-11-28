@@ -80,8 +80,16 @@ export const envSchema = z
       .transform((value) => value === "true"),
     /** Public base URL of this API, used to build upload and download links. */
     API_PUBLIC_URL: z.string().url().optional(),
-    /** Private object storage. Only the local development driver exists so far. */
-    STORAGE_DRIVER: z.enum(["local"]).default("local"),
+    /**
+     * Private object storage. "local": this machine's disk (development and tests).
+     * "supabase": a private Supabase Storage bucket (Free plan), with signed links.
+     */
+    STORAGE_DRIVER: z.enum(["local", "supabase"]).default("local"),
+    /** Private bucket for merchant documents (STORAGE_DRIVER=supabase). */
+    SUPABASE_STORAGE_BUCKET: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9-]{2,62}$/, "lowercase letters, digits and dashes")
+      .default("merchant-documents"),
     STORAGE_LOCAL_DIR: z.string().min(1).default(".storage"),
     /** HMAC secret for signed file links (32+ chars). Random per process when unset outside production. */
     FILE_SIGNING_SECRET: z.string().min(32).optional(),
@@ -221,6 +229,19 @@ export const envSchema = z
             code: "custom",
             path: [key],
             message: "required with REALTIME_DRIVER=supabase",
+          });
+        }
+      }
+    }
+  })
+  .superRefine((env, ctx) => {
+    if (env.STORAGE_DRIVER === "supabase") {
+      for (const key of ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: "required with STORAGE_DRIVER=supabase",
           });
         }
       }

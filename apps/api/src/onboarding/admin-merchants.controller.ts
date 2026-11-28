@@ -201,7 +201,11 @@ export class AdminMerchantsController {
     if (!merchant) throw ApiError.notFound("Merchant not found");
     const view = toApplicationView(merchant);
     const links = new Map(
-      merchant.documents.map((doc) => [doc.id, this.files.downloadLink(doc.upload)]),
+      await Promise.all(
+        merchant.documents.map(
+          async (doc) => [doc.id, await this.files.downloadLink(doc.upload)] as const,
+        ),
+      ),
     );
     const issued = [...links.entries()].filter(([, url]) => url !== null).map(([docId]) => docId);
     if (issued.length > 0) {
