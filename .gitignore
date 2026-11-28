@@ -35,3 +35,9 @@ dump.rdb
 # Playwright output
 e2e/results/
 e2e/report/
+
+# Database exports and backups never go into git (docs/30)
+*.dump
+*.age
+*.sql.gz
+backups/

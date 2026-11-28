@@ -52,8 +52,8 @@ day, under 300 customers, under 30 staff and admin users, under 100 MB of docume
 1. **Supabase project pause after 7 idle days**: staging goes offline until someone resumes it
    in the dashboard. Regular database traffic such as the per-minute cron is expected to keep it
    active; confirm this in the Supabase dashboard during the first week.
-2. **No Supabase backups on Free**: run the backup drill (`apps/api/scripts/backup-restore-check.sh`)
-   to a local machine before and during the pilot; keep dumps encrypted and off GitHub.
+2. **No Supabase backups on Free**: daily encrypted export from a private GitHub repository, kept 7 days (docs/30). GitHub Free private repositories include 2,000 Actions minutes and 500 MB artifact storage a month; with no payment method on file, usage is blocked rather than billed. The older manual drill (`apps/api/scripts/backup-restore-check.sh`)
+   still works for a one-off copy to an encrypted device; keep dumps encrypted and off GitHub.
 3. **Resend 100 emails a day**: enough for the pilot; a public launch would exceed it.
 4. **Supabase 500 MB database**: years of pilot-scale orders fit; audit and outbox rows grow
    fastest.
