@@ -44,3 +44,18 @@ export const updateProfileRequestSchema = z
   })
   .refine((value) => Object.keys(value).length > 0, "provide at least one field to update");
 export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
+
+/**
+ * Self-service account deletion (cycle 3). The caller types DELETE to confirm. Orders, payments
+ * and the financial journal are kept (legal retention, pending review) but no longer carry the
+ * person's name, email or phone. Refused with 409 while an order is open or the account still
+ * has business or admin access.
+ */
+export const deleteAccountRequestSchema = z.strictObject({
+  confirm: z.literal("DELETE"),
+});
+export type DeleteAccountRequest = z.infer<typeof deleteAccountRequestSchema>;
+
+export const deleteAccountResponseSchema = z.object({
+  data: z.object({ deleted: z.literal(true) }),
+});

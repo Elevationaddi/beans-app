@@ -1,8 +1,8 @@
 import { config } from "./config";
 
 /**
- * Minimal Supabase Auth (GoTrue) client for one-time codes by SMS or email (D12). Uses the
- * public anon key only. Apple and Google sign-in need provider credentials and native setup
+ * Minimal Supabase Auth (GoTrue) client for email one-time codes (cycle 3: email only, no SMS
+ * provider). Uses the public anon key only. Apple and Google sign-in need provider credentials and native setup
  * that are not configured yet, so they are not offered (see docs/16, external dependencies).
  */
 export interface SupabaseSession {
@@ -11,7 +11,7 @@ export interface SupabaseSession {
   expiresAt: number;
 }
 
-export type OtpTarget = { phone: string } | { email: string };
+export type OtpTarget = { email: string };
 
 export class AuthError extends Error {}
 
@@ -45,7 +45,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return json as T;
 }
 
-/** Sends a one-time code by SMS or email; creates the account on first use. */
+/** Emails a one-time code; creates the account on first use. Supabase limits resends. */
 export async function sendOtp(target: OtpTarget): Promise<void> {
   await post("/otp", { ...target, create_user: true });
 }
@@ -61,8 +61,9 @@ function toSession(token: TokenResponse): SupabaseSession {
 }
 
 export async function verifyOtp(target: OtpTarget, code: string): Promise<SupabaseSession> {
-  const type = "phone" in target ? "sms" : "email";
-  return toSession(await post<TokenResponse>("/verify", { ...target, token: code, type }));
+  return toSession(
+    await post<TokenResponse>("/verify", { email: target.email, token: code, type: "email" }),
+  );
 }
 
 export async function refresh(refreshToken: string): Promise<SupabaseSession> {

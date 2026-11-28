@@ -33,7 +33,7 @@ jobs:
       - run: pnpm build
 
   integration:
-    name: Integration tests and migrations (PostgreSQL + Redis)
+    name: Integration tests and migrations (PostgreSQL)
     runs-on: ubuntu-latest
     services:
       postgres:

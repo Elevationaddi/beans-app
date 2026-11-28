@@ -165,7 +165,12 @@ import {
   uploadResponseSchema,
   uploadTicketResponseSchema,
 } from "./uploads.js";
-import { profileResponseSchema, updateProfileRequestSchema } from "./me.js";
+import {
+  deleteAccountRequestSchema,
+  deleteAccountResponseSchema,
+  profileResponseSchema,
+  updateProfileRequestSchema,
+} from "./me.js";
 import {
   adminGiftListResponseSchema,
   adminGiftQuerySchema,
@@ -304,7 +309,7 @@ export const apiRoutes = [
     method: "get",
     path: "/health",
     operationId: "getHealth",
-    summary: "Readiness: database and Redis reachable",
+    summary: "Readiness: database reachable",
     tag: "Health",
     access: { kind: "public" },
     success: { status: 200, schema: healthResponseSchema },
@@ -340,6 +345,18 @@ export const apiRoutes = [
     body: updateProfileRequestSchema,
     success: { status: 200, schema: profileResponseSchema },
     errors: [400, 401, 403],
+  },
+  {
+    method: "post",
+    path: "/v1/me/deletion",
+    operationId: "deleteMyAccount",
+    summary:
+      "Delete your account: removes personal details and sign-in; keeps anonymised order and financial records",
+    tag: "Identity",
+    access: { kind: "signed_in" },
+    body: deleteAccountRequestSchema,
+    success: { status: 200, schema: deleteAccountResponseSchema },
+    errors: [400, 401, 403, 409, 429],
   },
   {
     method: "get",
@@ -1425,7 +1442,7 @@ export const apiRoutes = [
     path: "/v1/me/privacy-requests",
     operationId: "createPrivacyRequest",
     summary:
-      "Ask for access to, correction or deletion of your data; handled by support (no automatic deletion)",
+      "Ask support for a copy, correction or assisted deletion of your data (self-service deletion is POST /v1/me/deletion)",
     tag: "Me",
     access: { kind: "signed_in" },
     body: privacyRequestSchema,

@@ -4,7 +4,6 @@ import { View } from "react-native";
 import {
   Body,
   Button,
-  Chip,
   FailureText,
   Field,
   Heading,
@@ -22,22 +21,18 @@ import type { RootScreen } from "../navigation/types";
 import { useAppState } from "../state/app-state";
 
 /**
- * C01: sign in with a one-time code by SMS or email (Supabase, D12). Development builds also
+ * C01: sign in with a one-time code sent by email (Supabase Auth; cycle 3 removed SMS so no paid
+ * SMS provider is needed). Recovery is the same flow: a new code to the account's email. Development builds also
  * list fictional test accounts; the API refuses that sign-in in production.
  */
 export function SignInScreen({ navigation }: RootScreen<"SignIn">) {
   const { t } = useI18n();
   const { sendCode, verifyCode, sessionExpired } = useAppState();
-  const [method, setMethod] = useState<"phone" | "email">("phone");
   const [value, setValue] = useState("");
   const [code, setCode] = useState("");
   const [sentTo, setSentTo] = useState<OtpTarget | null>(null);
-  const target: OtpTarget =
-    method === "phone" ? { phone: value.replace(/\s/g, "") } : { email: value.trim() };
-  const valid =
-    method === "phone"
-      ? /^\+[1-9]\d{7,14}$/.test(value.replace(/\s/g, ""))
-      : /.+@.+\..+/.test(value);
+  const target: OtpTarget = { email: value.trim().toLowerCase() };
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
   const send = useAction(async () => {
     await sendCode(target);
     setSentTo(target);
@@ -56,9 +51,7 @@ export function SignInScreen({ navigation }: RootScreen<"SignIn">) {
         <View style={styles.card}>
           {sentTo ? (
             <>
-              <Body>
-                {t("auth.codeSent", { to: "phone" in sentTo ? sentTo.phone : sentTo.email })}
-              </Body>
+              <Body>{t("auth.codeSent", { to: sentTo.email })}</Body>
               <Field
                 label={t("auth.code")}
                 value={code}
@@ -76,35 +69,21 @@ export function SignInScreen({ navigation }: RootScreen<"SignIn">) {
               />
               <FailureText failure={verify.failure} />
               <Button
-                label={t("auth.changeNumber")}
+                label={t("auth.changeEmail")}
                 variant="secondary"
                 onPress={() => setSentTo(null)}
               />
             </>
           ) : (
             <>
-              <View style={styles.row} accessibilityRole="radiogroup">
-                <Chip
-                  role="radio"
-                  label={t("auth.phone")}
-                  selected={method === "phone"}
-                  onPress={() => setMethod("phone")}
-                />
-                <Chip
-                  role="radio"
-                  label={t("auth.email")}
-                  selected={method === "email"}
-                  onPress={() => setMethod("email")}
-                />
-              </View>
               <Field
-                label={method === "phone" ? t("auth.phone") : t("auth.email")}
-                hint={method === "phone" ? t("auth.phoneHint") : undefined}
+                label={t("auth.email")}
+                hint={t("auth.emailHint")}
                 value={value}
                 onChangeText={setValue}
-                keyboardType={method === "phone" ? "phone-pad" : "email-address"}
+                keyboardType="email-address"
                 autoCapitalize="none"
-                autoComplete={method === "phone" ? "tel" : "email"}
+                autoComplete="email"
                 testID="otp-target"
               />
               <Button
