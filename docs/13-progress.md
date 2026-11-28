@@ -1304,6 +1304,21 @@ approves the final infrastructure plan.
   after-write dispatch unit test. API: 209 integration, 74 unit, all passing.
 - Migration `rate_limit_counters` (additive). Rollback: revert the commit; the table can stay.
 
+### Part 2: Vercel configuration (prepared, not deployed)
+
+- API: `apps/api/api/index.mjs` → `src/serverless.ts` builds the Nest app once per function
+  instance and hands each request to it (no listening port). `apps/api/vercel.json` rewrites all
+  paths to that function, runs the cron tick every minute, region `bom1` (Mumbai, nearest to
+  the UAE and to Supabase's Mumbai region), 60 s max duration, `X-Robots-Tag: noindex`.
+- Portal and admin: `vercel.json` per app (monorepo install from the root); Next.js sends
+  `X-Robots-Tag: noindex, nofollow` on every page unless `ALLOW_INDEXING=true`.
+- Customer app web build: `apps/mobile/vercel.json` serves the Expo web export as a single-page
+  app, noindex.
+- Tests: `test/vercel-entry.int.test.ts` drives the entry through a plain Node server (health,
+  routes, 404, cron tick, one cached app) and checks an invalid configuration answers 503 without
+  echoing values. The compiled `api/index.mjs` was also run under plain Node against the dev
+  database (200 on `/health` and `/v1/platform/status`).
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.
