@@ -33,23 +33,23 @@ Legend: **Yes** working and tested (evidence column) · **Part** some of it · *
 
 ## Customer app (docs/02)
 
-| ID  | Screen                         | API  | Screen | Plan                                             | Evidence |
-| --- | ------------------------------ | ---- | ------ | ------------------------------------------------ | -------- |
-| C01 | Splash, onboarding, sign-in    | Part | Part   | Add sign-in, verification, consent               |          |
-| C02 | Home (featured, reorder, favs) | Part | Part   | Featured from admin content, reorder, favourites |          |
-| C03 | Explore, nearby, map, filters  | Yes  | Part   | Map view, filters, sort                          |          |
-| C04 | Shop and branch                | Yes  | Yes    | Favourite toggle, allergens                      |          |
-| C05 | Product customisation          | Yes  | Yes    | Keep                                             |          |
-| C06 | Cart (server cart, promo code) | Part | Part   | Server cart when signed in, promo codes          |          |
-| C07 | Checkout, slots, curbside, pay | Yes  | No     | Build                                            |          |
-| C08 | Live order tracking            | Yes  | No     | Build with live updates, arrival, pickup code    |          |
-| C09 | History, receipt, reorder      | Yes  | No     | Build                                            |          |
-| C10 | Rewards and stamp cards        | No   | No     | Phase 9                                          |          |
-| C11 | Gifts                          | No   | No     | Phase 9, sandbox only                            |          |
-| C12 | Profile, vehicles, settings    | Part | Part   | Vehicles, payment methods, privacy, deletion     |          |
-| C13 | Support                        | Yes  | No     | Build                                            |          |
-| —   | QR dine-in                     | No   | No     | Phase 9                                          |          |
-| —   | Promotions, notifications      | No   | No     | Phase 9 and notification inbox                   |          |
+| ID  | Screen                         | API  | Screen | Plan                                             | Evidence                                                                                                        |
+| --- | ------------------------------ | ---- | ------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| C01 | Splash, onboarding, sign-in    | Part | Part   | Add sign-in, verification, consent               | Phone/email OTP (Supabase) and dev sign-in; ordering.test C01; e2e customer.spec. Apple/Google need credentials |
+| C02 | Home (featured, reorder, favs) | Yes  | Yes    | Featured from admin content, reorder, favourites | Hero, featured, saved cafés, pause notice; customer walk 2026-11-28                                             |
+| C03 | Explore, nearby, map, filters  | Yes  | Part   | Map view, filters, sort                          |                                                                                                                 |
+| C04 | Shop and branch                | Yes  | Yes    | Favourite toggle, allergens                      | ordering.test C04 saves a café; allergens shown                                                                 |
+| C05 | Product customisation          | Yes  | Yes    | Keep                                             |                                                                                                                 |
+| C06 | Cart (server cart, promo code) | Yes  | Yes    | Server cart when signed in, promo codes          | Synced to server cart at checkout; ordering.test C06. Promo codes wait on phase 9                               |
+| C07 | Checkout, slots, curbside, pay | Yes  | Yes    | Build                                            | ordering.test C07 (quote, pay, decline, pause); e2e customer.spec                                               |
+| C08 | Live order tracking            | Yes  | Yes    | Build with live updates, arrival, pickup code    | 5 s polling; ordering.test C08 arrival; e2e customer.spec to collection                                         |
+| C09 | History, receipt, reorder      | Yes  | Part   | Build                                            | ordering.test C09; receipt in e2e customer.spec; reorder button not built yet                                   |
+| C10 | Rewards and stamp cards        | No   | No     | Phase 9                                          |                                                                                                                 |
+| C11 | Gifts                          | No   | No     | Phase 9, sandbox only                            |                                                                                                                 |
+| C12 | Profile, vehicles, settings    | Yes  | Yes    | Vehicles, payment methods, privacy, deletion     | Name, vehicles, privacy access and deletion requests; no stored cards (fake provider)                           |
+| C13 | Support                        | Yes  | Yes    | Build                                            | Help requests with replies; customer walk 2026-11-28                                                            |
+| —   | QR dine-in                     | No   | No     | Phase 9                                          |                                                                                                                 |
+| —   | Promotions, notifications      | Part | Part   | Phase 9 and notification inbox                   | In-app inbox done; promotions wait on phase 9                                                                   |
 
 ## Business portal (docs/03)
 

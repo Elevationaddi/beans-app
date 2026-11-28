@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Browser tests for the business portal, barista tablet and admin console against the real
+ * Browser tests for the customer app (web build), business portal, barista tablet and admin
+ * console against the real
  * API, PostgreSQL and Redis with seeded fictional data. Development sign-in only (never in
  * production). Servers are started here unless already running locally.
  */
@@ -46,6 +47,13 @@ export default defineConfig({
       url: "http://localhost:3002/overview",
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
+    },
+    {
+      // The Expo app exported for the web (pnpm --filter @beans/mobile export:web).
+      command: "node static-server.mjs",
+      url: "http://localhost:8081",
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
     },
   ],
 });

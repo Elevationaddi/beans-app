@@ -1052,7 +1052,8 @@ docs/16-completion-matrix.md.
 | Development sign-in, business portal, merchant finance                                                       | #12     | dev-auth, finance B09, tenancy                               |
 | Barista tablet                                                                                               | #13     | tablet.int (3)                                               |
 | Admin back end: settings, pause, homepage, customers, orders, roles, moderation, disputes, broadcasts, inbox | #14     | platform.int (10)                                            |
-| Admin console screens, browser test suite and CI job                                                         | this PR | e2e: 13 admin, 3 portal, 2 tablet; API: privacy queue filter |
+| Admin console screens, browser test suite and CI job                                                         | #15     | e2e: 13 admin, 3 portal, 2 tablet; API: privacy queue filter |
+| Customer app: sign-in, checkout, tracking, history, receipts, account, support, notifications                | this PR | mobile: 9 new (23 total); e2e: 2 customer (web build)        |
 
 ### Admin console
 
@@ -1073,6 +1074,32 @@ docs/16-completion-matrix.md.
   earlier run left the platform paused.
 - CI job "Browser tests" migrates and seeds an empty database, builds everything, generates
   per-run random signing secrets and keeps the HTML report when a test fails.
+
+### Customer app (`apps/mobile`)
+
+- Sign-in: phone or email one-time code through Supabase Auth when `EXPO_PUBLIC_SUPABASE_URL`
+  and the public anon key are set; the refresh token is kept in the device keychain
+  (expo-secure-store), never in AsyncStorage. Without Supabase, a build with
+  `EXPO_PUBLIC_DEV_AUTH=true` lists the fictional seeded customers (the API refuses this in
+  production). Apple and Google sign-in need Apple/Google developer credentials and are not
+  offered yet. A 401 ends the session and asks the customer to sign in again.
+- Checkout copies the device cart to the server cart, asks the server for a quote (price, VAT
+  and pickup time come only from the server) and pays with the fake provider. Each payment
+  attempt sends its own Idempotency-Key. A simulated decline keeps the customer on checkout;
+  the declined attempt uses up the server cart, so the app copies the cart again before the
+  next quote (found in the real-app walk and fixed).
+- Order screen polls every 5 seconds while the order is open: status steps, ETA, pickup code,
+  curbside "I've arrived" (with the order version), cancellation request, refunds, receipt and
+  help. Also: order history, vehicles, help requests with replies, in-app notifications, name,
+  privacy access and deletion requests, saved cafés, homepage hero and featured shops, and the
+  platform pause notice.
+- The app exports for the web (`pnpm --filter @beans/mobile export:web`, react-native-web).
+  The browser tests run that build on a phone-sized screen against the real API: guest browse,
+  sign-in, declined then successful sandbox payment, café steps to collection with the pickup
+  code, receipt, and Arabic right to left.
+- Known sandbox limit: the fake payment provider keeps payments in memory. After an API
+  restart, refunds of payments taken before the restart fail at the provider and are retried
+  (they stay "approved" and are visible to finance). The Tap sandbox adapter will not have this.
 
 ### Rollback
 

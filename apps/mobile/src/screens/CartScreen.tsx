@@ -2,13 +2,14 @@ import { View } from "react-native";
 import { Body, Button, Heading, Screen, styles } from "../components/ui";
 import { useI18n } from "../i18n";
 import { formatFils, sumFils } from "../lib/money";
+import type { RootScreen } from "../navigation/types";
 import { useAppState } from "../state/app-state";
 
 /**
- * C06 (local part): one branch's items with server line prices. Checkout needs an account:
- * guests are told to sign in and no checkout action is offered (phase 5 gate).
+ * C06: one branch's items with server line prices. Checkout needs an account: guests are
+ * offered sign-in first. Totals here are estimates; the server quote at checkout is final.
  */
-export function CartScreen() {
+export function CartScreen({ navigation }: RootScreen<"Cart">) {
   const { t, locale } = useI18n();
   const { cart, removeFromCart, signedIn } = useAppState();
 
@@ -40,9 +41,20 @@ export function CartScreen() {
       <Heading level={2}>{`${t("cart.subtotal")}: ${formatFils(subtotal, locale)}`}</Heading>
       <Body muted>{t("cart.estimate")}</Body>
       {signedIn ? (
-        <Body testID="checkout-not-yet">{t("cart.checkoutNotYet")}</Body>
+        <Button
+          label={t("cart.checkout")}
+          onPress={() => navigation.navigate("Checkout")}
+          testID="checkout"
+        />
       ) : (
-        <Body testID="checkout-sign-in">{t("cart.signInToCheckout")}</Body>
+        <>
+          <Body>{t("cart.signInToCheckout")}</Body>
+          <Button
+            label={t("auth.signIn")}
+            onPress={() => navigation.navigate("SignIn")}
+            testID="checkout-sign-in"
+          />
+        </>
       )}
     </Screen>
   );

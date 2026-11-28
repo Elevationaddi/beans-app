@@ -15,6 +15,14 @@ export type RootParams = {
   Branch: { branchId: string };
   Product: { branchId: string; productId: string };
   Cart: undefined;
+  SignIn: undefined;
+  Checkout: undefined;
+  Order: { orderId: string };
+  Receipt: { orderId: string };
+  Vehicles: undefined;
+  Support: { orderId?: string } | undefined;
+  Ticket: { ticketId: string };
+  Notifications: undefined;
 };
 
 export type RootScreen<K extends keyof RootParams> = NativeStackScreenProps<RootParams, K>;

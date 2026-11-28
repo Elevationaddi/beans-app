@@ -100,11 +100,13 @@ jobs:
       # is left unset: the API defaults to development and Next.js builds need their own value.
       DATABASE_URL: postgresql://beans:beans@localhost:5432/beans_e2e
       REDIS_URL: redis://localhost:6379
-      CORS_ORIGINS: http://localhost:3001,http://localhost:3002
+      CORS_ORIGINS: http://localhost:3001,http://localhost:3002,http://localhost:8081
       DEV_AUTH_ENABLED: "true"
       RATE_LIMIT_ENABLED: "false"
       NEXT_PUBLIC_DEV_AUTH: "true"
       NEXT_PUBLIC_API_URL: http://localhost:3000
+      EXPO_PUBLIC_DEV_AUTH: "true"
+      EXPO_PUBLIC_API_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -121,6 +123,8 @@ jobs:
       - run: pnpm db:migrate
       - run: pnpm db:seed
       - run: pnpm build
+      - name: Customer app web build (for browser tests)
+        run: pnpm --filter @beans/mobile export:web
       - name: Install the browser
         run: pnpm --filter @beans/e2e exec playwright install --with-deps chromium
       - run: pnpm test:e2e
