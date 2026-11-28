@@ -66,6 +66,14 @@ export async function verifyOtp(target: OtpTarget, code: string): Promise<Supaba
   );
 }
 
+/** Staging demo accounts only (config.demoPasswordSignIn); see SignInScreen. */
+export async function signInWithPassword(
+  email: string,
+  password: string,
+): Promise<SupabaseSession> {
+  return toSession(await post<TokenResponse>("/token?grant_type=password", { email, password }));
+}
+
 export async function refresh(refreshToken: string): Promise<SupabaseSession> {
   return toSession(
     await post<TokenResponse>("/token?grant_type=refresh_token", { refresh_token: refreshToken }),

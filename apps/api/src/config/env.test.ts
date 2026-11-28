@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EnvValidationError, loadEnv } from "./env.js";
+import { EnvValidationError, isLiveDeployment, loadEnv } from "./env.js";
 
 /** Obviously fake keys, assembled at runtime so secret scanners do not flag the test. */
 const fakeTapKey = (mode: "test" | "live") => ["sk", mode, "notarealkey"].join("_");
@@ -102,10 +102,51 @@ describe("loadEnv", () => {
     ]);
   });
 
+  const productionReady = {
+    ...base,
+    NODE_ENV: "production",
+    CORS_ORIGINS: "https://merchant.example.com",
+    SUPABASE_JWKS_URL: "https://auth.example.com/auth/v1/.well-known/jwks.json",
+    SUPABASE_JWT_ISSUER: "https://auth.example.com/auth/v1",
+    API_PUBLIC_URL: "https://api.example.com",
+    FILE_SIGNING_SECRET: "x".repeat(40),
+    PAYMENT_WEBHOOK_SECRET: "y".repeat(40),
+    PICKUP_CODE_SECRET: "p".repeat(40),
+    TABLE_TOKEN_SECRET: "t".repeat(40),
+    CRON_SECRET: "c".repeat(40),
+    REALTIME_DRIVER: "supabase",
+    SUPABASE_URL: "https://project.supabase.co",
+    SUPABASE_SERVICE_ROLE_KEY: "service-role-key-for-tests",
+    REALTIME_CHANNEL_SECRET: "r".repeat(40),
+    STORAGE_DRIVER: "supabase",
+  };
+
+  it("private staging may use the sandbox provider but keeps every other production guard", () => {
+    const loaded = loadEnv({ ...productionReady, DEPLOY_ENV: "staging" });
+    expect(loaded.PAYMENT_PROVIDER).toBe("fake");
+    expect(isLiveDeployment(loaded)).toBe(false);
+    expect(isLiveDeployment({ NODE_ENV: "production", DEPLOY_ENV: "production" })).toBe(true);
+    expect(issuesFor({ ...productionReady, DEPLOY_ENV: "production" })).toEqual([
+      "PAYMENT_PROVIDER: the fake payment provider cannot run in production (only in private staging)",
+    ]);
+    expect(issuesFor(productionReady)).toContain(
+      "DEPLOY_ENV: set DEPLOY_ENV to staging or production with NODE_ENV=production",
+    );
+    const staging = { ...productionReady, DEPLOY_ENV: "staging" };
+    expect(issuesFor({ ...staging, DEV_AUTH_ENABLED: "true" })).toEqual([
+      "DEV_AUTH_ENABLED: development sign-in cannot run with NODE_ENV=production",
+    ]);
+    expect(issuesFor({ ...staging, LIVE_PAYMENTS_ENABLED: "true" })).toContain(
+      "LIVE_PAYMENTS_ENABLED: live payments can never be switched on in staging",
+    );
+    expect(issuesFor({ ...staging, RATE_LIMIT_ENABLED: "false" })).toHaveLength(1);
+  });
+
   it("refuses every development-only adapter in production", () => {
     const issues = issuesFor({
       ...base,
       NODE_ENV: "production",
+      DEPLOY_ENV: "production",
       CORS_ORIGINS: "https://merchant.example.com",
       SUPABASE_JWKS_URL: "https://auth.example.com/auth/v1/.well-known/jwks.json",
       SUPABASE_JWT_ISSUER: "https://auth.example.com/auth/v1",
@@ -122,7 +163,7 @@ describe("loadEnv", () => {
     });
     // Document uploads default to off, which production accepts.
     expect(issues.sort()).toEqual([
-      "PAYMENT_PROVIDER: the fake payment provider cannot run with NODE_ENV=production",
+      "PAYMENT_PROVIDER: the fake payment provider cannot run in production (only in private staging)",
       "STORAGE_DRIVER: local file storage cannot run with NODE_ENV=production",
     ]);
   });

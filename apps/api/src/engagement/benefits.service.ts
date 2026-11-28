@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { Benefit, CreateQuoteRequest, QuoteLine, TableSnapshot } from "@beans/contracts";
 import { ENV } from "../config/config.module.js";
-import type { Env } from "../config/env.js";
+import { isLiveDeployment, type Env } from "../config/env.js";
 import { PrismaService } from "../database/prisma.service.js";
 import type { OrderStatus, Prisma, StampEventKind } from "../generated/prisma/client.js";
 import { featureDisabled, semantic } from "../ordering/ordering-errors.js";
@@ -68,9 +68,9 @@ export class BenefitsService {
     @Inject(ENV) private readonly env: Env,
   ) {}
 
-  /** Gifts are sandbox-only: refused in production whatever the feature flag says. */
+  /** Gifts are sandbox-only: refused in production (not staging) whatever the flag says. */
   async giftsEnabled(): Promise<boolean> {
-    if (this.env.NODE_ENV === "production") return false;
+    if (isLiveDeployment(this.env)) return false;
     return (await this.settings.get("features")).sandboxGifts;
   }
 

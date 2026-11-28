@@ -10,6 +10,7 @@ jest.mock("../lib/config", () => ({
     supabaseUrl: "https://project.supabase.test",
     supabaseAnonKey: "anon-key-for-tests",
     devAuth: false,
+    demoPasswordSignIn: false,
   },
 }));
 
@@ -24,6 +25,8 @@ describe("C01: email sign-in", () => {
     });
     await renderScreen("SignIn", SignInScreen as never, undefined);
     expect(screen.queryByText("Phone number")).toBeNull();
+    // Demo password sign-in exists only in private staging builds.
+    expect(screen.queryByTestId("demo-sign-in")).toBeNull();
     await fireEvent.changeText(screen.getByTestId("otp-target"), "not-an-email");
     expect(screen.getByTestId("otp-send").props.accessibilityState?.disabled).toBe(true);
     await fireEvent.changeText(screen.getByTestId("otp-target"), " Customer@Example.test ");

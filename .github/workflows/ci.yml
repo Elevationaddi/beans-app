@@ -65,6 +65,8 @@ jobs:
         run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
       - name: Seed synthetic data twice (must be repeatable)
         run: pnpm db:seed && pnpm db:seed
+      - name: Demo catalog twice (must be repeatable)
+        run: pnpm db:demo && pnpm db:demo
       - name: Backup and restore drill (encrypted, fictional data, throwaway key)
         run: |
           # Client tools must match the PostgreSQL 16 service (pg_dump 17 writes settings 16 rejects).

@@ -16,6 +16,13 @@ const booleanFlag = z
 export const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    /**
+     * Where this build runs (cycle 4). "staging" is the private staging deployment: production
+     * builds and every production safeguard, except that the sandbox payment provider and
+     * sandbox gifts are allowed, because staging holds fictional data and never takes money.
+     * Development sign-in stays refused. NODE_ENV=production requires staging or production.
+     */
+    DEPLOY_ENV: z.enum(["local", "staging", "production"]).default("local"),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
     API_VERSION: z.string().min(1).default("0.0.0"),
     DATABASE_URL: z
@@ -150,12 +157,27 @@ export const envSchema = z
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== "production") return;
-    // docs/11-testing-deployment.md: refuse the fake provider in production.
-    if (env.PAYMENT_PROVIDER === "fake") {
+    if (env.DEPLOY_ENV === "local") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["DEPLOY_ENV"],
+        message: "set DEPLOY_ENV to staging or production with NODE_ENV=production",
+      });
+    }
+    if (env.DEPLOY_ENV === "staging" && env.LIVE_PAYMENTS_ENABLED) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["LIVE_PAYMENTS_ENABLED"],
+        message: "live payments can never be switched on in staging",
+      });
+    }
+    // docs/11-testing-deployment.md: refuse the fake provider in production. Private staging
+    // (fictional data, no money) may use it as the sandbox provider.
+    if (env.PAYMENT_PROVIDER === "fake" && env.DEPLOY_ENV !== "staging") {
       ctx.addIssue({
         code: "custom",
         path: ["PAYMENT_PROVIDER"],
-        message: "the fake payment provider cannot run with NODE_ENV=production",
+        message: "the fake payment provider cannot run in production (only in private staging)",
       });
     }
     // Development-only adapters must never run in production (release blockers until a
@@ -285,4 +307,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     );
   }
   return result.data;
+}
+
+/** True only for the real production deployment: sandbox-only features are refused there. */
+export function isLiveDeployment(env: Pick<Env, "NODE_ENV" | "DEPLOY_ENV">): boolean {
+  return env.NODE_ENV === "production" && env.DEPLOY_ENV !== "staging";
 }

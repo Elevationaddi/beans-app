@@ -100,8 +100,53 @@ export function SignInScreen({ navigation }: RootScreen<"SignIn">) {
       ) : (
         <Notice tone="warning">{t("auth.notConfigured")}</Notice>
       )}
+      {supabaseConfigured && config.demoPasswordSignIn ? (
+        <DemoSignIn onDone={() => navigation.goBack()} />
+      ) : null}
       {config.devAuth ? <DevSignIn onDone={() => navigation.goBack()} /> : null}
     </Screen>
+  );
+}
+
+/** Private staging: fictional demo accounts sign in with the password the team was given. */
+function DemoSignIn({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
+  const { signInDemo } = useAppState();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const signIn = useAction(async () => {
+    await signInDemo(email.trim().toLowerCase(), password);
+    onDone();
+  });
+  return (
+    <View style={styles.card} testID="demo-sign-in">
+      <Heading level={2}>{t("auth.demoTitle")}</Heading>
+      <Body muted>{t("auth.demoBody")}</Body>
+      <Field
+        label={t("auth.email")}
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        testID="demo-email"
+      />
+      <Field
+        label={t("auth.password")}
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        autoCapitalize="none"
+        testID="demo-password"
+      />
+      <Button
+        label={t("auth.demoSignIn")}
+        variant="secondary"
+        onPress={() => void signIn.run()}
+        disabled={signIn.pending || !email.trim() || !password}
+        testID="demo-sign-in-submit"
+      />
+      <FailureText failure={signIn.failure} />
+    </View>
   );
 }
 

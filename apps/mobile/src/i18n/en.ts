@@ -136,6 +136,11 @@ export const en = {
   "auth.devBody":
     "Local development only. These are fictional test accounts; this option is refused in production.",
   "auth.devNone": "No test accounts are available.",
+  "auth.demoTitle": "Demo account (private staging)",
+  "auth.demoBody":
+    "For testers with a fictional demo account only. Real customers sign in with an email code.",
+  "auth.password": "Password",
+  "auth.demoSignIn": "Sign in to demo account",
   "auth.devSignInAs": "Sign in as {name}",
   "auth.signIn": "Sign in",
   "auth.signOut": "Sign out",

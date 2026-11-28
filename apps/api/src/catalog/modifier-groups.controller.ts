@@ -103,14 +103,17 @@ export class ModifierGroupsController {
           sort: body.sort,
         },
       });
-      // One at a time so creation order (the display order) is deterministic.
-      for (const option of body.options) {
+      // Options display in creation order. Two inserts can share a millisecond, so each gets
+      // its own strictly increasing timestamp; otherwise the order fell back to random IDs.
+      const createdBase = Date.now();
+      for (const [index, option] of body.options.entries()) {
         await tx.modifierOption.create({
           data: {
             groupId: group.id,
             merchantId: body.merchantId,
             name: option.names,
             deltaFils: BigInt(option.deltaFils),
+            createdAt: new Date(createdBase + index),
           },
         });
       }
@@ -178,14 +181,20 @@ export class ModifierGroupsController {
 
       if (body.options) {
         const keep = new Set<string>();
-        for (const option of body.options) {
+        const createdBase = Date.now();
+        for (const [index, option] of body.options.entries()) {
           const data = { name: option.names, deltaFils: BigInt(option.deltaFils), active: true };
           if (option.id) {
             keep.add(option.id);
             await tx.modifierOption.update({ where: { id: option.id }, data });
           } else {
             const created = await tx.modifierOption.create({
-              data: { ...data, groupId: params.id, merchantId: before.merchantId },
+              data: {
+                ...data,
+                groupId: params.id,
+                merchantId: before.merchantId,
+                createdAt: new Date(createdBase + index),
+              },
             });
             keep.add(created.id);
           }
