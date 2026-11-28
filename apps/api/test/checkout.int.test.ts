@@ -123,6 +123,8 @@ describe("phase 6: cart, quotes, checkout with the sandbox provider, orders", ()
 
   beforeAll(async () => {
     world = await MerchantWorld.create();
+    // CI seeds this database, which turns phase 9 features on; this file checks the defaults.
+    await world.prisma.platformSetting.deleteMany({ where: { key: "features" } });
     provider = world.app.get(FakePaymentProvider);
     reconciler = world.app.get(PaymentReconciler);
     cafe = await makeCafe("Checkout");
