@@ -1,4 +1,5 @@
 import { loyaltyAr, loyaltyEn } from "./i18n-loyalty";
+import { verificationAr, verificationEn } from "./i18n-verification";
 import { commonDictionaries, mergeDictionaries, type Dictionary, type Locale } from "@beans/web";
 
 /**
@@ -64,8 +65,7 @@ const en: Dictionary = {
 
   // Registration (B01)
   "onboarding.title": "Business registration",
-  "onboarding.subtitle":
-    "Tell us about your business and upload the documents we need to verify it.",
+  "onboarding.subtitle": "Tell us about your business so our team can verify it.",
   "onboarding.legalName": "Legal name",
   "onboarding.brandName": "Brand name shown to customers",
   "onboarding.license": "Trade licence number",
@@ -88,7 +88,7 @@ const en: Dictionary = {
   "onboarding.reviewedAt": "Reviewed",
   "onboarding.reviewNote": "Note from the review team",
   "onboarding.refresh": "Refresh status",
-  "onboarding.next.draft": "Complete your details, upload your documents and submit for review.",
+  "onboarding.next.draft": "Complete your details and submit them for review.",
   "onboarding.next.submitted": "Your application is waiting for review.",
   "onboarding.next.review": "Our team is reviewing your application.",
   "onboarding.next.approved": "Approved. Add a branch and publish your menu to start selling.",
@@ -562,7 +562,7 @@ const ar: Dictionary = {
   "status.completed": "مكتمل",
   "status.expired": "منتهي",
   "onboarding.title": "تسجيل النشاط التجاري",
-  "onboarding.subtitle": "أخبرنا عن نشاطك التجاري وارفع المستندات اللازمة للتحقق منه.",
+  "onboarding.subtitle": "أخبرنا عن نشاطك التجاري ليتحقق منه فريقنا.",
   "onboarding.legalName": "الاسم القانوني",
   "onboarding.brandName": "الاسم التجاري الظاهر للعملاء",
   "onboarding.license": "رقم الرخصة التجارية",
@@ -585,7 +585,7 @@ const ar: Dictionary = {
   "onboarding.reviewedAt": "تاريخ المراجعة",
   "onboarding.reviewNote": "ملاحظة من فريق المراجعة",
   "onboarding.refresh": "تحديث الحالة",
-  "onboarding.next.draft": "أكمل بياناتك وارفع مستنداتك ثم أرسلها للمراجعة.",
+  "onboarding.next.draft": "أكمل بياناتك ثم أرسلها للمراجعة.",
   "onboarding.next.submitted": "طلبك بانتظار المراجعة.",
   "onboarding.next.review": "يراجع فريقنا طلبك.",
   "onboarding.next.approved": "تم الاعتماد. أضف فرعًا وانشر قائمتك لبدء البيع.",
@@ -984,7 +984,7 @@ const ar: Dictionary = {
 };
 
 export const portalDictionaries: Record<Locale, Dictionary> = {
-  en: { ...en, ...loyaltyEn },
-  ar: { ...ar, ...loyaltyAr },
+  en: { ...en, ...loyaltyEn, ...verificationEn },
+  ar: { ...ar, ...loyaltyAr, ...verificationAr },
 };
 export const dictionaries = mergeDictionaries(commonDictionaries, portalDictionaries);

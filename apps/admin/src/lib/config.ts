@@ -9,3 +9,8 @@ export const adminAuth: AuthConfig = {
   devAuth: process.env.NEXT_PUBLIC_DEV_AUTH === "true",
   storageKey: "cm.admin",
 };
+
+/** Business portal address, used to build the one-time owner invitation link. */
+export const merchantPortalUrl = (
+  process.env.NEXT_PUBLIC_MERCHANT_URL ?? "http://localhost:3001"
+).replace(/\/$/, "");

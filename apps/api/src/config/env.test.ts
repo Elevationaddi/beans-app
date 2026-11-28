@@ -83,7 +83,12 @@ describe("loadEnv", () => {
       "SUPABASE_STORAGE_BUCKET: lowercase letters, digits and dashes",
     ]);
     // A real storage driver alone is not enough for production: the file check still blocks it.
-    const prod = issuesFor({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "supabase" });
+    const prod = issuesFor({
+      ...base,
+      NODE_ENV: "production",
+      STORAGE_DRIVER: "supabase",
+      FILE_SCANNER: "basic",
+    });
     expect(prod.join("\n")).not.toMatch(/^STORAGE_DRIVER:/m);
     expect(prod.join("\n")).toMatch(/FILE_SCANNER: the basic file checker cannot run/);
     // With uploads switched off (no scanner approved) the file check no longer blocks start-up.
@@ -115,8 +120,8 @@ describe("loadEnv", () => {
       SUPABASE_SERVICE_ROLE_KEY: "service-role-key-for-tests",
       REALTIME_CHANNEL_SECRET: "r".repeat(40),
     });
+    // Document uploads default to off, which production accepts.
     expect(issues.sort()).toEqual([
-      "FILE_SCANNER: the basic file checker cannot run with NODE_ENV=production",
       "PAYMENT_PROVIDER: the fake payment provider cannot run with NODE_ENV=production",
       "STORAGE_DRIVER: local file storage cannot run with NODE_ENV=production",
     ]);

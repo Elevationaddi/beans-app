@@ -49,6 +49,11 @@ export class FilesService {
     @Inject(FILE_SCANNER) private readonly scanner: FileScanner,
   ) {}
 
+  /** False while no malware scanner is approved: applications carry no attachments. */
+  get documentsAccepted(): boolean {
+    return !(this.scanner instanceof DisabledFileScanner);
+  }
+
   async createMerchantDocumentUpload(actor: Actor, input: CreateUploadRequest) {
     const merchant = await this.access.requireOwner(actor.userId, input.merchantId);
     if (this.scanner instanceof DisabledFileScanner) {

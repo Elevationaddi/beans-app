@@ -28,6 +28,12 @@ import { useState } from "react";
 import { z } from "zod";
 import { statusTone, useRoles } from "../../../lib/admin";
 import { NoAccess, ReasonDialog } from "../../../lib/ui";
+import {
+  CreateVerifiedMerchantDialog,
+  HistorySection,
+  NotesSection,
+  VerificationSection,
+} from "./verification";
 
 type Summary = {
   id: string;
@@ -53,6 +59,7 @@ export default function MerchantsPage() {
   const { can } = useRoles();
   const [status, setStatus] = useState("submitted");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const list = usePaged(
     (cursor, signal) =>
       api.get(
@@ -66,7 +73,17 @@ export default function MerchantsPage() {
   if (!can("operations", "super_admin")) return <NoAccess />;
   return (
     <>
-      <PageHeader title={t("merchants.title")} subtitle={t("merchants.subtitle")} />
+      <PageHeader
+        title={t("merchants.title")}
+        subtitle={t("merchants.subtitle")}
+        actions={
+          can("operations") ? (
+            <Button onClick={() => setCreating(true)} data-testid="add-verified-merchant">
+              {t("merchants.addVerified")}
+            </Button>
+          ) : null
+        }
+      />
       <FilterBar>
         <SelectField
           label={t("common.status")}
@@ -110,6 +127,9 @@ export default function MerchantsPage() {
       <LoadMore hasMore={list.hasMore} loading={list.loading} onMore={() => void list.more()} />
       {openId ? (
         <MerchantDialog id={openId} onClose={() => setOpenId(null)} onChanged={list.reload} />
+      ) : null}
+      {creating ? (
+        <CreateVerifiedMerchantDialog onClose={() => setCreating(false)} onCreated={list.reload} />
       ) : null}
     </>
   );
@@ -162,8 +182,39 @@ function MerchantDialog({
               [t("merchants.note"), m.reviewNote ?? "—"],
             ]}
           />
+          <h3>{t("merchants.application")}</h3>
+          <DefinitionList
+            items={[
+              [t("verify.authority"), m.licenseAuthority ?? "—"],
+              [t("verify.expiry"), m.licenseExpiresOn ?? "—"],
+              [t("verify.emirate"), m.emirate ? t(`emirate.${m.emirate}`) : "—"],
+              [t("verify.branchCount"), m.declaredBranchCount ?? "—"],
+              [
+                t("verify.repName"),
+                [
+                  m.representative.name,
+                  m.representative.position,
+                  m.representative.email,
+                  m.representative.phone,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "—",
+              ],
+              [t("verify.description"), m.description ?? "—"],
+            ]}
+          />
+          <VerificationSection
+            merchant={m}
+            canAct={can("operations")}
+            onChanged={() => {
+              detail.reload();
+              onChanged();
+            }}
+          />
           <h3>{t("merchants.documents")}</h3>
-          {m.documents.length === 0 ? (
+          {!m.documentsAccepted && m.documents.length === 0 ? (
+            <Banner tone="info">{t("verify.documentsOff")}</Banner>
+          ) : m.documents.length === 0 ? (
             <Banner tone="warning">{t("merchants.noDocuments")}</Banner>
           ) : (
             <ul className="stack" data-testid="merchant-documents">
@@ -210,6 +261,8 @@ function MerchantDialog({
               </Button>
             ) : null}
           </div>
+          <NotesSection merchant={m} canAct={can("operations")} onChanged={detail.reload} />
+          <HistorySection merchant={m} />
         </>
       ) : null}
       {decision && m ? (

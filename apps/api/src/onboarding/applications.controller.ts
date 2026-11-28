@@ -31,11 +31,39 @@ import type { Actor } from "../common/request-context.js";
 import { ZodValidationPipe } from "../common/zod-validation.pipe.js";
 import { PrismaService } from "../database/prisma.service.js";
 import { Prisma } from "../generated/prisma/client.js";
+import { FilesService } from "../files/files.service.js";
 import { OutboxService } from "../outbox/outbox.service.js";
 import { MerchantAccessService } from "../tenancy/merchant-access.service.js";
-import { applicationInclude, toApplicationView } from "./application-view.js";
+import {
+  applicationInclude,
+  fromLocalDate,
+  missingForSubmission,
+  toApplicationView,
+} from "./application-view.js";
 
 const idParams = new ZodValidationPipe(z.strictObject({ id: uuidSchema }));
+
+/** Cycle 4 application fields, mapped to columns; only the ones provided. */
+function detailFields(body: UpdateApplicationRequest) {
+  return {
+    ...(body.licenseAuthority !== undefined && { licenseAuthority: body.licenseAuthority }),
+    ...(body.licenseExpiresOn !== undefined && {
+      licenseExpiresOn: fromLocalDate(body.licenseExpiresOn),
+    }),
+    ...(body.emirate !== undefined && { emirate: body.emirate }),
+    ...(body.representative !== undefined && { representative: body.representative }),
+    ...(body.declaredBranchCount !== undefined && {
+      declaredBranchCount: body.declaredBranchCount,
+    }),
+    ...(body.description !== undefined && { description: body.description }),
+  };
+}
+
+function licenceExpiryProblem(body: UpdateApplicationRequest): void {
+  if (body.licenseExpiresOn && fromLocalDate(body.licenseExpiresOn) <= new Date()) {
+    throw ApiError.validation({ licenseExpiresOn: ["The trade licence has expired"] });
+  }
+}
 
 function licenceConflict(error: unknown): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -55,6 +83,7 @@ export class ApplicationsController {
     @Inject(MerchantAccessService) private readonly access: MerchantAccessService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(OutboxService) private readonly outbox: OutboxService,
+    @Inject(FilesService) private readonly files: FilesService,
   ) {}
 
   @Post()
@@ -63,6 +92,7 @@ export class ApplicationsController {
     @RequestId() requestId: string,
     @Body(new ZodValidationPipe(createApplicationRequestSchema)) body: CreateApplicationRequest,
   ): Promise<{ data: MerchantApplication }> {
+    licenceExpiryProblem(body);
     const merchant = await this.prisma
       .$transaction(async (tx) => {
         const created = await tx.merchant.create({
@@ -71,6 +101,7 @@ export class ApplicationsController {
             brandName: body.brandName,
             licenseNumber: body.licenseNumber,
             contact: body.contact,
+            ...detailFields(body),
             status: "draft",
             memberships: { create: { userId: actor.userId, role: "owner", status: "active" } },
           },
@@ -94,7 +125,7 @@ export class ApplicationsController {
         return created;
       })
       .catch(licenceConflict);
-    return { data: toApplicationView(merchant) };
+    return { data: toApplicationView(merchant, this.files.documentsAccepted) };
   }
 
   @Get()
@@ -120,7 +151,7 @@ export class ApplicationsController {
     const page = rows.slice(0, query.limit);
     const last = page.at(-1);
     return {
-      data: page.map(toApplicationView),
+      data: page.map((m) => toApplicationView(m, this.files.documentsAccepted)),
       meta: { nextCursor: rows.length > query.limit && last ? encodeCursor(last) : null },
     };
   }
@@ -142,6 +173,7 @@ export class ApplicationsController {
     @Body(new ZodValidationPipe(updateApplicationRequestSchema)) body: UpdateApplicationRequest,
   ): Promise<{ data: MerchantApplication }> {
     const before = await this.access.requireOwner(actor.userId, params.id);
+    licenceExpiryProblem(body);
     await this.prisma
       .$transaction(async (tx) => {
         const changed = await tx.merchant.updateMany({
@@ -151,6 +183,7 @@ export class ApplicationsController {
             ...(body.brandName !== undefined && { brandName: body.brandName }),
             ...(body.licenseNumber !== undefined && { licenseNumber: body.licenseNumber }),
             ...(body.contact !== undefined && { contact: body.contact }),
+            ...detailFields(body),
           },
         });
         if (changed.count === 0) {
@@ -172,7 +205,11 @@ export class ApplicationsController {
               brandName: before.brandName,
               licenseNumber: before.licenseNumber,
             },
-            after: { ...body, contact: body.contact ? "[changed]" : undefined },
+            after: {
+              ...body,
+              contact: body.contact ? "[changed]" : undefined,
+              representative: body.representative ? "[changed]" : undefined,
+            },
           },
           tx,
         );
@@ -191,19 +228,28 @@ export class ApplicationsController {
   ): Promise<{ data: MerchantApplication }> {
     await this.access.requireOwner(actor.userId, params.id);
     const documentIds = [...new Set(body.documentIds)];
-    const documents = await this.prisma.merchantDocument.findMany({
-      where: { id: { in: documentIds }, merchantId: params.id },
-      include: { upload: { select: { status: true } } },
-    });
-
-    const fieldErrors: Record<string, string[]> = {};
-    if (documents.length !== documentIds.length) {
-      // Documents of other merchants look exactly like documents that do not exist.
-      fieldErrors["documentIds"] = ["One or more documents were not found on this application"];
-    } else if (documents.some((doc) => doc.upload.status !== "clean")) {
-      fieldErrors["documentIds"] = ["Every document must pass the file check before submitting"];
-    } else if (!documents.some((doc) => doc.type === "trade_license")) {
-      fieldErrors["documentIds"] = ["Include the trade licence"];
+    const fieldErrors: Record<string, string[]> = missingForSubmission(
+      await this.prisma.merchant.findUniqueOrThrow({
+        where: { id: params.id },
+        include: applicationInclude,
+      }),
+    );
+    if (documentIds.length > 0 && !this.files.documentsAccepted) {
+      // No approved malware scanner: applications carry no attachments (manual verification).
+      fieldErrors["documentIds"] = ["Document attachments are switched off"];
+    } else if (documentIds.length > 0) {
+      const documents = await this.prisma.merchantDocument.findMany({
+        where: { id: { in: documentIds }, merchantId: params.id },
+        include: { upload: { select: { status: true } } },
+      });
+      if (documents.length !== documentIds.length) {
+        // Documents of other merchants look exactly like documents that do not exist.
+        fieldErrors["documentIds"] = ["One or more documents were not found on this application"];
+      } else if (documents.some((doc) => doc.upload.status !== "clean")) {
+        fieldErrors["documentIds"] = ["Every document must pass the file check before submitting"];
+      } else if (!documents.some((doc) => doc.type === "trade_license")) {
+        fieldErrors["documentIds"] = ["Include the trade licence"];
+      }
     }
     if (Object.keys(fieldErrors).length > 0) {
       throw new ApiError(
@@ -256,6 +302,7 @@ export class ApplicationsController {
   private async load(id: string) {
     return toApplicationView(
       await this.prisma.merchant.findUniqueOrThrow({ where: { id }, include: applicationInclude }),
+      this.files.documentsAccepted,
     );
   }
 }

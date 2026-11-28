@@ -71,9 +71,13 @@ import {
   webhookReceiptResponseSchema,
 } from "./admin-finance.js";
 import {
+  addMerchantNoteRequestSchema,
   adminMerchantDetailResponseSchema,
   adminMerchantListResponseSchema,
   adminMerchantQuerySchema,
+  createVerifiedMerchantRequestSchema,
+  createVerifiedMerchantResponseSchema,
+  recordVerificationRequestSchema,
   reviewMerchantRequestSchema,
 } from "./admin-merchants.js";
 import { dataEnvelope, errorResponseSchema, pageQuerySchema, uuidSchema } from "./common.js";
@@ -532,6 +536,43 @@ export const apiRoutes = [
     body: reviewMerchantRequestSchema,
     success: { status: 200, schema: adminMerchantDetailResponseSchema },
     errors: [400, 401, 403, 404, 409, 422],
+  },
+  {
+    method: "post",
+    path: "/v1/admin/merchants/{id}/verifications",
+    operationId: "recordMerchantVerification",
+    summary:
+      "Record that an administrator checked the trade licence by hand against an outside source (not an automatic or government check)",
+    tag: "Admin",
+    access: { kind: "admin", roles: ["operations"] },
+    params: idParams,
+    body: recordVerificationRequestSchema,
+    success: { status: 201, schema: adminMerchantDetailResponseSchema },
+    errors: [400, 401, 403, 404, 409, 422],
+  },
+  {
+    method: "post",
+    path: "/v1/admin/merchants/{id}/notes",
+    operationId: "addMerchantNote",
+    summary: "Add an internal review note (never shown to the applicant)",
+    tag: "Admin",
+    access: { kind: "admin", roles: ["operations"] },
+    params: idParams,
+    body: addMerchantNoteRequestSchema,
+    success: { status: 201, schema: adminMerchantDetailResponseSchema },
+    errors: [400, 401, 403, 404],
+  },
+  {
+    method: "post",
+    path: "/v1/admin/merchants",
+    operationId: "createVerifiedMerchant",
+    summary:
+      "Create an approved merchant verified outside the platform; returns a one-time owner invitation token",
+    tag: "Admin",
+    access: { kind: "admin", roles: ["operations"] },
+    body: createVerifiedMerchantRequestSchema,
+    success: { status: 201, schema: createVerifiedMerchantResponseSchema },
+    errors: [400, 401, 403, 409, 422],
   },
   // ── Phase 4: branches, schedule, availability ─────────────────────────────
   {
