@@ -95,7 +95,8 @@ export function CheckoutScreen({ navigation }: RootScreen<"Checkout">) {
 
   const review = useAction(async () => {
     const server = setup.data?.serverCart;
-    if (!server) return;
+    // While the cart is being copied again (after a decline) the old server cart is spent.
+    if (!server || setup.loading) return;
     setDeclined(false);
     const result = await call(
       api.POST("/v1/quotes", {
@@ -360,6 +361,7 @@ export function CheckoutScreen({ navigation }: RootScreen<"Checkout">) {
                   onPress={() => void review.run()}
                   disabled={
                     review.pending ||
+                    setup.loading ||
                     paused ||
                     !serverCart.canCheckout ||
                     needsVehicle ||

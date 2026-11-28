@@ -8,21 +8,22 @@ founder (or the named owner) records them in docs/00-decisions.md.
 
 ## 1. Where things stand
 
-| Area                                     | State                                                                               |
-| ---------------------------------------- | ----------------------------------------------------------------------------------- |
-| API (all MVP modules, phases 1–8, 10–11) | Built and tested locally; 8 additive migrations                                     |
-| Customer app (Expo)                      | Browse, branch, menu, cart as guest; order screens blocked on sign-in (D12)         |
-| Merchant portal, tablet, admin console   | Shells only; screens blocked on sign-in (D12), recorded as phase 9 deferred         |
-| Payments                                 | Sandbox fake provider only; the API refuses it in production; live payments blocked |
-| File storage and malware scan            | Local disk and a basic checker; both refused in production (provider not chosen)    |
-| Hosting, staging, monitoring vendor      | Not chosen (D11)                                                                    |
+Updated 2026-11-28 after cycle 2. The item-by-item state is in docs/19-launch-checklist.md and
+docs/16-completion-matrix.md.
 
-**Consequence:** the API cannot start with `NODE_ENV=production` today, by design. It refuses the
-fake payment provider, local storage, the basic file checker, missing secrets, a missing CORS
-allowlist and `LIVE_PAYMENTS_ENABLED=true`. Staging must run the production configuration with
-real sandbox adapters, so staging needs three adapters that do not exist yet: the payment
-provider's sandbox (D03), object storage, and a malware scanner. These are the first items of
-release work once the providers are chosen.
+| Area                                   | State                                                                                    |
+| -------------------------------------- | ---------------------------------------------------------------------------------------- |
+| API (all modules, phases 1–12)         | Built and tested locally and in CI                                                       |
+| Customer app (Expo)                    | Complete in sandbox: sign-in, checkout, tracking, rewards, dine-in; Apple/Google not yet |
+| Business portal, tablet, admin console | Complete in sandbox with development sign-in and browser tests                           |
+| Payments                               | Fake provider (default) and a Tap sandbox adapter (test keys only, not yet run with Tap) |
+| File storage and malware scan          | Local disk and a basic checker; both refused in production (provider not chosen)         |
+| Hosting, staging, monitoring vendor    | Not chosen (D11); options and costs in docs/20; staging steps in docs/18                 |
+
+**Consequence:** the API still cannot start with `NODE_ENV=production`, by design. It refuses the
+fake payment provider, local storage, the basic file checker, development sign-in, missing
+secrets, a missing CORS allowlist and `LIVE_PAYMENTS_ENABLED=true`. Staging needs the Tap test
+keys (the adapter exists), object storage and a malware scanner.
 
 ## 2. Launch gates
 
