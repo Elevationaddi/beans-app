@@ -25,16 +25,25 @@ export function ProfileScreen({ navigation }: TabScreen<"Profile">) {
   const { prefs, setPrefs, signInAvailable, signedIn, profile, signOut, refreshProfile } =
     useAppState();
   const [name, setName] = useState(profile?.displayName ?? "");
-  const [privacy, setPrivacy] = useState<"access" | "deletion" | null>(null);
-  const [privacySent, setPrivacySent] = useState<"access" | "deletion" | null>(null);
+  const [privacy, setPrivacy] = useState<"access" | null>(null);
+  const [privacySent, setPrivacySent] = useState<"access" | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
   const saveName = useAction(async () => {
     await call(api.PATCH("/v1/me", { body: { displayName: name.trim() } }));
     await refreshProfile();
   });
-  const requestPrivacy = useAction(async (kind: "access" | "deletion") => {
+  const requestPrivacy = useAction(async (kind: "access") => {
     await call(api.POST("/v1/me/privacy-requests", { body: { kind } }));
     setPrivacy(null);
     setPrivacySent(kind);
+  });
+  // Self-service deletion (cycle 3). The server refuses while an order is open.
+  const deleteAccount = useAction(async () => {
+    await call(api.POST("/v1/me/deletion", { body: { confirm: "DELETE" } }));
+    setDeleting(false);
+    setConfirmText("");
+    await signOut();
   });
   return (
     <Screen testID="profile">
@@ -121,13 +130,43 @@ export function ProfileScreen({ navigation }: TabScreen<"Profile">) {
             onPress={() => setPrivacy("access")}
             testID="privacy-access"
           />
-          <Button
-            label={t("profile.requestDeletion")}
-            variant="destructive"
-            onPress={() => setPrivacy("deletion")}
-            testID="privacy-deletion"
-          />
           <FailureText failure={requestPrivacy.failure} />
+          {deleting ? (
+            <View style={styles.card} testID="delete-account-panel">
+              <Heading level={2}>{t("profile.requestDeletion")}</Heading>
+              <Body>{t("profile.deletionBody")}</Body>
+              <Field
+                label={t("profile.deletionConfirm")}
+                value={confirmText}
+                onChangeText={setConfirmText}
+                autoCapitalize="characters"
+                testID="delete-account-confirm-text"
+              />
+              <Button
+                label={t("profile.deletionSubmit")}
+                variant="destructive"
+                onPress={() => void deleteAccount.run()}
+                disabled={deleteAccount.pending || confirmText.trim() !== "DELETE"}
+                testID="delete-account-submit"
+              />
+              <FailureText failure={deleteAccount.failure} />
+              <Button
+                label={t("common.cancel")}
+                variant="secondary"
+                onPress={() => {
+                  setDeleting(false);
+                  setConfirmText("");
+                }}
+              />
+            </View>
+          ) : (
+            <Button
+              label={t("profile.requestDeletion")}
+              variant="destructive"
+              onPress={() => setDeleting(true)}
+              testID="privacy-deletion"
+            />
+          )}
           <Button
             label={t("auth.signOut")}
             variant="secondary"
@@ -151,8 +190,8 @@ export function ProfileScreen({ navigation }: TabScreen<"Profile">) {
       )}
       <ConfirmDialog
         visible={privacy !== null}
-        title={privacy === "deletion" ? t("profile.requestDeletion") : t("profile.requestData")}
-        body={privacy === "deletion" ? t("profile.deletionBody") : t("profile.accessBody")}
+        title={t("profile.requestData")}
+        body={t("profile.accessBody")}
         confirmLabel={t("common.continue")}
         onConfirm={() => privacy && void requestPrivacy.run(privacy)}
         onCancel={() => setPrivacy(null)}

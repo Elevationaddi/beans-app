@@ -89,7 +89,7 @@
     "/health": {
       "get": {
         "operationId": "getHealth",
-        "summary": "Readiness: database and Redis reachable",
+        "summary": "Readiness: database reachable",
         "tags": ["Health"],
         "x-access": {
           "kind": "public"
@@ -500,6 +500,116 @@
                     "enum": ["en", "ar"]
                   }
                 },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/deletion": {
+      "post": {
+        "operationId": "deleteMyAccount",
+        "summary": "Delete your account: removes personal details and sign-in; keeps anonymised order and financial records",
+        "tags": ["Identity"],
+        "x-access": {
+          "kind": "signed_in"
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "deleted": {
+                          "type": "boolean",
+                          "const": true
+                        }
+                      },
+                      "required": ["deleted"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["data"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request or failed validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not permitted (role, MFA or account status)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (stale version or idempotency key reuse)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "confirm": {
+                    "type": "string",
+                    "const": "DELETE"
+                  }
+                },
+                "required": ["confirm"],
                 "additionalProperties": false
               }
             }
@@ -21216,7 +21326,7 @@
     "/v1/me/privacy-requests": {
       "post": {
         "operationId": "createPrivacyRequest",
-        "summary": "Ask for access to, correction or deletion of your data; handled by support (no automatic deletion)",
+        "summary": "Ask support for a copy, correction or assisted deletion of your data (self-service deletion is POST /v1/me/deletion)",
         "tags": ["Me"],
         "x-access": {
           "kind": "signed_in"

@@ -11,7 +11,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Readiness: database and Redis reachable */
+    /** Readiness: database reachable */
     get: operations["getHealth"];
     put?: never;
     post?: never;
@@ -54,6 +54,23 @@ export interface paths {
     head?: never;
     /** Update display name or language */
     patch: operations["updateMe"];
+    trace?: never;
+  };
+  "/v1/me/deletion": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Delete your account: removes personal details and sign-in; keeps anonymised order and financial records */
+    post: operations["deleteMyAccount"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   "/v1/merchant/branches": {
@@ -1357,7 +1374,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Ask for access to, correction or deletion of your data; handled by support (no automatic deletion) */
+    /** Ask support for a copy, correction or assisted deletion of your data (self-service deletion is POST /v1/me/deletion) */
     post: operations["createPrivacyRequest"];
     delete?: never;
     options?: never;
@@ -2518,6 +2535,83 @@ export interface operations {
       };
       /** @description Authenticated but not permitted (role, MFA or account status) */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  deleteMyAccount: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @constant */
+          confirm: "DELETE";
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @constant */
+              deleted: true;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Rate limited */
+      429: {
         headers: {
           [name: string]: unknown;
         };

@@ -1319,6 +1319,28 @@ approves the final infrastructure plan.
   echoing values. The compiled `api/index.mjs` was also run under plain Node against the dev
   database (200 on `/health` and `/v1/platform/status`).
 
+### Part 3: email-only sign-in and self-service account deletion
+
+- Customer app sign-in is email only: a 6-digit code from Supabase Auth, which also recovers
+  access. The phone option and every SMS path are gone, so no SMS provider (Twilio or other) is
+  needed. Phone numbers can still be stored on the profile where a feature needs them, unverified.
+- Business, staff and admin sign-in were already email and password; admins already enrol and
+  verify an authenticator app (TOTP) before any admin action (`packages/web/src/auth.tsx`, API
+  checks `aal2`). Code expiry, resend limits and email delivery are Supabase project settings
+  (see the staging guide); Supabase's built-in email is limited to 2 emails an hour and to team
+  addresses, so Resend Free is connected as custom SMTP.
+- `POST /v1/me/deletion` (body `{ "confirm": "DELETE" }`, 5 an hour): refused with 409 while an
+  order is in progress or the account has business or admin access. In one transaction it clears
+  name, email and phone, removes saved cafés, vehicles and notifications, marks the user deleted,
+  writes an audit event and queues `account.deleted`. The outbox then deletes the Supabase Auth
+  user with the server-only key (404 counts as done; other failures retry). Orders, payments and
+  the journal are kept without personal details; the retention period is a legal question.
+- Customer app Profile: "Delete my account" asks the person to type DELETE, shows the server's
+  refusal if any, and signs out on success. Arabic strings are marked for native review.
+- Tests: `test/account-deletion.int.test.ts` (5), `apps/mobile/src/screens/account.test.tsx` (3).
+  Results: API integration 27 files / 216 tests passed, API unit 16 / 74, mobile 5 / 36, lint and
+  format clean.
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.

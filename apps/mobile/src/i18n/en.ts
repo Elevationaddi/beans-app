@@ -125,14 +125,13 @@ export const en = {
   "auth.codeSent": "We sent a code to {to}.",
   "auth.code": "Code",
   "auth.verify": "Verify",
-  "auth.changeNumber": "Use a different number or email",
-  "auth.phone": "Phone number",
+  "auth.changeEmail": "Use a different email",
   "auth.email": "Email",
-  "auth.phoneHint": "UAE mobile, for example +971 50 123 4567",
+  "auth.emailHint": "We email you a 6-digit code. It also gets you back in if you lose access.",
   "auth.sendCode": "Send code",
   "auth.terms":
     "By continuing you agree to the terms and privacy notice (drafts pending legal review).",
-  "auth.notConfigured": "Phone and email sign-in are not configured in this build.",
+  "auth.notConfigured": "Email sign-in is not configured in this build.",
   "auth.devTitle": "Development sign-in",
   "auth.devBody":
     "Local development only. These are fictional test accounts; this option is refused in production.",
@@ -256,15 +255,15 @@ export const en = {
   "profile.notifications": "Notifications",
   "profile.support": "Help",
   "profile.privacy": "Privacy",
-  "profile.privacyHint":
-    "Ask for a copy of your data or for your account to be deleted. Support handles each request.",
+  "profile.privacyHint": "Ask Help for a copy of your data, or delete your account yourself here.",
   "profile.requestData": "Request my data",
   "profile.requestDeletion": "Delete my account",
   "profile.accessBody": "We'll prepare a copy of your data and contact you through Help.",
   "profile.deletionBody":
-    "Your account will be deleted after open orders and legally required records are settled. This can't be undone once processed.",
+    "This removes your name, email, phone, saved cafés and vehicles, and signs you out everywhere. Past orders and payment records are kept without your details, as the law may require. You can't delete while an order is in progress. This can't be undone.",
+  "profile.deletionConfirm": "Type DELETE to confirm",
+  "profile.deletionSubmit": "Delete my account permanently",
   "profile.privacySent.access": "Data request sent.",
-  "profile.privacySent.deletion": "Deletion request sent.",
 
   "table.title": "Order at a table",
   "table.open": "Order at a table",
