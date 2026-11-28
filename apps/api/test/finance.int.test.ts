@@ -176,16 +176,19 @@ describe("phase 7: webhooks, ledger, refunds, reconciliation and payouts (sandbo
     maker2 = await admin(["finance_maker"]);
     checker = await admin(["finance_checker"]);
     both = await admin(["finance_maker", "finance_checker"]);
-    // Sandbox commission policy (10%, unapproved), as seeded for development.
+    // Sandbox commission policy (10% of the order total, unapproved). It takes effect now, so it
+    // is the current policy whatever the seed added (the seed's sandbox-v2 excludes VAT, which
+    // the ledger unit tests cover); these tests check the journal arithmetic on round numbers.
+    const effectiveAt = new Date();
     await world.prisma.policy.upsert({
-      where: { type_version: { type: "commission", version: "sandbox-v1" } },
+      where: { type_version: { type: "commission", version: "test-gross" } },
       create: {
         type: "commission",
-        version: "sandbox-v1",
-        effectiveAt: new Date("2026-01-01T00:00:00Z"),
+        version: "test-gross",
+        effectiveAt,
         configuration: { sandbox: true, rateBasisPoints: 1000 },
       },
-      update: {},
+      update: { effectiveAt, configuration: { sandbox: true, rateBasisPoints: 1000 } },
     });
   });
   afterAll(() => world.close());
