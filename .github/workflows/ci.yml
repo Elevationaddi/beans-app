@@ -67,7 +67,9 @@ jobs:
         run: pnpm db:seed && pnpm db:seed
       - name: Backup and restore drill (encrypted, fictional data, throwaway key)
         run: |
-          sudo apt-get install -y -qq age
+          # Client tools must match the PostgreSQL 16 service (pg_dump 17 writes settings 16 rejects).
+          sudo apt-get install -y -qq age postgresql-client-16
+          export PATH="/usr/lib/postgresql/16/bin:$PATH"
           SOURCE_URL="$DATABASE_URL" ops/backup/drill.sh
       - run: pnpm test:integration
 

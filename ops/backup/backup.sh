@@ -33,6 +33,17 @@ mkdir -p "$work/$name/files" "$OUT_DIR"
 
 log() { echo "[backup $(date -u +%H:%M:%S)] $*"; }
 
+# Version check: a dump from a newer pg_dump may not restore into an older server.
+client_major="$(pg_dump --version | awk '{print $3}' | cut -d. -f1)"
+admin_check="${CHECK_URL%/*}/postgres"
+source_major="$(psql "$SOURCE_URL" -At -c 'SHOW server_version_num' | cut -c1-2)"
+check_major="$(psql "$admin_check" -At -c 'SHOW server_version_num' | cut -c1-2)"
+if [ "$client_major" -lt "$source_major" ] || [ "$client_major" -gt "$check_major" ]; then
+  echo "Version mismatch: pg_dump $client_major, source server $source_major, check server $check_major." >&2
+  echo "Use client tools of the same major version as the source, and a check server at least as new." >&2
+  exit 2
+fi
+
 # 1. Dump
 log "dumping database"
 pg_dump --format=custom --no-owner --no-privileges --file "$work/$name/database.dump" "$SOURCE_URL"
