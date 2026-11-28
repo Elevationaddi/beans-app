@@ -1,4 +1,29 @@
-# Security review (cycle 2, 2026-11-28)
+# Security review (cycles 2 and 3, 2026-11-28)
+
+## Cycle 3 update: Vercel and free tiers
+
+Re-checked after the move to Vercel, Supabase Free and email-only sign-in (PRs #21-#27 and the
+documentation PR). Internal review only; the external test (O2) is still required.
+
+| Area                             | Result  | Notes                                                                                                                                            |
+| -------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cron endpoint                    | Pass    | Answers 404 unless `Authorization: Bearer $CRON_SECRET`; secret required in production; ticks idempotent                                         |
+| Background jobs without Redis    | Pass    | Outbox rows leased with `FOR UPDATE SKIP LOCKED`; every state change conditional; frozen leases retried                                          |
+| Rate limits without Redis        | Pass    | Atomic PostgreSQL counter; exact under 70 concurrent requests (test)                                                                             |
+| Live updates (Supabase Realtime) | Pass    | Channel names are HMACs of IDs; payload is ID, version and time only; API checks access before giving a channel; screens refetch through the API |
+| Server key handling              | Pass    | `SUPABASE_SERVICE_ROLE_KEY` used by the API only; never in `NEXT_PUBLIC_`/`EXPO_PUBLIC_` names                                                   |
+| Private file storage             | Pass    | Private bucket; signed upload and 5-minute download links; only files that passed the check get links                                            |
+| Malware scanning                 | Gap     | No approved scanner. Production uses `FILE_SCANNER=disabled`: uploads refused before any bytes arrive (O4)                                       |
+| Email-only sign-in               | Pass    | Supabase email codes (10-minute expiry recommended); no SMS; admin TOTP MFA (`aal2`) unchanged                                                   |
+| Account deletion                 | Pass    | Rate-limited; row lock; refused while orders are open or the user is staff or admin; audit + outbox                                              |
+| Loyalty rules and refunds        | Pass    | Rules validated server-side; products must belong to the café; refunds reverse stamps once per refund                                            |
+| In-app QR scanner                | Pass    | Only accepts the signed table token format; the server still verifies the signature                                                              |
+| Function errors                  | Pass    | A bad configuration answers 503 without printing values; storage outage answers 5xx with no key in the body (test)                               |
+| Staging exposure                 | Planned | Vercel Authentication on all staging deployments; `noindex` headers (docs/18)                                                                    |
+
+New or changed open items: O4 narrowed (storage adapter built, scanner still missing); O5 closed
+(in-app scanner built, PR #26); O6 unchanged; O9 added (no automatic backups on Supabase Free);
+O10 added (Vercel plan unknown: on Hobby, timeouts would run once a day).
 
 This is an internal engineering review of the code as merged on 2026-11-28 (PRs #12–#19). It is
 not an external penetration test. Gate G7 in docs/15 still needs an independent tester and a
@@ -102,16 +127,18 @@ Revisit when Expo ships an update.
 
 ## Findings and open items
 
-| #   | Item                                                                                                       | Severity | Owner / next step                           |
-| --- | ---------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------- |
-| O1  | Tap adapter not yet run against Tap's sandbox                                                              | Medium   | Needs Tap test keys from the founder        |
-| O2  | No external penetration test or SAST report (G7)                                                           | High     | Founder to engage a tester before any pilot |
-| O3  | Step-up MFA for role changes and bank detail changes not built; merchant owners have no MFA                | Medium   | Decide with D12; build before pilot         |
-| O4  | Object storage and malware scanner adapters not built (local disk and basic checker refused in production) | High     | Choose providers (D11), build adapters      |
-| O5  | Native camera QR scanning not built; table links open through the phone's camera app                       | Low      | Product decision                            |
-| O6  | Apple and Google sign-in not built                                                                         | Low      | Needs developer accounts (paid)             |
-| O7  | Privacy retention periods not set (D11), so deletion jobs are not final                                    | Medium   | Founder and legal counsel                   |
-| O8  | Moderate tooling advisory (minimatch)                                                                      | Low      | Update Expo when fixed                      |
+| #   | Item                                                                                                        | Severity | Owner / next step                                             |
+| --- | ----------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------- |
+| O1  | Tap adapter not yet run against Tap's sandbox                                                               | Medium   | Needs Tap test keys from the founder                          |
+| O2  | No external penetration test or SAST report (G7)                                                            | High     | Founder to engage a tester before any pilot                   |
+| O3  | Step-up MFA for role changes and bank detail changes not built; merchant owners have no MFA                 | Medium   | Decide with D12; build before pilot                           |
+| O4  | Supabase Storage adapter built (PR #23); no approved malware scanner, so uploads are disabled in production | High     | Founder: approve a scanner or another way to verify documents |
+| O5  | ~~Native camera QR scanning not built~~ Closed: in-app scanner (PR #26)                                     | —        | —                                                             |
+| O6  | Apple and Google sign-in not built                                                                          | Low      | Needs developer accounts (paid)                               |
+| O7  | Privacy retention periods not set (D11), so deletion jobs are not final                                     | Medium   | Founder and legal counsel                                     |
+| O8  | Moderate tooling advisory (minimatch)                                                                       | Low      | Update Expo when fixed                                        |
+| O9  | Supabase Free has no automatic backups                                                                      | High     | Manual drill now; managed backups before real data (docs/24)  |
+| O10 | Vercel plan unknown; Hobby runs cron once a day and forbids commercial use                                  | High     | Founder: confirm the plan                                     |
 
 No high-severity defect was found in the code reviewed. O2 and O4 are high because they block a
 pilot, not because a vulnerability is known.

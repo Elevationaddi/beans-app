@@ -1271,7 +1271,7 @@ provider.
 - Secret scanning flagged two obviously fake Tap test keys in tests; the tests now assemble fake
   keys at runtime so gitleaks stays strict.
 
-## Cycle 3 — Vercel and free tiers (2026-11-28, in progress)
+## Cycle 3 — Vercel and free tiers (2026-11-28, complete in sandbox; staging prepared, not deployed)
 
 Founder decision of 2026-11-28 (1:28 PM Dubai): no paid service beyond the existing Vercel,
 ChatGPT and Claude subscriptions. Hosting moves to Vercel with Supabase Free, Resend Free,
@@ -1425,6 +1425,30 @@ approves the final infrastructure plan.
 - Migration `20261128140000_loyalty_rules` (additive; rollback notes in the file). Applied to the
   local development and test databases; `prisma migrate diff` shows no drift.
 - Tests: `test/loyalty-rules.int.test.ts` (7). API integration 29 files / 226 tests passed.
+
+### Part 8: remaining tests, outbox fix, uploads-off mode and the 16 deliverables
+
+- **Fix**: events that only feed in-app notifications (`customer.payment_refunded`,
+  `merchant.application_submitted`, `merchant.status_changed`, `payout.updated`,
+  `refund.updated`, `staff.invited`) had no outbox handler after Part 1 and would have retried
+  until marked failed. They are now acknowledged (`NOTIFICATION_ONLY_TOPICS`); a unit test scans
+  the source for every published topic and checks it has a handler.
+- **`FILE_SCANNER=disabled`**: production refused the basic checker, so the API could not start
+  in production mode at all without a real scanner. The new mode refuses document uploads with
+  `403 FEATURE_DISABLED` before any bytes are accepted (and fails any check that still runs), so
+  staging can start with no unscanned document ever reachable. `basic` stays refused in production.
+- **New tests**: `src/config/free-tier.test.ts` (vercel.json limits, regions, document size),
+  `src/outbox/outbox-topics.test.ts`, `test/resilience.int.test.ts` (pool of 1 under 30 parallel
+  requests; storage outage), uploads-off test in `test/onboarding.int.test.ts`, scanner and env
+  unit tests. Backup drill run locally.
+- **Results** (local, 2026-11-28): API unit 80, API integration 229, mobile 42, web 1,
+  contracts 6, UI 5: 363 passed, 0 failed. Browser tests (23) run in CI.
+- **Documents**: CLAUDE.md, README, decision log (docs/00), architecture (22), free-tier register
+  (23), monthly costs and unavoidable expenses (24), accounts and setup (25), environment
+  variables (26), test results and limitations (27), data residency and legal (28), Tap test mode
+  (29), staging guide rewritten (18), security review (17), launch checklist (19); docs/20
+  marked superseded.
+- No migration. Rollback: revert the commit.
 
 ## Decision and change log
 

@@ -86,6 +86,9 @@ describe("loadEnv", () => {
     const prod = issuesFor({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "supabase" });
     expect(prod.join("\n")).not.toMatch(/^STORAGE_DRIVER:/m);
     expect(prod.join("\n")).toMatch(/FILE_SCANNER: the basic file checker cannot run/);
+    // With uploads switched off (no scanner approved) the file check no longer blocks start-up.
+    const off = issuesFor({ ...base, NODE_ENV: "production", FILE_SCANNER: "disabled" });
+    expect(off.join("\n")).not.toMatch(/^FILE_SCANNER:/m);
   });
 
   it("rejects a non-postgres database URL", () => {

@@ -1,90 +1,111 @@
-# Staging environment instructions (2026-11-28)
+# Staging guide: Vercel and Supabase Free (cycle 3)
 
-**Nothing described here has been set up or deployed.** Creating a staging environment means
-buying hosting, a domain and possibly an SMS sender, which needs the founder's written approval
-("Do not deploy publicly, incur paid service charges…"). This document is the step-by-step plan
-for whoever does it once approved. The release procedure, migrations, monitoring and rollback
-are in docs/15; the cost estimate is in docs/20.
+**Prepared, not deployed.** The founder's instruction of 2026-11-28 is: "Prepare the deployment
+configuration and instructions. Do not deploy or activate billable resources until I approve the
+final infrastructure plan." Nothing in this guide has been run against a real account. It
+replaces the earlier container-and-Redis plan.
 
-## 0. Before you start (approvals)
+Related documents: architecture (docs/22), free-tier limits (docs/23), costs (docs/24), accounts
+and dashboard settings (docs/25), environment variables (docs/26), test results and limitations
+(docs/27), data locations (docs/28), Tap test mode (docs/29), release and rollback (docs/15).
 
-| Needed                                         | Decision | Status                         |
-| ---------------------------------------------- | -------- | ------------------------------ |
-| Hosting provider and region (UAE preferred)    | D11      | Options and costs in docs/20   |
-| Budget approval for staging                    | Founder  | Not given                      |
-| Supabase project for staging (region, plan)    | D12      | Not created                    |
-| Tap sandbox account and test keys              | D03      | Not provided                   |
-| Object storage and malware scanner             | D11      | Not chosen; adapters not built |
-| Staging domain names                           | D13      | Not chosen (name is temporary) |
-| SMS sender for phone sign-in (Twilio proposed) | D12      | Not created; use test numbers  |
+## 0. Before you start
 
-Staging must use **synthetic data only**, Tap **test** keys only, and no real notifications.
+| Needed                                                         | Status                        |
+| -------------------------------------------------------------- | ----------------------------- |
+| Founder approval of the infrastructure plan                    | **Not given**                 |
+| Vercel plan confirmed as Pro (per-minute cron, commercial use) | **Unknown** (docs/27 L3)      |
+| Supabase Free organization and staging project (Mumbai)        | Not created                   |
+| Resend account and a verified sending domain                   | Not created; no domain chosen |
+| Tap test account and test keys (entered in Vercel only)        | Not provided                  |
 
-## 1. What runs in staging
+The API refuses to start in production mode with the fake payment provider, so **staging needs
+Tap test keys** (free). Until they exist, staging cannot start; local development keeps the fake
+provider.
 
-| Component                          | Build command                                                                   | Runs as                              |
-| ---------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------ |
-| API (NestJS)                       | `pnpm --filter @beans/api build` → `node apps/api/dist/main.js`                 | Container, 2 instances behind TLS    |
-| Worker (BullMQ)                    | Same image with `OUTBOX_WORKER_ENABLED=true`; API instances can set it to false | Container, 1 instance                |
-| Business portal and barista tablet | `pnpm --filter @beans/merchant build` → `next start`                            | Container                            |
-| Admin console                      | `pnpm --filter @beans/admin build` → `next start`                               | Container, IP-restricted if possible |
-| Customer app                       | EAS internal build (iOS TestFlight / Android internal track)                    | Test devices only                    |
-| PostgreSQL 16                      | Managed service with daily backups and point-in-time recovery                   | Private network only                 |
-| Redis 7                            | Managed service, persistence on                                                 | Private network only                 |
+## 1. Ground rules for staging
 
-## 2. Environment settings
+- **Fictional data only.** No real customer, merchant, staff or card details, and no real
+  merchant documents, until privacy and data residency are reviewed (docs/28). Seed data is
+  fictional by design.
+- **Private.** Every staging project has Vercel Authentication turned on, so only signed-in
+  members of the Vercel team can open it. Search engines are told not to index it
+  (`X-Robots-Tag: noindex`).
+- **Separate.** Staging has its own Supabase project, its own database, its own secrets and its
+  own Vercel environment variables. Never copy a staging secret to production or the reverse.
+- **No live money, no real notifications.** Tap test keys only (live keys are refused by the
+  API); push and SMS sending are not built.
+- **No paid add-ons.** Decline any upgrade, trial or card prompt.
 
-Copy the names from `.env.example`. The API validates them at start and refuses unsafe
-combinations. Staging runs with the **production** configuration so those checks apply:
+## 2. What runs where
 
-- `NODE_ENV=production`
-- `DATABASE_URL`, `REDIS_URL`: managed services, TLS required.
-- `SUPABASE_URL`, `SUPABASE_JWKS_URL`, `SUPABASE_JWT_ISSUER`, `SUPABASE_JWT_AUDIENCE`,
-  `SUPABASE_ANON_KEY`: the staging Supabase project.
-- `PAYMENT_PROVIDER=tap`, `TAP_SECRET_KEY=sk_test_…` (test key only; the API refuses others),
-  `TAP_RETURN_URL` (customer return page), `API_PUBLIC_URL` (used for Tap's webhook URL
-  `…/v1/webhooks/payments/tap`).
-- `LIVE_PAYMENTS_ENABLED` unset (the API refuses `true`).
-- `DEV_AUTH_ENABLED` unset (the API refuses it in production).
-- `CORS_ORIGINS`: the portal and admin staging URLs only.
-- Generate fresh 32+ character random values for `FILE_SIGNING_SECRET`, `PAYMENT_WEBHOOK_SECRET`,
-  `PICKUP_CODE_SECRET` and `TABLE_TOKEN_SECRET` (for example `openssl rand -base64 48`). Store them
-  only in the hosting provider's secret store. Never reuse them in production.
-- `STORAGE_DRIVER` and `FILE_SCANNER`: the production adapters do not exist yet (security review O4). Until
-  they do, the API will refuse to start in production mode, which is the intended guard.
-
-Web builds: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-`NEXT_PUBLIC_CUSTOMER_APP_URL`. **Never** set `NEXT_PUBLIC_DEV_AUTH` in a staging build.
-Mobile builds: `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
-**Never** set `EXPO_PUBLIC_DEV_AUTH`.
+| Part                               | Vercel project root | Build (from `vercel.json`)                                |
+| ---------------------------------- | ------------------- | --------------------------------------------------------- |
+| API (NestJS, one function)         | `apps/api`          | contracts + API build; `api/index.mjs`; cron every minute |
+| Business portal and barista tablet | `apps/merchant`     | Next.js                                                   |
+| Admin console                      | `apps/admin`        | Next.js                                                   |
+| Customer web app (QR links)        | `apps/mobile`       | Expo web export                                           |
+| Customer phone app                 | —                   | Local builds (docs/25 section 6)                          |
+| Database, sign-in, files, live     | Supabase Free       | Mumbai region                                             |
 
 ## 3. Step by step
 
-1. Create the staging Supabase project in the chosen region. Turn on email and phone one-time
-   codes, email and password for businesses, and TOTP MFA. Add test phone numbers instead of
-   connecting a paid SMS sender until approved.
-2. Create the managed PostgreSQL and Redis in the private network.
-3. Apply migrations: `pnpm --filter @beans/api exec prisma migrate deploy` with the staging
-   `DATABASE_URL`. Never run `migrate dev` or `migrate reset` against staging.
-4. Seed synthetic data: `pnpm db:seed` (fictional cafés and accounts only). Create the staging
-   admin accounts in Supabase, enrol MFA, then grant roles in the database.
-5. In the Tap dashboard (test mode), set the webhook URL to
-   `https://<api-staging-host>/v1/webhooks/payments/tap`.
-6. Deploy the API and worker images, then the portal and admin. Check `GET /health/live` (process up)
-   and `GET /health` (database and Redis reachable).
-7. Build the customer app with EAS for internal testers pointing at the staging API.
-8. Run the browser tests against staging (the Playwright config reads `E2E_API_URL`; the web
-   hosts still need the same treatment, a small change to `e2e/playwright.config.ts`) and a short load test (docs/14 "Concurrency and load").
-9. Rehearse a backup restore and a rollback (docs/15 sections 5 and 8) and record the times.
+1. **Accounts and dashboard settings.** Follow docs/25 sections 2 to 4: Spend Management with a
+   hard pause, Vercel Authentication, Supabase sign-in settings (email code 10 minutes, TOTP on,
+   phone off), Resend SMTP.
+2. **Environment variables.** Enter every API, portal, admin and customer web variable from
+   docs/26 in each Vercel project's "Preview" environment. Mark secrets Sensitive. Key choices:
+   `NODE_ENV=production`, `REALTIME_DRIVER=supabase`, `STORAGE_DRIVER=supabase`,
+   `FILE_SCANNER=disabled`, `OUTBOX_RELAY_ENABLED=false`, `CHECKOUT_SWEEP_ENABLED=false`,
+   `PAYMENT_PROVIDER=tap` with the test key, `DATABASE_POOL_MAX=2`.
+3. **Database.** From a developer machine with the staging connection strings in a local,
+   git-ignored `.env`:
+   `pnpm --filter @beans/api exec prisma migrate deploy`. Never run `migrate dev` or
+   `migrate reset` against staging.
+4. **Fictional data.** `pnpm db:seed` (fictional cafés, menus and accounts). Then create the
+   staging admin accounts in Supabase (Authentication → Users → Invite), let each person sign in
+   to the admin console once and enrol their authenticator app (this creates their row in
+   `users`), and grant roles in the Supabase SQL editor, for example:
+   `INSERT INTO admin_roles (id, user_id, role) SELECT gen_random_uuid(), id, 'operations' FROM users WHERE auth_subject = '<Supabase user ID>';`
+   Roles: super_admin, operations, finance_maker, finance_checker, support, marketing, analyst,
+   security. Give each person only what they need, and never both finance roles to one person.
+5. **Storage bucket.** `pnpm --filter @beans/api storage:setup` creates the private bucket.
+6. **Tap.** Nothing to type into Tap's dashboard: the API sends its webhook address
+   (`https://<staging-api>/v1/webhooks/payments/tap`) with every charge and refund. Make sure
+   `API_PUBLIC_URL` is the https staging address (docs/29).
+7. **First deployment** (only after the founder's approval). Push the branch; Vercel builds a
+   Preview deployment for each project. Do not promote to Production and do not attach a domain.
+8. **Health.** `GET https://<staging-api>/health/live` answers 200; `GET /health` reports the
+   database as up. A wrong or missing variable answers 503 without showing any value; the
+   function log names the variable.
+9. **Cron.** In the API project's Cron Jobs tab, check that `/v1/internal/cron/tick` runs every
+   minute and answers 200. Calling it without the secret must answer 404.
+10. **Customer phone app.** Build locally against the staging API (docs/25 section 6) for the
+    team's own devices.
 
 ## 4. Checks before calling staging ready
 
-- [ ] API refuses to start when any required secret is removed (try one, then restore it).
-- [ ] A Tap test card payment completes and the webhook marks the order paid.
-- [ ] A Tap test refund completes.
-- [ ] Sign-in works for a customer (test phone number), a business owner, a barista and an admin
-      with MFA; the admin console refuses to load without MFA.
-- [ ] Tenancy: a second test business cannot see the first one's orders.
-- [ ] Browser tests pass against staging; results saved.
-- [ ] Backup restore drill done; time recorded.
-- [ ] No secret appears in logs, bundles or screenshots (search the built bundles for `sk_`).
+- [ ] API refuses to start when a required secret is removed (try one, then restore it).
+- [ ] Cron tick runs every minute; an order not accepted within 120 seconds is cancelled and
+      refunded within about three minutes.
+- [ ] Sign-in works for a customer (email code), a business owner (password), a barista and an
+      admin with MFA; the admin console refuses to load without MFA.
+- [ ] Sign-in emails arrive through Resend from the verified domain.
+- [ ] Live updates: an order accepted on the tablet appears on the customer screen within a few
+      seconds; turning off the network falls back to polling and recovers.
+- [ ] A Tap test card payment completes and the webhook marks the order paid; a full and a
+      partial refund complete (docs/29).
+- [ ] Document upload answers "not available yet" (no scanner approved).
+- [ ] Tenancy: a second fictional business cannot see the first one's orders.
+- [ ] Browser tests pass against staging (`E2E_API_URL` and the web addresses set in
+      `e2e/playwright.config.ts`); results saved.
+- [ ] Backup drill run to an encrypted local disk; time recorded (docs/27).
+- [ ] No secret appears in logs, bundles or screenshots (search the built bundles for `sk_` and
+      `service_role`).
+- [ ] Vercel usage page and Supabase usage page show the expected low numbers.
+
+## 5. Rolling back
+
+Vercel keeps every deployment: use "Instant Rollback" (or promote the previous Preview) for the
+code. Database migrations are additive; rollback notes for each are in docs/13. Restore data
+from the latest local backup only if a migration damaged it (docs/15 section 8).
