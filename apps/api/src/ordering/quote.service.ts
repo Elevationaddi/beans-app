@@ -1,6 +1,8 @@
 import { SettingsService } from "../platform/settings.service.js";
+import { BenefitsService } from "../engagement/benefits.service.js";
 import { Inject, Injectable } from "@nestjs/common";
 import type {
+  Benefit,
   BranchMenu,
   CreateQuoteRequest,
   Fulfillment,
@@ -95,6 +97,7 @@ export function quoteView(row: QuoteRow): Quote {
     menuVersion: row.menuVersion,
     lines: row.lineSnapshot as unknown as QuoteLine[],
     fulfillment: row.fulfillment as unknown as Fulfillment,
+    benefit: (row.benefit as unknown as Benefit | null) ?? null,
   };
 }
 
@@ -111,15 +114,21 @@ export class QuoteService {
     @Inject(SlotService) private readonly slots: SlotService,
     @Inject(ENV) private readonly env: Env,
     @Inject(SettingsService) private readonly settings: SettingsService,
+    @Inject(BenefitsService) private readonly benefits: BenefitsService,
   ) {}
 
   async create(userId: string, body: CreateQuoteRequest): Promise<Quote> {
     await this.settings.assertOrderingOpen();
-    // Phase-two features stay off until approved (D07, D14, D16).
-    if (body.tableToken !== undefined) throw featureDisabled("tableToken", "Dine-in by table QR");
-    if (body.promoCode !== undefined) throw featureDisabled("promoCode", "Promo codes");
-    if (body.rewardId !== undefined) throw featureDisabled("rewardId", "Rewards");
-    if (body.mode === "dine_in") throw featureDisabled("mode", "Dine-in");
+    // A table token only makes sense for dine-in; dine-in itself is checked below.
+    if (body.tableToken !== undefined && body.mode !== "dine_in") {
+      throw semantic("A table code is only used for dine-in", {
+        tableToken: ["Only for dine-in"],
+      });
+    }
+    // A switched-off feature says so before any branch-specific check.
+    if (body.mode === "dine_in" && !(await this.settings.get("features")).dineIn) {
+      throw featureDisabled("mode", "Dine-in");
+    }
 
     const cart = await this.prisma.cart.findFirst({
       where: { id: body.cartId, userId, status: "active" },
@@ -139,6 +148,8 @@ export class QuoteService {
       });
     }
 
+    const table =
+      body.mode === "dine_in" ? await this.benefits.tableFor(body.tableToken, branch.id) : null;
     const vehicle = await this.vehicleFor(userId, body);
     const now = new Date();
     const asap = body.slotId === undefined;
@@ -151,7 +162,15 @@ export class QuoteService {
     const lines = priceLines(menu, cart.items);
     await this.checkStock(this.prisma, branch.id, lines);
     const subtotal = lines.reduce((sum, l) => sum + BigInt(l.lineFils), 0n);
-    const totals = totalsFor(subtotal);
+    const benefit = await this.benefits.forQuote({
+      userId,
+      merchantId: branch.merchantId,
+      lines,
+      subtotalFils: subtotal,
+      body,
+      now,
+    });
+    const totals = totalsFor(subtotal, BigInt(benefit?.discountFils ?? "0"));
     const fulfillment: Fulfillment = {
       mode: body.mode,
       asap,
@@ -159,6 +178,7 @@ export class QuoteService {
       pickupAt: slot.startsAt.toISOString(),
       timezone: branch.timezone,
       vehicle,
+      ...(table && { table }),
     };
 
     const row = await this.prisma.quote.create({
@@ -172,6 +192,7 @@ export class QuoteService {
         totals: totals as unknown as Prisma.InputJsonObject,
         lineSnapshot: lines as unknown as Prisma.InputJsonArray,
         fulfillment: fulfillment as unknown as Prisma.InputJsonObject,
+        ...(benefit && { benefit: benefit as unknown as Prisma.InputJsonObject }),
         menuVersion: menu.version,
         policyVersion: SANDBOX_PRICING_POLICY.version,
         expiresAt: new Date(

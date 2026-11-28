@@ -192,7 +192,7 @@ const merchants: MerchantSeed[] = [
         address: "Test address 1, Abu Dhabi",
         lat: 24.4764,
         lng: 54.3227,
-        modes: ["in_store", "curbside"],
+        modes: ["in_store", "curbside", "dine_in"],
       },
       {
         id: SEED.branches.a2,
@@ -488,11 +488,69 @@ async function upsertSandboxPolicy() {
   });
 }
 
+/**
+ * Phase 9 sandbox data: features on, a stamp card and an approved promo code for café A, and a
+ * dine-in table at its first branch. Created once; later admin or merchant changes are kept.
+ */
+async function upsertEngagement() {
+  await prisma.platformSetting.upsert({
+    where: { key: "features" },
+    create: {
+      key: "features",
+      value: { stampCards: true, promotions: true, dineIn: true, sandboxGifts: true },
+    },
+    update: {},
+  });
+  await prisma.branch.update({
+    where: { id: SEED.branches.a1 },
+    data: { modes: ["in_store", "curbside", "dine_in"] },
+  });
+  await prisma.stampCard.upsert({
+    where: { merchantId: SEED.merchants.a },
+    create: {
+      id: id(90, 1),
+      merchantId: SEED.merchants.a,
+      nameEn: "Sandbox stamp card",
+      nameAr: "[للمراجعة] بطاقة الطوابع التجريبية",
+      stampsRequired: 5,
+      rewardEn: "One drink on us",
+      rewardAr: "[للمراجعة] مشروب مجاني",
+      rewardMaxFils: 2500n,
+    },
+    update: {},
+  });
+  const now = new Date();
+  await prisma.promotion.upsert({
+    where: { merchantId_code: { merchantId: SEED.merchants.a, code: "SANDBOX10" } },
+    create: {
+      id: id(90, 2),
+      merchantId: SEED.merchants.a,
+      code: "SANDBOX10",
+      nameEn: "Sandbox 10% off",
+      kind: "percent",
+      percentBasisPoints: 1000,
+      maxDiscountFils: 1000n,
+      startsAt: now,
+      endsAt: new Date(now.getTime() + 365 * 86_400_000),
+      perCustomerLimit: 100,
+      status: "approved",
+      reviewNote: "Sandbox seed",
+    },
+    update: {},
+  });
+  await prisma.branchTable.upsert({
+    where: { id: id(90, 3) },
+    create: { id: id(90, 3), branchId: SEED.branches.a1, label: "T1" },
+    update: {},
+  });
+}
+
 async function main() {
   await upsertUsers();
   for (const [index, merchant] of merchants.entries()) await upsertMerchant(merchant, index);
   await upsertStaffA();
   await upsertSandboxPolicy();
+  await upsertEngagement();
   const counts = {
     users: await prisma.user.count(),
     merchants: await prisma.merchant.count(),

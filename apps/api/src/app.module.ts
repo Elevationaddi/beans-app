@@ -1,4 +1,6 @@
 import { PlatformModule } from "./platform/platform.module.js";
+import { EngagementCoreModule } from "./engagement/engagement-core.module.js";
+import { EngagementModule } from "./engagement/engagement.module.js";
 import { Module, type DynamicModule } from "@nestjs/common";
 import { AdminModule } from "./admin/admin.module.js";
 import { AuditModule } from "./audit/audit.module.js";
@@ -56,6 +58,8 @@ export class AppModule {
         OnboardingModule,
         AdminModule,
         PlatformModule,
+        EngagementCoreModule,
+        EngagementModule,
       ],
     };
   }

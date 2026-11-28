@@ -1,4 +1,5 @@
 import { SettingsService } from "../platform/settings.service.js";
+import { BenefitsService } from "../engagement/benefits.service.js";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
@@ -49,6 +50,7 @@ export class PaymentReconciler {
     @Inject(PickupCodes) private readonly pickupCodes: PickupCodes,
     @Inject(ENV) private readonly env: Env,
     @Inject(SettingsService) private readonly settings: SettingsService,
+    @Inject(BenefitsService) private readonly benefits: BenefitsService,
   ) {}
 
   /** Records a provider answer for one attempt. Safe to call repeatedly. */
@@ -258,6 +260,8 @@ export class PaymentReconciler {
         metadata: extra.metadata ?? {},
       },
     });
+    // Phase 9: confirm, release or earn the order's benefit and stamps with the status change.
+    await this.benefits.onTransition(tx, order, to);
     await this.announce(tx, order, to);
     return order.version + 1;
   }

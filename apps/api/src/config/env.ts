@@ -74,6 +74,8 @@ export const envSchema = z
     ACCEPT_TIMEOUT_SECONDS: z.coerce.number().int().min(30).max(3600).default(120),
     /** HMAC secret for handoff codes (32+ chars). Random per process when unset outside production. */
     PICKUP_CODE_SECRET: z.string().min(32).optional(),
+    /** HMAC secret for dine-in table QR tokens (32+ chars). Random per process when unset outside production. */
+    TABLE_TOKEN_SECRET: z.string().min(32).optional(),
     /** Run the checkout sweep (poll pending payments, release expired holds) in this process. */
     CHECKOUT_SWEEP_ENABLED: z
       .enum(["true", "false"])
@@ -137,6 +139,7 @@ export const envSchema = z
       "FILE_SIGNING_SECRET",
       "PAYMENT_WEBHOOK_SECRET",
       "PICKUP_CODE_SECRET",
+      "TABLE_TOKEN_SECRET",
     ] as const) {
       if (!env[key]) {
         ctx.addIssue({ code: "custom", path: [key], message: "required in production" });

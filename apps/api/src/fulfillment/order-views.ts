@@ -1,4 +1,5 @@
 import type {
+  Benefit,
   CancellationRequestView,
   Fulfillment,
   LocalizedText,
@@ -46,6 +47,8 @@ export function toMerchantOrder(row: MerchantOrderRow): MerchantOrder {
       };
     }),
     vehicle: row.mode === "curbside" ? fulfillment.vehicle : null,
+    table: row.mode === "dine_in" ? (fulfillment.table ?? null) : null,
+    benefit: (row.benefit as unknown as Benefit | null) ?? null,
     arrival: {
       arrivedAt: row.arrivedAt?.toISOString() ?? null,
       acknowledgedAt: row.arrivalAckAt?.toISOString() ?? null,

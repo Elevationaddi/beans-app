@@ -62,6 +62,7 @@ describe("loadEnv", () => {
       FILE_SIGNING_SECRET: "x".repeat(40),
       PAYMENT_WEBHOOK_SECRET: "y".repeat(40),
       PICKUP_CODE_SECRET: "p".repeat(40),
+      TABLE_TOKEN_SECRET: "t".repeat(40),
     });
     expect(issues.sort()).toEqual([
       "FILE_SCANNER: the basic file checker cannot run with NODE_ENV=production",
@@ -83,6 +84,7 @@ describe("loadEnv", () => {
     expect(issues).toContain("SUPABASE_JWT_ISSUER: required in production");
     expect(issues).toContain("PAYMENT_WEBHOOK_SECRET: required in production");
     expect(issues).toContain("PICKUP_CODE_SECRET: required in production");
+    expect(issues).toContain("TABLE_TOKEN_SECRET: required in production");
   });
 
   it("requires a CORS allowlist in production", () => {

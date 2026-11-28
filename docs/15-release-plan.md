@@ -61,7 +61,8 @@ logs or tickets. The settings and their meaning are in `.env.example`; the API v
 at start and refuses to run with an unsafe combination.
 
 Secrets that must be generated per environment (32+ random characters, stored in the hosting
-provider's secret store): `FILE_SIGNING_SECRET`, `PAYMENT_WEBHOOK_SECRET`, `PICKUP_CODE_SECRET`.
+provider's secret store): `FILE_SIGNING_SECRET`, `PAYMENT_WEBHOOK_SECRET`, `PICKUP_CODE_SECRET`,
+`TABLE_TOKEN_SECRET` (rotating it voids every printed table QR code).
 Rotating `PICKUP_CODE_SECRET` changes the codes of open orders: rotate only when no order is
 between paid and completed, or accept that staff will need the order number fallback.
 

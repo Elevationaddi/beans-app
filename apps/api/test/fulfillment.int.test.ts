@@ -505,7 +505,8 @@ describe("phase 8: fulfilment (queue, staff steps, curbside, handoff, cancellati
       const row = await world.prisma.order.findUniqueOrThrow({ where: { id: orderId } });
       expect(row.acceptBy).not.toBeNull();
       const late = new Date((row.acceptBy?.getTime() ?? 0) + 1000);
-      expect(await fulfillment.sweepAcceptanceTimeouts(late)).toBeGreaterThanOrEqual(1);
+      // The shared test database holds older unaccepted orders from other files; take them all.
+      expect(await fulfillment.sweepAcceptanceTimeouts(late, 10_000)).toBeGreaterThanOrEqual(1);
       const order = await world.prisma.order.findUniqueOrThrow({
         where: { id: orderId },
         include: { events: { orderBy: { seq: "desc" }, take: 1 } },
@@ -518,7 +519,7 @@ describe("phase 8: fulfilment (queue, staff steps, curbside, handoff, cancellati
         409,
       );
       // Sweeping again does nothing more.
-      await fulfillment.sweepAcceptanceTimeouts(late);
+      await fulfillment.sweepAcceptanceTimeouts(late, 10_000);
       expect(await refundsOf(orderId)).toHaveLength(1);
     });
 

@@ -1,7 +1,9 @@
 import { SettingsService } from "../platform/settings.service.js";
+import { BenefitsService } from "../engagement/benefits.service.js";
 import { randomInt } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import type {
+  Benefit,
   CheckoutRequest,
   CheckoutResult,
   Fulfillment,
@@ -64,6 +66,7 @@ export class CheckoutService {
     @Inject(PaymentReconciler) private readonly reconciler: PaymentReconciler,
     @Inject(ENV) private readonly env: Env,
     @Inject(SettingsService) private readonly settings: SettingsService,
+    @Inject(BenefitsService) private readonly benefits: BenefitsService,
   ) {}
 
   async checkout(userId: string, body: CheckoutRequest): Promise<CheckoutResult> {
@@ -192,9 +195,19 @@ export class CheckoutService {
           mode: quote.mode,
           fulfillmentSnapshot: fulfillment as unknown as Prisma.InputJsonObject,
           totals: totals as unknown as Prisma.InputJsonObject,
+          ...(quote.benefit !== null && {
+            benefit: quote.benefit as unknown as Prisma.InputJsonObject,
+          }),
           policyVersion: quote.policyVersion,
         },
       });
+      // Phase 9: hold the reward, promo code or gift for this order (released if it fails).
+      await this.benefits.hold(
+        tx,
+        { id: order.id, userId, merchantId: branch.merchantId },
+        quote.benefit as unknown as Benefit | null,
+        now,
+      );
       await tx.orderItem.createMany({
         data: lines.map((l, index) => ({
           orderId: order.id,
