@@ -21,3 +21,8 @@ export const tabletAuth: AuthConfig = {
   devAuth,
   storageKey: "cm.tablet",
 };
+
+/** Where printed table QR codes send customers (the customer app on the web). */
+export const customerAppUrl = (
+  process.env.NEXT_PUBLIC_CUSTOMER_APP_URL ?? "http://localhost:8081"
+).replace(/\/$/, "");

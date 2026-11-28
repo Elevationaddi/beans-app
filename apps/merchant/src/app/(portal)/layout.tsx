@@ -14,6 +14,7 @@ const NAV: { href: string; key: string; roles: ("owner" | "manager" | "analyst" 
   { href: "/menu", key: "nav.menu", roles: ["owner", "manager"] },
   { href: "/availability", key: "nav.availability", roles: ["owner", "manager"] },
   { href: "/staff", key: "nav.staff", roles: ["owner"] },
+  { href: "/loyalty", key: "nav.marketing", roles: ["owner", "manager"] },
   { href: "/finance", key: "nav.finance", roles: ["owner", "analyst"] },
   { href: "/analytics", key: "nav.analytics", roles: ["owner", "manager", "analyst"] },
   { href: "/support", key: "nav.support", roles: ["owner", "manager"] },

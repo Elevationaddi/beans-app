@@ -6,6 +6,7 @@ import {
   Button,
   Chip,
   FailureText,
+  Field,
   Heading,
   Notice,
   RemoteState,
@@ -22,8 +23,12 @@ import { useAction } from "../lib/use-action";
 import { useRemote } from "../lib/use-remote";
 import type { RootScreen } from "../navigation/types";
 import { useAppState } from "../state/app-state";
+import { useTable } from "../lib/table";
 
-type Mode = "in_store" | "curbside";
+type Mode = "in_store" | "curbside" | "dine_in";
+/** At most one saving per order; the server works out the amount. */
+type Saving =
+  { kind: "promo"; code: string } | { kind: "reward"; id: string } | { kind: "gift"; id: string };
 
 /**
  * C07: pickup type, vehicle for curbside, pickup time (as soon as possible or a slot), the
@@ -34,7 +39,11 @@ export function CheckoutScreen({ navigation }: RootScreen<"Checkout">) {
   const { t, locale } = useI18n();
   const { cart, clearCart } = useAppState();
   const platform = usePlatformStatus();
-  const [mode, setMode] = useState<Mode>("in_store");
+  const table = useTable();
+  const atTable = table !== null && table.branchId === cart.branchId;
+  const [mode, setMode] = useState<Mode>(atTable ? "dine_in" : "in_store");
+  const [saving, setSaving] = useState<Saving | null>(null);
+  const [promo, setPromo] = useState("");
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [slotId, setSlotId] = useState<string | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -48,7 +57,28 @@ export function CheckoutScreen({ navigation }: RootScreen<"Checkout">) {
       call(api.GET("/v1/branches/{id}", { params: { path: { id: branchId } } })),
       call(api.GET("/v1/vehicles")),
     ]);
-    return { serverCart, branch: branch.data, vehicles: vehicles.data };
+    // Stamps and gifts are optional extras: if either feature is off, checkout still works.
+    const [stamps, gifts] = await Promise.all([
+      call(api.GET("/v1/me/stamps")).then(
+        (r) => r.data,
+        () => [],
+      ),
+      call(api.GET("/v1/gifts")).then(
+        (r) => r.data,
+        () => [],
+      ),
+    ]);
+    const merchantId = branch.data.merchantId;
+    return {
+      serverCart,
+      branch: branch.data,
+      vehicles: vehicles.data,
+      reward:
+        stamps.find((s) => s.merchantId === merchantId && s.rewardAvailable && s.card) ?? null,
+      gifts: gifts.filter(
+        (g) => g.role === "received" && g.status === "claimed" && g.merchantId === merchantId,
+      ),
+    };
     // The cart is synced once when the screen opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -75,6 +105,10 @@ export function CheckoutScreen({ navigation }: RootScreen<"Checkout">) {
           mode,
           ...(slotId && { slotId }),
           ...(mode === "curbside" && vehicleId && { vehicleId }),
+          ...(mode === "dine_in" && table && { tableToken: table.token }),
+          ...(saving?.kind === "promo" && { promoCode: saving.code }),
+          ...(saving?.kind === "reward" && { rewardId: saving.id }),
+          ...(saving?.kind === "gift" && { giftId: saving.id }),
         },
       }),
     );
@@ -111,8 +145,14 @@ export function CheckoutScreen({ navigation }: RootScreen<"Checkout">) {
         </Notice>
       ) : null}
       <RemoteState remote={setup}>
-        {({ serverCart, branch, vehicles }) => {
-          const modes = branch.modes.filter((m): m is Mode => m === "in_store" || m === "curbside");
+        {({ serverCart, branch, vehicles, reward, gifts }) => {
+          const modes = branch.modes.filter(
+            (m): m is Mode => m === "in_store" || m === "curbside" || (m === "dine_in" && atTable),
+          );
+          const choose = (next: Saving | null) => {
+            setSaving(next);
+            setQuote(null);
+          };
           const needsVehicle = mode === "curbside" && !vehicleId;
           return (
             <View style={{ gap: 12 }}>
@@ -170,6 +210,64 @@ export function CheckoutScreen({ navigation }: RootScreen<"Checkout">) {
                 </View>
               ) : null}
 
+              {mode === "dine_in" && table ? (
+                <Notice tone="info" testID="checkout-table">
+                  {t("checkout.toTable", { label: table.label })}
+                </Notice>
+              ) : null}
+
+              <Heading level={2}>{t("checkout.savings")}</Heading>
+              <View style={styles.row} accessibilityRole="radiogroup">
+                <Chip
+                  role="radio"
+                  label={t("checkout.noSaving")}
+                  selected={saving === null}
+                  onPress={() => choose(null)}
+                  testID="saving-none"
+                />
+                {reward?.card ? (
+                  <Chip
+                    role="radio"
+                    label={t("checkout.useReward", {
+                      reward: localized(reward.card.reward, locale),
+                    })}
+                    selected={saving?.kind === "reward"}
+                    onPress={() => choose({ kind: "reward", id: reward.card!.id })}
+                    testID="saving-reward"
+                  />
+                ) : null}
+                {gifts.map((g) => (
+                  <Chip
+                    key={g.id}
+                    role="radio"
+                    label={t("checkout.useGift", { name: localized(g.productNames, locale) })}
+                    selected={saving?.kind === "gift" && saving.id === g.id}
+                    onPress={() => choose({ kind: "gift", id: g.id })}
+                    testID={`saving-gift-${g.id}`}
+                  />
+                ))}
+              </View>
+              <Field
+                label={t("checkout.promoCode")}
+                value={promo}
+                onChangeText={(v) => {
+                  setPromo(v.toUpperCase());
+                  if (saving?.kind === "promo") choose(null);
+                }}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                testID="promo-code"
+              />
+              <Button
+                label={
+                  saving?.kind === "promo" ? t("checkout.promoApplied") : t("checkout.applyPromo")
+                }
+                variant="secondary"
+                disabled={promo.trim().length < 3 || saving?.kind === "promo"}
+                onPress={() => choose({ kind: "promo", code: promo.trim() })}
+                testID="apply-promo"
+              />
+
               <Heading level={2}>{t("checkout.when")}</Heading>
               <View style={styles.row} accessibilityRole="radiogroup">
                 <Chip
@@ -210,7 +308,18 @@ export function CheckoutScreen({ navigation }: RootScreen<"Checkout">) {
                   ))}
                   <Body>{`${t("checkout.subtotal")}: ${formatFils(quote.subtotalFils, locale)}`}</Body>
                   {quote.discountFils !== "0" ? (
-                    <Body>{`${t("checkout.discount")}: -${formatFils(quote.discountFils, locale)}`}</Body>
+                    <Body testID="quote-discount">{`${
+                      quote.benefit?.kind === "promotion"
+                        ? t("checkout.discountCode", { code: quote.benefit.code })
+                        : quote.benefit?.kind === "reward"
+                          ? t("checkout.discountReward")
+                          : quote.benefit?.kind === "gift"
+                            ? t("checkout.discountGift")
+                            : t("checkout.discount")
+                    }: -${formatFils(quote.discountFils, locale)}`}</Body>
+                  ) : null}
+                  {quote.fulfillment.table ? (
+                    <Body>{t("checkout.toTable", { label: quote.fulfillment.table.label })}</Body>
                   ) : null}
                   <Body muted>
                     {t("checkout.vatIncluded", {

@@ -75,7 +75,7 @@ jobs:
       - run: pnpm test:integration
 
   e2e:
-    name: Browser tests (portal, tablet, admin console)
+    name: Browser tests (customer app, portal, tablet, admin console)
     runs-on: ubuntu-latest
     services:
       postgres:

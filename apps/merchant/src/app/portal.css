@@ -209,3 +209,38 @@
   border: 1px solid var(--c-border);
   border-radius: 12px;
 }
+
+/* Dine-in table QR codes (loyalty page); printing shows only the active codes. */
+.qr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+.qr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 12px;
+  text-align: center;
+}
+.qr-label {
+  font-size: 1.25rem;
+}
+.qr-image {
+  image-rendering: pixelated;
+}
+@media print {
+  .no-print,
+  nav,
+  header,
+  .banner,
+  .tabs {
+    display: none !important;
+  }
+  .qr-card {
+    break-inside: avoid;
+  }
+}

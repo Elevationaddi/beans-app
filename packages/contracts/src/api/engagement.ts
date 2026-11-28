@@ -216,6 +216,7 @@ export const resolvedTableSchema = z.object({
   branchNames: localizedTextSchema,
   table: tableSnapshotSchema,
 });
+export type ResolvedTable = z.infer<typeof resolvedTableSchema>;
 export const resolvedTableResponseSchema = dataEnvelope(resolvedTableSchema);
 
 // ── Sandbox gifts ───────────────────────────────────────────────────────────

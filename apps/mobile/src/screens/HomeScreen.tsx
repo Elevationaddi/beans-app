@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { View } from "react-native";
 import { BranchCard } from "../components/branch-card";
 import { Body, Button, Heading, Notice, RemoteState, Screen } from "../components/ui";
@@ -6,6 +7,7 @@ import { api, call } from "../lib/api";
 import { usePlatformStatus } from "../lib/platform";
 import { useRemote } from "../lib/use-remote";
 import type { TabScreen } from "../navigation/types";
+import { tableTokenFromLink, useTable } from "../lib/table";
 import { useAppState } from "../state/app-state";
 
 /**
@@ -42,8 +44,20 @@ export function HomeScreen({ navigation }: TabScreen<"Home">) {
     [prefs.city, coords?.lat, coords?.lng],
   );
 
+  // A table QR code opened in the browser: go straight to that table.
+  useEffect(() => {
+    const token = tableTokenFromLink();
+    if (token) navigation.navigate("Table", { token });
+  }, [navigation]);
+  const table = useTable();
+
   return (
     <Screen testID="home">
+      {table ? (
+        <Notice tone="info" testID="home-table">
+          {t("table.current", { label: table.label })}
+        </Notice>
+      ) : null}
       {status.data?.ordersPaused ? (
         <Notice tone="warning" testID="paused">
           {status.data.message ? localized(status.data.message, locale) : t("platform.paused")}
@@ -57,6 +71,12 @@ export function HomeScreen({ navigation }: TabScreen<"Home">) {
         label={t("home.changeArea")}
         variant="secondary"
         onPress={() => navigation.navigate("Profile")}
+      />
+      <Button
+        label={t("table.open")}
+        variant="secondary"
+        onPress={() => navigation.navigate("Table")}
+        testID="open-table"
       />
       <Button
         label={t("home.search")}
