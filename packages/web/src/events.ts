@@ -1,4 +1,6 @@
 "use client";
+import { liveSubscriptionResponseSchema, type LiveSubscription } from "@beans/contracts";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "./auth";
 
@@ -81,4 +83,98 @@ export function useEventStream(
   }, [path, session, api]);
 
   return state;
+}
+
+/**
+ * Live order signals with the database as the source of truth (cycle 3).
+ *
+ * Asks the API for this screen's channel (`livePath`). On serverless hosting that is a Supabase
+ * Realtime Broadcast channel with an unguessable name; each signal carries only an order ID and
+ * version, so the screen refetches from the API (`onChange`). Without shared live updates (local
+ * development) it falls back to the API's event stream at `streamPath`. Whatever the transport,
+ * callers keep polling: slowly while "live", quickly otherwise (see `livePollMs`).
+ */
+export function useLiveUpdates(options: {
+  livePath: string | null;
+  streamPath: string | null;
+  onChange: () => void;
+}): StreamState {
+  const { api, session, supabase } = useAuth();
+  const [subscription, setSubscription] = useState<LiveSubscription | undefined>(undefined);
+  const [realtimeState, setRealtimeState] = useState<StreamState>("connecting");
+  const onChange = useRef(options.onChange);
+  onChange.current = options.onChange;
+
+  // Which transport? Undefined while asking; null when the deployment has no shared channel.
+  useEffect(() => {
+    setSubscription(undefined);
+    if (!options.livePath || !session) return;
+    const controller = new AbortController();
+    api
+      .get(options.livePath, liveSubscriptionResponseSchema, undefined, controller.signal)
+      .then((res) => setSubscription(res.data))
+      .catch(() => {
+        // Could not ask (offline, server error): rely on the event stream and polling.
+        if (!controller.signal.aborted) setSubscription(null);
+      });
+    return () => controller.abort();
+  }, [options.livePath, session, api]);
+
+  const useRealtime = Boolean(subscription && supabase);
+  useEffect(() => {
+    if (!subscription || !supabase) return;
+    setRealtimeState("connecting");
+    return subscribeToLiveChannel(supabase, subscription, {
+      onSignal: () => onChange.current(),
+      onState: setRealtimeState,
+    });
+  }, [subscription, supabase]);
+
+  // The event stream only when the API says there is no shared channel (local development): on
+  // serverless hosting a held-open stream would occupy a function, so polling covers the gap.
+  const streamState = useEventStream(
+    subscription === null ? options.streamPath : null,
+    () => onChange.current(),
+    () => onChange.current(),
+  );
+  if (useRealtime) return realtimeState;
+  if (subscription === undefined) return "connecting";
+  return subscription === null ? streamState : "reconnecting";
+}
+
+/** Polling interval for a live screen: a slow safety net while live, faster when not. */
+export function livePollMs(state: StreamState, liveMs = 60_000, fallbackMs = 10_000): number {
+  return state === "live" ? liveMs : fallbackMs;
+}
+
+/**
+ * Joins one Supabase Realtime Broadcast channel. `onSignal` runs for each order signal and once
+ * more after every rejoin, because signals sent while disconnected are not replayed. Returns
+ * the cleanup function.
+ */
+export function subscribeToLiveChannel(
+  supabase: Pick<SupabaseClient, "channel" | "removeChannel">,
+  subscription: NonNullable<LiveSubscription>,
+  handlers: { onSignal: () => void; onState: (state: StreamState) => void },
+): () => void {
+  let joinedBefore = false;
+  const channel = supabase
+    .channel(subscription.channel, { config: { broadcast: { self: false } } })
+    .on("broadcast", { event: subscription.event }, () => handlers.onSignal())
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        if (joinedBefore) handlers.onSignal();
+        joinedBefore = true;
+        handlers.onState("live");
+      } else if (status === "CLOSED") {
+        handlers.onState("offline");
+      } else {
+        // CHANNEL_ERROR or TIMED_OUT: the client rejoins with backoff by itself.
+        const online = typeof navigator === "undefined" ? true : navigator.onLine;
+        handlers.onState(online ? "reconnecting" : "offline");
+      }
+    });
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }

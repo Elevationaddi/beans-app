@@ -1364,6 +1364,28 @@ approves the final infrastructure plan.
 - Tests: `test/supabase-storage.int.test.ts` (3, against a local Supabase Storage stand-in),
   `env.test.ts` (+1).
 
+### Part 5: live updates in the apps (Supabase Realtime with polling fallback)
+
+- Barista tablet and portal orders: `useLiveUpdates` (packages/web) asks the API for the branch
+  channel (`GET /v1/merchant/branches/{id}/live`) and joins it with the public Supabase client.
+  Each signal (order ID and version only) triggers a refetch from the API; after any rejoin the
+  screen refetches once, because missed signals are not replayed. Polling stays on as a safety
+  net: tablet 30 s while live and 10 s otherwise, portal 60 s and 15 s. Without a shared channel
+  (local development) the API's event stream is used as before. On Vercel no stream is held open.
+- Customer app order tracking: `useLiveOrder` joins the order channel
+  (`GET /v1/orders/{id}/live`) with `@supabase/realtime-js` 2.119.2 (same version as the web
+  client), refetches on each signal and after rejoins, and refreshes every 30 s while live or
+  every 5 s otherwise. Finished orders leave the channel.
+- Covered by these signals: new orders, accept, reject, preparing, ready, handover, arrival
+  notices and cancellations (every committed order change writes `order.updated` to the
+  outbox), and QR dine-in orders, which are ordinary orders. The admin console keeps
+  60-second polling for monitoring; it needs no per-order channel.
+- Free-plan fit: one channel per open screen. Supabase Free allows 200 concurrent connections and
+  2 million messages a month; each order change sends 2 messages (order and branch channels).
+- Tests: `packages/web/src/live.test.ts` runs the real Supabase client against a local
+  Phoenix/Realtime stand-in (join, filtering, signal, dropped connection and rejoin);
+  `apps/mobile/src/screens/live.test.tsx` (2).
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.

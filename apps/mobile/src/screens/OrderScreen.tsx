@@ -17,6 +17,7 @@ import { newIdempotencyKey } from "../lib/session";
 import { api, call } from "../lib/api";
 import { dubaiTime } from "../lib/cart-sync";
 import { formatFils } from "../lib/money";
+import { useLiveOrder } from "../lib/live";
 import { useAction } from "../lib/use-action";
 import { useRemote } from "../lib/use-remote";
 import type { RootScreen } from "../navigation/types";
@@ -25,8 +26,9 @@ import { STEPS, orderTone } from "./order-status";
 const OPEN = ["pending_payment", "received", "accepted", "preparing", "ready"];
 
 /**
- * C08: live order tracking. Refreshes every 5 seconds while the order is open (the API also
- * offers a server-sent event stream; polling keeps this simple and works on every network).
+ * C08: live order tracking. While the order is open it listens for live signals (Supabase
+ * Realtime) and refetches on each one, with a 30-second safety refresh; without a live channel
+ * it refreshes every 5 seconds.
  * Shows the pickup code, curbside check-in, cancellation request, refunds and the receipt.
  */
 export function OrderScreen({ navigation, route }: RootScreen<"Order">) {
@@ -40,11 +42,12 @@ export function OrderScreen({ navigation, route }: RootScreen<"Order">) {
     [orderId],
   );
   const open = order.data ? OPEN.includes(order.data.status) : true;
+  const live = useLiveOrder(orderId, open, order.reload);
   useEffect(() => {
     if (!open) return;
-    const timer = setInterval(order.reload, 5000);
+    const timer = setInterval(order.reload, live === "live" ? 30_000 : 5000);
     return () => clearInterval(timer);
-  }, [open, order.reload]);
+  }, [open, order.reload, live]);
 
   const arrive = useAction(async () => {
     const expectedVersion = order.data?.version ?? 1;
