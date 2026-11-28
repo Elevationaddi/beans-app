@@ -231,6 +231,14 @@ describe("phase 10: tickets, privacy requests, dashboards, reports, settings", (
         .expect(201);
       const deletionId = (deletion.body as { data: { ticketId: string } }).data.ticketId;
 
+      // The admin privacy queue lists privacy tickets only.
+      const queue = ticketListResponseSchema.parse(
+        (await get("/v1/admin/tickets?category=privacy&limit=100", support.token).expect(200)).body,
+      ).data;
+      expect(queue.map((t) => t.id)).toEqual(expect.arrayContaining([ticketId, deletionId]));
+      expect(queue.every((t) => t.category === "privacy")).toBe(true);
+      await get("/v1/admin/tickets?category=nonsense", support.token).expect(400);
+
       await get(`/v1/admin/privacy-requests/${ticketId}/export`, ops.token).expect(403);
       await get(`/v1/admin/privacy-requests/${deletionId}/export`, support.token).expect(400);
       const exported = privacyExportResponseSchema.parse(

@@ -74,6 +74,64 @@ jobs:
         run: pnpm db:seed && pnpm db:seed
       - run: pnpm test:integration
 
+  e2e:
+    name: Browser tests (portal, tablet, admin console)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: beans
+          POSTGRES_PASSWORD: beans
+          POSTGRES_DB: beans_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U beans -d beans_e2e"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      # Fictional seed data and the fake payment provider only. Development sign-in is refused
+      # by the API with NODE_ENV=production, so it can never reach a real deployment.
+      NODE_ENV: development
+      DATABASE_URL: postgresql://beans:beans@localhost:5432/beans_e2e
+      REDIS_URL: redis://localhost:6379
+      CORS_ORIGINS: http://localhost:3001,http://localhost:3002
+      DEV_AUTH_ENABLED: "true"
+      RATE_LIMIT_ENABLED: "false"
+      NEXT_PUBLIC_DEV_AUTH: "true"
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Per-run signing secrets (random, never stored)
+        run: |
+          echo "PAYMENT_WEBHOOK_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "PICKUP_CODE_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "FILE_SIGNING_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - run: pnpm db:migrate
+      - run: pnpm db:seed
+      - run: pnpm build
+      - name: Install the browser
+        run: pnpm --filter @beans/e2e exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - name: Keep the report when tests fail
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/report
+          retention-days: 7
+
   security:
     name: Secret and dependency scan
     runs-on: ubuntu-latest

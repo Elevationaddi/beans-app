@@ -92,6 +92,8 @@ export const adminOrderSchema = z.object({
   etaAt: z.iso.datetime().nullable(),
   /** Accepted or preparing past the promised time, or not accepted in time. */
   late: z.boolean(),
+  /** Pass back as expectedVersion when cancelling. */
+  version: z.number().int(),
 });
 export type AdminOrder = z.infer<typeof adminOrderSchema>;
 export const adminOrderListResponseSchema = listEnvelope(adminOrderSchema);

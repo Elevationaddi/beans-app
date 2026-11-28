@@ -721,6 +721,7 @@ function toAdminOrder(row: OrderListRow): AdminOrder {
     acceptBy: row.acceptBy?.toISOString() ?? null,
     etaAt: row.etaAt?.toISOString() ?? null,
     late: late && (ACTIVE as readonly string[]).includes(row.status),
+    version: row.version,
   };
 }
 

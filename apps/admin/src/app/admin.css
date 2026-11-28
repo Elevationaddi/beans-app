@@ -1,0 +1,54 @@
+/* Admin-only additions on top of @beans/web/styles.css. */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-block-end: 16px;
+}
+.json {
+  background: var(--c-bg);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 12px;
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-block: 12px;
+}
+.thread .msg {
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.thread .msg.internal {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--c-accent) 12%, transparent);
+}
+.featured-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.featured-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+}

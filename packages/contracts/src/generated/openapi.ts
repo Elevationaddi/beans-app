@@ -10427,6 +10427,7 @@ export interface operations {
         limit?: number;
         status?: "open" | "pending" | "resolved" | "closed";
         merchantId?: string;
+        category?: "order_issue" | "payment" | "account" | "privacy" | "merchant_support" | "other";
       };
       header?: never;
       path?: never;
@@ -10880,6 +10881,7 @@ export interface operations {
         limit?: number;
         status?: "open" | "pending" | "resolved" | "closed";
         merchantId?: string;
+        category?: "order_issue" | "payment" | "account" | "privacy" | "merchant_support" | "other";
       };
       header?: never;
       path?: never;
@@ -12805,6 +12807,7 @@ export interface operations {
               acceptBy: string | null;
               etaAt: string | null;
               late: boolean;
+              version: number;
             }[];
             meta: {
               nextCursor: string | null;
@@ -12890,6 +12893,7 @@ export interface operations {
               acceptBy: string | null;
               etaAt: string | null;
               late: boolean;
+              version: number;
               items: {
                 name: string;
                 quantity: number;
