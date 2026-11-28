@@ -1,3 +1,4 @@
+import { PlatformModule } from "./platform/platform.module.js";
 import { Module, type DynamicModule } from "@nestjs/common";
 import { AdminModule } from "./admin/admin.module.js";
 import { AuditModule } from "./audit/audit.module.js";
@@ -54,6 +55,7 @@ export class AppModule {
         WebhooksModule,
         OnboardingModule,
         AdminModule,
+        PlatformModule,
       ],
     };
   }

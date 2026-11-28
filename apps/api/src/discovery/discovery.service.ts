@@ -163,7 +163,7 @@ export class DiscoveryService {
         orderBy: [{ sort: "asc" }, { createdAt: "asc" }, { id: "asc" }],
         include: {
           products: {
-            where: { status: "published" },
+            where: { status: "published", moderationHiddenAt: null },
             orderBy: [{ createdAt: "asc" }, { id: "asc" }],
             include: {
               groups: {

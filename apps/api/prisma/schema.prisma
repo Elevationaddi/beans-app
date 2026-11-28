@@ -66,6 +66,8 @@ model User {
   cancellationsResolved CancellationRequest[]     @relation("CancellationResolver")
   ticketsRequested      Ticket[]                  @relation("TicketRequester")
   ticketsAssigned       Ticket[]                  @relation("TicketAssignee")
+  settingsUpdated       PlatformSetting[]         @relation("SettingUpdater")
+  notifications         Notification[]
   ticketMessages        TicketMessage[]
 
   @@map("users")
@@ -418,19 +420,22 @@ enum ProductStatus {
 }
 
 model Product {
-  id           String        @id @default(uuid()) @db.Uuid
-  merchantId   String        @map("merchant_id") @db.Uuid
-  categoryId   String        @map("category_id") @db.Uuid
+  id                 String        @id @default(uuid()) @db.Uuid
+  merchantId         String        @map("merchant_id") @db.Uuid
+  categoryId         String        @map("category_id") @db.Uuid
   /// { "en": "...", "ar": "..." }
-  names        Json
-  descriptions Json          @default("{}")
-  photoKey     String?       @map("photo_key")
-  baseFils     BigInt        @map("base_fils")
-  allergens    String[]
-  status       ProductStatus @default(draft)
-  version      Int           @default(1)
-  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  names              Json
+  descriptions       Json          @default("{}")
+  photoKey           String?       @map("photo_key")
+  baseFils           BigInt        @map("base_fils")
+  allergens          String[]
+  status             ProductStatus @default(draft)
+  version            Int           @default(1)
+  /// Set by platform moderation (docs/04): hidden from customers whatever its status.
+  moderationHiddenAt DateTime?     @map("moderation_hidden_at") @db.Timestamptz(6)
+  moderationNote     String?       @map("moderation_note")
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   merchant   Merchant        @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   category   Category        @relation(fields: [categoryId, merchantId], references: [id, merchantId], onDelete: Restrict)
@@ -893,8 +898,9 @@ model Payment {
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  order   Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  refunds Refund[]
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  refunds  Refund[]
+  disputes Dispute[]
 
   @@unique([orderId, attempt])
   @@index([status, updatedAt])
@@ -1234,4 +1240,66 @@ model TicketMessage {
 
   @@index([ticketId, createdAt])
   @@map("ticket_messages")
+}
+
+// ───────────────────────────── Platform administration ─────────────────────────────
+// Cycle 2 (founder decisions 2026-11-28). Settings are typed in code; every change is
+// versioned and audited. Live payments can never be switched on from here.
+
+model PlatformSetting {
+  key         String   @id
+  value       Json
+  version     Int      @default(1)
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  updatedBy User? @relation("SettingUpdater", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@map("platform_settings")
+}
+
+enum DisputeStatus {
+  open
+  evidence_submitted
+  won
+  lost
+}
+
+/// A card dispute or chargeback reported by the payment provider (sandbox only). Who bears a
+/// lost chargeback is an open commercial decision, so no journal posting is made here yet.
+model Dispute {
+  id          String        @id @default(uuid()) @db.Uuid
+  paymentId   String        @map("payment_id") @db.Uuid
+  providerRef String        @unique @map("provider_ref")
+  amountFils  BigInt        @map("amount_fils")
+  reason      String
+  status      DisputeStatus @default(open)
+  evidence    String?
+  dueAt       DateTime?     @map("due_at") @db.Timestamptz(6)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@map("disputes")
+}
+
+/// In-app notification inbox. Nothing here sends SMS, email or push (no real notifications
+/// without approval); delivery channels are added behind flags later.
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  kind      String
+  /// { "en": "...", "ar": "..." }
+  title     Json
+  body      Json
+  data      Json      @default("{}")
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
