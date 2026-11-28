@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   HttpStatus,
   Inject,
   Param,
@@ -25,6 +26,8 @@ import {
   type MerchantBranch,
   type MerchantBranchListQuery,
   merchantBranchListQuerySchema,
+  setSoldOutRequestSchema,
+  type SetSoldOutRequest,
   type PutBranchExceptionRequest,
   putBranchExceptionRequestSchema,
   type PutBranchOptionRequest,
@@ -581,5 +584,125 @@ export class MerchantBranchesController {
   private async load(id: string): Promise<MerchantBranch> {
     const row = await this.prisma.branch.findUniqueOrThrow({ where: { id }, select: branchSelect });
     return toBranchView(row);
+  }
+
+  /** T06: sold out / back in at this branch. Baristas may do this for their assigned branches. */
+  @Post(":id/products/:productId/sold-out")
+  @HttpCode(200)
+  async productSoldOut(
+    @CurrentActor() actor: Actor,
+    @RequestId() requestId: string,
+    @Param(new ZodValidationPipe(branchProductParamsSchema))
+    params: { id: string; productId: string },
+    @Body(new ZodValidationPipe(setSoldOutRequestSchema)) body: SetSoldOutRequest,
+  ): Promise<{ data: BranchProductAvailability }> {
+    const access = await this.requireFloorStaff(actor.userId, params.id);
+    const product = await this.prisma.product.findFirst({
+      where: { id: params.productId, merchantId: access.merchantId },
+      select: { status: true },
+    });
+    if (!product) throw ApiError.notFound("Product not found");
+    if (!body.soldOut && product.status === "archived") {
+      throw invalidTransition("An archived product cannot be enabled at a branch");
+    }
+    const row = await this.prisma.$transaction(async (tx) => {
+      const key = { branchId_productId: { branchId: params.id, productId: params.productId } };
+      const before = await tx.branchProduct.findUnique({ where: key, select: { enabled: true } });
+      const saved = await tx.branchProduct.upsert({
+        where: key,
+        create: {
+          branchId: params.id,
+          productId: params.productId,
+          merchantId: access.merchantId,
+          enabled: !body.soldOut,
+        },
+        update: { enabled: !body.soldOut },
+      });
+      await this.audit.record(
+        {
+          actorId: actor.userId,
+          action: "branch.product_sold_out_set",
+          targetType: "branch_product",
+          targetId: saved.id,
+          requestId,
+          before: before && { enabled: before.enabled },
+          after: { enabled: saved.enabled, branchId: params.id, productId: params.productId },
+        },
+        tx,
+      );
+      return saved;
+    });
+    return {
+      data: {
+        branchId: row.branchId,
+        productId: row.productId,
+        enabled: row.enabled,
+        priceOverrideFils: fils(row.priceOverrideFils),
+        stockOnHand: row.stockOnHand,
+        stockReserved: row.stockReserved,
+      },
+    };
+  }
+
+  @Post(":id/options/:optionId/sold-out")
+  @HttpCode(200)
+  async optionSoldOut(
+    @CurrentActor() actor: Actor,
+    @RequestId() requestId: string,
+    @Param(new ZodValidationPipe(branchOptionParamsSchema))
+    params: { id: string; optionId: string },
+    @Body(new ZodValidationPipe(setSoldOutRequestSchema)) body: SetSoldOutRequest,
+  ): Promise<{ data: BranchOptionAvailability }> {
+    const access = await this.requireFloorStaff(actor.userId, params.id);
+    const option = await this.prisma.modifierOption.findFirst({
+      where: { id: params.optionId, merchantId: access.merchantId },
+      select: { active: true },
+    });
+    if (!option) throw ApiError.notFound("Option not found");
+    if (!body.soldOut && !option.active) {
+      throw invalidTransition("A removed option cannot be enabled at a branch");
+    }
+    const row = await this.prisma.$transaction(async (tx) => {
+      const key = { branchId_optionId: { branchId: params.id, optionId: params.optionId } };
+      const before = await tx.branchOption.findUnique({ where: key, select: { enabled: true } });
+      const saved = await tx.branchOption.upsert({
+        where: key,
+        create: {
+          branchId: params.id,
+          optionId: params.optionId,
+          merchantId: access.merchantId,
+          enabled: !body.soldOut,
+        },
+        update: { enabled: !body.soldOut },
+      });
+      await this.audit.record(
+        {
+          actorId: actor.userId,
+          action: "branch.option_sold_out_set",
+          targetType: "branch_option",
+          targetId: saved.id,
+          requestId,
+          before: before && { enabled: before.enabled },
+          after: { enabled: saved.enabled, branchId: params.id, optionId: params.optionId },
+        },
+        tx,
+      );
+      return saved;
+    });
+    return {
+      data: {
+        branchId: row.branchId,
+        optionId: row.optionId,
+        enabled: row.enabled,
+        deltaOverrideFils: fils(row.deltaOverrideFils),
+      },
+    };
+  }
+
+  /** Owner, or a manager or barista assigned to the branch. Analysts only read. */
+  private async requireFloorStaff(userId: string, branchId: string) {
+    const access = await this.access.requireBranch(userId, branchId);
+    if (access.role === "analyst") throw ApiError.forbidden("Analysts cannot change availability");
+    return access;
   }
 }

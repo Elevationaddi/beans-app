@@ -14,6 +14,8 @@ import { MerchantAccessService } from "../tenancy/merchant-access.service.js";
 
 /** Merchant roles that handle support for their merchant. */
 const MERCHANT_SUPPORT_ROLES = new Set(["owner", "manager"]);
+/** What a barista may report from the tablet (docs/05 T06). */
+const BARISTA_ISSUE_CATEGORIES = new Set(["order_issue", "other"]);
 
 export function toTicket(row: Ticket, forSupport: boolean): TicketView {
   return {
@@ -69,14 +71,30 @@ export class TicketsService {
 
   async create(userId: string, body: CreateTicketRequest) {
     let merchantId: string | null = null;
+    let barista = false;
     if (body.merchantId) {
-      await this.requireMerchantSupport(userId, body.merchantId);
+      const member = await this.access.requireMember(userId, body.merchantId);
+      // Baristas may report an issue (docs/05 T06) but do not handle the merchant's support.
+      barista = member.role === "barista";
+      if (barista && !BARISTA_ISSUE_CATEGORIES.has(body.category)) {
+        throw ApiError.forbidden("Baristas can report order problems and other issues only");
+      }
+      if (!barista && !MERCHANT_SUPPORT_ROLES.has(member.role)) {
+        throw ApiError.forbidden("Only the owner or a manager can handle support for the merchant");
+      }
       merchantId = body.merchantId;
     }
     if (body.orderId) {
-      // Customer: only their own order. Merchant: only an order of that merchant.
+      // Customer: only their own order. Merchant: only an order of that merchant, and for a
+      // barista only an order at a branch they are assigned to.
       const order = await this.prisma.order.findFirst({
-        where: merchantId ? { id: body.orderId, merchantId } : { id: body.orderId, userId },
+        where: merchantId
+          ? {
+              id: body.orderId,
+              merchantId,
+              ...(barista ? { branch: this.access.branchScope(userId) } : {}),
+            }
+          : { id: body.orderId, userId },
         select: { id: true },
       });
       if (!order) throw ApiError.notFound("Order not found");
@@ -135,12 +153,13 @@ export class TicketsService {
   }
 
   /** Tickets the caller raised, or (with merchantId) the merchant's tickets. */
-  listWhere(userId: string, merchantId?: string): Promise<Prisma.TicketWhereInput> {
-    if (!merchantId) return Promise.resolve({ requesterId: userId, channel: "customer" });
-    return this.requireMerchantSupport(userId, merchantId).then(() => ({
-      merchantId,
-      channel: "merchant" as const,
-    }));
+  async listWhere(userId: string, merchantId?: string): Promise<Prisma.TicketWhereInput> {
+    if (!merchantId) return { requesterId: userId, channel: "customer" };
+    const member = await this.access.requireMember(userId, merchantId);
+    // Baristas list only the issues they reported.
+    if (member.role === "barista") return { merchantId, channel: "merchant", requesterId: userId };
+    await this.requireMerchantSupport(userId, merchantId);
+    return { merchantId, channel: "merchant" };
   }
 
   /** A ticket the caller may see as a customer or merchant member, else 404. */
@@ -153,6 +172,13 @@ export class TicketsService {
     if (ticket.channel === "customer") {
       if (ticket.requesterId !== userId) throw ApiError.notFound("Ticket not found");
       return { ticket, role: "customer" as const };
+    }
+    // A barista sees the issues they reported; the owner and managers see all of the merchant's.
+    if (ticket.requesterId === userId && ticket.merchantId) {
+      await this.access.requireMember(userId, ticket.merchantId).catch(() => {
+        throw ApiError.notFound("Ticket not found");
+      });
+      return { ticket, role: "merchant" as const };
     }
     try {
       await this.requireMerchantSupport(userId, ticket.merchantId ?? "");

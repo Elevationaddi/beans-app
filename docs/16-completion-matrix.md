@@ -4,7 +4,7 @@ Audit of 2026-11-28 against docs/02–05, docs/09 and the founder instructions o
 "API" is what the backend offers today; "Screen" is what a person can use today; "Plan" is the
 work in this cycle. This file is updated as each part lands; the final column records evidence.
 
-Legend: **Yes** working and tested · **Part** some of it · **No** missing.
+Legend: **Yes** working and tested (evidence column) · **Part** some of it · **No** missing.
 
 ## Audit summary (start of cycle)
 
@@ -53,31 +53,31 @@ Legend: **Yes** working and tested · **Part** some of it · **No** missing.
 
 ## Business portal (docs/03)
 
-| ID  | Screen                             | API | Screen | Plan                             | Evidence |
-| --- | ---------------------------------- | --- | ------ | -------------------------------- | -------- |
-| B01 | Registration, documents, status    | Yes | No     | Build                            |          |
-| B02 | Dashboard                          | Yes | No     | Build                            |          |
-| B03 | Branches, hours, holidays, pause   | Yes | No     | Build                            |          |
-| B04 | Menu, categories, options          | Yes | No     | Build                            |          |
-| B05 | Availability and inventory         | Yes | No     | Build                            |          |
-| B06 | Orders (incoming, scheduled, done) | Yes | No     | Build                            |          |
-| B07 | Staff and permissions              | Yes | No     | Build                            |          |
-| B08 | Loyalty, stamp cards, promotions   | No  | No     | Phase 9                          |          |
-| B09 | Finance, transactions, payouts     | No  | No     | Merchant finance API and screens |          |
-| B10 | Analytics                          | Yes | No     | Build                            |          |
-| B11 | Support, refund requests           | Yes | No     | Build                            |          |
-| B12 | Settings, notifications            | No  | No     | Build                            |          |
+| ID  | Screen                             | API  | Screen | Plan                             | Evidence                                                                   |
+| --- | ---------------------------------- | ---- | ------ | -------------------------------- | -------------------------------------------------------------------------- |
+| B01 | Registration, documents, status    | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
+| B02 | Dashboard                          | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
+| B03 | Branches, hours, holidays, pause   | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
+| B04 | Menu, categories, options          | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
+| B05 | Availability and inventory         | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
+| B06 | Orders (incoming, scheduled, done) | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
+| B07 | Staff and permissions              | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
+| B08 | Loyalty, stamp cards, promotions   | No   | No     | Phase 9                          |                                                                            |
+| B09 | Finance, transactions, payouts     | Yes  | Yes    | Merchant finance API and screens | PR #12; finance.int B09 test                                               |
+| B10 | Analytics                          | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
+| B11 | Support, refund requests           | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
+| B12 | Settings, notifications            | Part | Part   | Build                            | PR #12: profile, password, deletion request; notification settings pending |
 
 ## Barista tablet (docs/05)
 
-| ID  | Screen                                      | API  | Screen | Plan                                 | Evidence |
-| --- | ------------------------------------------- | ---- | ------ | ------------------------------------ | -------- |
-| T01 | Staff sign-in, branch choice                | Yes  | No     | Build                                |          |
-| T02 | New orders, alerts, accept and reject       | Yes  | No     | Build with live stream and sound cue |          |
-| T03 | Preparing, timers, scheduled queue          | Yes  | No     | Build                                |          |
-| T04 | Ready, arrival, vehicle, table, pickup code | Yes  | No     | Build (table after phase 9)          |          |
-| T05 | Completed                                   | Yes  | No     | Build                                |          |
-| T06 | Issues, delays, offline, unavailable items  | Part | No     | Build; issue report as ticket        |          |
+| ID  | Screen                                      | API | Screen | Plan                                 | Evidence                                                              |
+| --- | ------------------------------------------- | --- | ------ | ------------------------------------ | --------------------------------------------------------------------- |
+| T01 | Staff sign-in, branch choice                | Yes | Yes    | Build                                | cycle-2-tablet; tablet.int + browser walk                             |
+| T02 | New orders, alerts, accept and reject       | Yes | Yes    | Build with live stream and sound cue | cycle-2-tablet; tablet.int + browser walk                             |
+| T03 | Preparing, timers, scheduled queue          | Yes | Yes    | Build                                | cycle-2-tablet; tablet.int + browser walk                             |
+| T04 | Ready, arrival, vehicle, table, pickup code | Yes | Part   | Build (table after phase 9)          | cycle-2-tablet; tablet.int + browser walk; table number after phase 9 |
+| T05 | Completed                                   | Yes | Yes    | Build                                | cycle-2-tablet; tablet.int + browser walk                             |
+| T06 | Issues, delays, offline, unavailable items  | Yes | Yes    | Build; issue report as ticket        | cycle-2-tablet; tablet.int + browser walk                             |
 
 ## Admin console (docs/04)
 
