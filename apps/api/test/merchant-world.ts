@@ -17,10 +17,13 @@ export class MerchantWorld {
     readonly issuer: TestIssuer,
   ) {}
 
-  static async create(env: NodeJS.ProcessEnv = {}): Promise<MerchantWorld> {
+  static async create(
+    env: NodeJS.ProcessEnv = {},
+    overrides: { provide: unknown; useValue: unknown }[] = [],
+  ): Promise<MerchantWorld> {
     const issuer = await TestIssuer.create();
     const app = await createTestApp(testEnv(env), {
-      overrides: [{ provide: JWKS, useValue: issuer.jwks }],
+      overrides: [{ provide: JWKS, useValue: issuer.jwks }, ...overrides],
     });
     return new MerchantWorld(app, issuer);
   }

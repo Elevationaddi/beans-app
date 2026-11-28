@@ -1,8 +1,8 @@
 /**
  * Payment provider adapter (docs/08: createPayment, fetchPayment, refund, fetchRefund,
  * initiatePayout, fetchPayout, verifyWebhook) plus a settlement statement for daily
- * reconciliation. Only a sandbox implementation exists, and the server refuses to start it
- * in production (see config/env.ts). Amounts are integer fils; no card data ever passes here.
+ * reconciliation. Two adapters: the in-memory fake (refused in production) and Tap with test
+ * keys only (live keys are refused while live payments are blocked; see config/env.ts). Amounts are integer fils; no card data ever passes here.
  */
 
 export type ProviderPaymentStatus = "pending" | "captured" | "failed";
@@ -28,8 +28,11 @@ export interface ProviderPayment {
   currency: string;
   /** Provider reason code for a failure. Never card data. */
   failureCode?: string;
-  /** What the app must do next. The fake provider never needs an action. */
-  clientAction: { type: "none" };
+  /**
+   * What the app must do next. The fake provider never needs an action; Tap's hosted page is a
+   * redirect to an https URL from the provider.
+   */
+  clientAction: { type: "none" } | { type: "redirect"; url: string };
 }
 
 export interface RefundInput {

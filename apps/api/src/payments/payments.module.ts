@@ -3,6 +3,7 @@ import { Logger, Module } from "@nestjs/common";
 import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
 import { FakePaymentProvider } from "./fake-payment.provider.js";
+import { TapPaymentProvider } from "./tap-payment.provider.js";
 import { PAYMENT_PROVIDER, WEBHOOK_SECRET } from "./payment-provider.js";
 
 function webhookSecret(env: Env): string {
@@ -22,8 +23,15 @@ function webhookSecret(env: Env): string {
       provide: PAYMENT_PROVIDER,
       inject: [ENV, FakePaymentProvider],
       useFactory: (env: Env, fake: FakePaymentProvider) => {
-        // Only the sandbox provider exists; env.ts refuses it in production.
+        // env.ts refuses the fake provider in production and Tap live keys everywhere.
         if (env.PAYMENT_PROVIDER === "fake") return fake;
+        if (env.PAYMENT_PROVIDER === "tap" && env.TAP_SECRET_KEY && env.TAP_RETURN_URL) {
+          return new TapPaymentProvider({
+            secretKey: env.TAP_SECRET_KEY,
+            apiUrl: env.API_PUBLIC_URL ?? "",
+            returnUrl: env.TAP_RETURN_URL,
+          });
+        }
         throw new Error(`unsupported payment provider: ${String(env.PAYMENT_PROVIDER)}`);
       },
     },

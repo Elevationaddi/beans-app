@@ -67,10 +67,12 @@ export class PaymentReconciler {
         return null;
       }
       if (result.status === "pending") {
-        if (current.providerRef === null) {
+        const actionUrl =
+          result.clientAction.type === "redirect" ? result.clientAction.url : current.actionUrl;
+        if (current.providerRef === null || actionUrl !== current.actionUrl) {
           await tx.payment.update({
             where: { id: current.id },
-            data: { providerRef: result.providerRef },
+            data: { providerRef: result.providerRef, actionUrl },
           });
         }
         return null;

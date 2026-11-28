@@ -352,7 +352,10 @@ export class CheckoutService {
         attempt: latest?.attempt ?? 1,
         status: latest?.status ?? "pending",
         retryable: state.status === "pending_payment" && latest?.status === "failed" && holdValid,
-        clientAction: { type: "none" },
+        clientAction:
+          state.status === "pending_payment" && latest?.status === "pending" && latest.actionUrl
+            ? { type: "redirect", url: latest.actionUrl }
+            : { type: "none" },
       },
       holdExpiresAt: state.reservation.expiresAt.toISOString(),
     };

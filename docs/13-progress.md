@@ -1207,6 +1207,49 @@ docs/16-completion-matrix.md.
 Revert the PR. No migration in this part. The two contract additions (`category` filter on
 ticket lists, `version` on admin orders) are additive.
 
+## Tap Payments sandbox adapter (2026-11-28)
+
+Founder decision D03 prefers Tap and keeps the sandbox provider. Built against Tap's public API
+documentation (developers.tap.company). It has **not** been run against a real Tap sandbox
+account yet, because that needs the founder's Tap test keys.
+
+- `src/payments/tap-payment.provider.ts` implements the payment provider interface.
+  - Charges use Tap's hosted page (`src_all`), so the app never sees card details.
+  - Our attempt key is sent as `reference.idempotent`, which stops double charges on retry.
+  - Refunds go by charge.
+  - Reconciliation uses `POST /charges/list`.
+  - Payouts are refused: Tap settles to the merchant's bank, so payouts stay manual with
+    maker and checker.
+- Amounts are converted from integer fils to Tap's decimal text and back exactly. An AED
+  amount with fractional fils is refused.
+- Webhooks are checked with HMAC-SHA256 over Tap's documented `hashstring` fields, keyed with
+  the secret key, using a constant-time comparison. Each event is `chargeId:status`.
+  Duplicates are acknowledged without acting twice. The charge is always fetched again from
+  Tap before anything changes.
+- Checkout returns `clientAction: { type: "redirect", url }` while a Tap charge is waiting.
+  The customer app opens the page and then tracks the order. The URL is stored in the new
+  `payments.action_url` column (migration `payment_action_url`) and is only accepted when it
+  is https.
+- Configuration (`.env.example`): `PAYMENT_PROVIDER=tap`, `TAP_SECRET_KEY` (only `sk_test_…`
+  is accepted) and `TAP_RETURN_URL`, plus `API_PUBLIC_URL` for the webhook address. The fake
+  provider stays the default.
+- Tests:
+  - `tap-payment.provider.test.ts` has 9 unit tests: amounts, create with idempotency and
+    redirect, status mapping, refunds, errors that do not leak the key, payouts refused, and
+    signed, forged and tampered webhooks.
+  - `test/tap.int.test.ts` has 2 integration tests against a stand-in Tap API: redirect,
+    repeat checkout with no second charge, forged webhook refused, signed webhook confirms
+    the order, duplicate webhook ignored, and a decline leaves the order retryable.
+  - Integration total: 24 files, 203 tests passed. Unit total: 71 passed. Mobile: 32 passed (new redirect test).
+- To check before relying on it:
+  - the exact amount format inside the webhook hash
+  - the `hashstring` header name on real notifications
+  - the `period` filter format for the charge list
+  - whether Tap needs the customer's name, email or phone on the hosted page (we send none)
+
+Rollback: set `PAYMENT_PROVIDER=fake`. The new column is nullable and unused by the fake
+provider.
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.
