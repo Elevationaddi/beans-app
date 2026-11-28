@@ -9,7 +9,11 @@ export default defineConfig({
     projects: [
       {
         plugins,
-        test: { name: "unit", include: ["src/**/*.test.ts"], environment: "node" },
+        test: {
+          name: "unit",
+          include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
+          environment: "node",
+        },
       },
       {
         plugins,

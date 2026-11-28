@@ -16,6 +16,7 @@ import {
   type OtpTarget,
   refresh,
   sendOtp,
+  signInWithPassword,
   supabaseConfigured,
   verifyOtp,
 } from "../lib/supabase-auth";
@@ -58,6 +59,7 @@ interface AppState {
   signInDev: (userId: string) => Promise<void>;
   sendCode: (target: OtpTarget) => Promise<void>;
   verifyCode: (target: OtpTarget, code: string) => Promise<void>;
+  signInDemo: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   cart: Cart;
@@ -182,6 +184,13 @@ export function AppStateProvider({
       sendCode: (target) => sendOtp(target),
       verifyCode: async (target, code) => {
         const session = await verifyOtp(target, code);
+        setAccessToken(session.accessToken);
+        await saveRefreshToken(session.refreshToken);
+        setSessionExpired(false);
+        await loadProfile();
+      },
+      signInDemo: async (email, password) => {
+        const session = await signInWithPassword(email, password);
         setAccessToken(session.accessToken);
         await saveRefreshToken(session.refreshToken);
         setSessionExpired(false);

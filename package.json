@@ -21,7 +21,8 @@
     "db:up": "docker compose up -d --wait postgres",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @beans/api db:migrate",
-    "db:seed": "pnpm --filter @beans/api db:seed"
+    "db:seed": "pnpm --filter @beans/api db:seed",
+    "db:demo": "pnpm --filter @beans/api db:demo"
   },
   "devDependencies": {
     "prettier": "^3.10.1"
