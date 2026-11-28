@@ -96,8 +96,8 @@ jobs:
           --health-interval 5s --health-timeout 3s --health-retries 10
     env:
       # Fictional seed data and the fake payment provider only. Development sign-in is refused
-      # by the API with NODE_ENV=production, so it can never reach a real deployment.
-      NODE_ENV: development
+      # by the API with NODE_ENV=production, so it can never reach a real deployment. NODE_ENV
+      # is left unset: the API defaults to development and Next.js builds need their own value.
       DATABASE_URL: postgresql://beans:beans@localhost:5432/beans_e2e
       REDIS_URL: redis://localhost:6379
       CORS_ORIGINS: http://localhost:3001,http://localhost:3002
