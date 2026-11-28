@@ -16,7 +16,8 @@
     "db:migrate": "prisma migrate deploy",
     "db:check-migrations": "node --import tsx scripts/check-migrations.ts",
     "db:migrate:dev": "prisma migrate dev",
-    "db:seed": "pnpm prisma:generate && node --env-file-if-exists=.env --import tsx prisma/seed.ts"
+    "db:seed": "pnpm prisma:generate && node --env-file-if-exists=.env --import tsx prisma/seed.ts",
+    "storage:setup": "node --env-file-if-exists=.env --import tsx scripts/storage-setup.ts"
   },
   "dependencies": {
     "@beans/contracts": "workspace:*",

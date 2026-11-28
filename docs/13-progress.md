@@ -1341,6 +1341,29 @@ approves the final infrastructure plan.
   Results: API integration 27 files / 216 tests passed, API unit 16 / 74, mobile 5 / 36, lint and
   format clean.
 
+### Part 4: private Supabase Storage for merchant documents
+
+- `STORAGE_DRIVER=supabase` stores merchant documents in a private Supabase Storage bucket
+  (`SUPABASE_STORAGE_BUCKET`, default `merchant-documents`). The portal uploads straight to
+  Supabase with a single-use signed upload URL, so files never pass through a Vercel function
+  (4.5 MB body limit) and cannot be overwritten. Reading needs the server-only key; signed
+  download links (5 minutes) are only issued for files that passed the file check, and each
+  issue is audited. Size and type are checked by the request schema (10 MB, PDF/PNG/JPEG), the
+  bucket's own limits, the declared-size check on completion and the content-signature check.
+- `pnpm --filter @beans/api storage:setup` creates or corrects the bucket (private, limits set);
+  safe to rerun.
+- Malware scanning: ClamAV was evaluated and is not workable inside a Vercel function (its
+  signature database is a few hundred MB and needs a resident daemon and updates), and no free
+  hosted scanner allows commercial use. The basic checker (type signature, EICAR, PDF scripts) is
+  not a malware scanner, so `FILE_SCANNER=basic` stays refused in production and real merchant
+  document uploads remain a launch blocker. Unchecked documents are never readable by
+  administrators or anyone else.
+- Public storage for approved marketing and product images is not built yet: products have a
+  `photo_key` column but no photo upload flow. It would use a separate public bucket, with
+  images published only after approval.
+- Tests: `test/supabase-storage.int.test.ts` (3, against a local Supabase Storage stand-in),
+  `env.test.ts` (+1).
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.

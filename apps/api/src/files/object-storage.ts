@@ -21,13 +21,13 @@ export interface ObjectStorage {
     mime: string;
     maxBytes: number;
     expiresAt: Date;
-  }): UploadLink;
+  }): Promise<UploadLink>;
   createDownloadLink(input: {
     uploadId: string;
     objectKey: string;
     mime: string;
     expiresAt: Date;
-  }): string;
+  }): Promise<string>;
   stat(objectKey: string): Promise<{ size: number } | null>;
   read(objectKey: string): Promise<Buffer>;
 }
@@ -49,13 +49,13 @@ export class LocalObjectStorage implements ObjectStorage {
     this.root = resolve(rootDir);
   }
 
-  createUploadLink(input: {
+  async createUploadLink(input: {
     uploadId: string;
     objectKey: string;
     mime: string;
     maxBytes: number;
     expiresAt: Date;
-  }): UploadLink {
+  }): Promise<UploadLink> {
     const token = this.signer.sign({
       action: "put",
       ...this.grantFields(input),
@@ -68,12 +68,12 @@ export class LocalObjectStorage implements ObjectStorage {
     };
   }
 
-  createDownloadLink(input: {
+  async createDownloadLink(input: {
     uploadId: string;
     objectKey: string;
     mime: string;
     expiresAt: Date;
-  }): string {
+  }): Promise<string> {
     const token = this.signer.sign({ action: "get", ...this.grantFields(input), maxBytes: 0 });
     return `${this.publicUrl}/v1/uploads/${input.uploadId}/download?token=${token}`;
   }

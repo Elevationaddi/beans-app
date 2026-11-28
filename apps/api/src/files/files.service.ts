@@ -89,7 +89,7 @@ export class FilesService {
         data: { merchantId: merchant.id, uploadId: id, type: input.documentType, objectKey },
       });
     });
-    const link = this.storage.createUploadLink({
+    const link = await this.storage.createUploadLink({
       uploadId: id,
       objectKey,
       mime: input.mime,
@@ -232,7 +232,7 @@ export class FilesService {
   }
 
   /** A short-lived download link for a clean file; null for anything else. */
-  downloadLink(upload: Upload): string | null {
+  async downloadLink(upload: Upload): Promise<string | null> {
     if (upload.status !== "clean") return null;
     return this.storage.createDownloadLink({
       uploadId: upload.id,

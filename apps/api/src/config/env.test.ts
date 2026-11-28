@@ -74,6 +74,20 @@ describe("loadEnv", () => {
     expect(prod).toMatch(/REALTIME_DRIVER: in-process live updates/);
   });
 
+  it("needs the Supabase URL and server key for the Storage driver, and checks the bucket name", () => {
+    expect(issuesFor({ ...base, STORAGE_DRIVER: "supabase" }).sort()).toEqual([
+      "SUPABASE_SERVICE_ROLE_KEY: required with STORAGE_DRIVER=supabase",
+      "SUPABASE_URL: required with STORAGE_DRIVER=supabase",
+    ]);
+    expect(issuesFor({ ...base, SUPABASE_STORAGE_BUCKET: "../Public" })).toEqual([
+      "SUPABASE_STORAGE_BUCKET: lowercase letters, digits and dashes",
+    ]);
+    // A real storage driver alone is not enough for production: the file check still blocks it.
+    const prod = issuesFor({ ...base, NODE_ENV: "production", STORAGE_DRIVER: "supabase" });
+    expect(prod.join("\n")).not.toMatch(/^STORAGE_DRIVER:/m);
+    expect(prod.join("\n")).toMatch(/FILE_SCANNER: the basic file checker cannot run/);
+  });
+
   it("rejects a non-postgres database URL", () => {
     expect(issuesFor({ ...base, DATABASE_URL: "mysql://localhost/beans" })).toEqual([
       "DATABASE_URL: must be a postgres:// URL",
