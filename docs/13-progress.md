@@ -1250,6 +1250,27 @@ account yet, because that needs the founder's Tap test keys.
 Rollback: set `PAYMENT_PROVIDER=fake`. The new column is nullable and unused by the fake
 provider.
 
+## Launch readiness documents (2026-11-28)
+
+- docs/17-security-review.md: internal review of cycle 2 (auth, development sign-in isolation,
+  tenancy, phase 9, Tap, secrets, dependencies) with eight open items. Not a penetration test.
+- docs/18-staging-instructions.md: how to build staging once hosting is approved. Nothing deployed.
+- docs/19-launch-checklist.md: every gate from docs/15 as a checkable item with today's state.
+- docs/20-infrastructure-cost-estimate.md: hosting options with UAE data residency, sourced and
+  dated. Estimates only; nothing purchased.
+- docs/21-legal-review-checklists.md: questions for UAE counsel. Not legal advice.
+- docs/15 section 1 brought up to date.
+
+### Fix found by the browser tests
+
+- After a declined sandbox payment the app copies the cart to a new server cart. Until that copy
+  finished, the Review button stayed enabled with the spent cart, so a quick tap asked for a
+  quote on the old cart and failed (seen once in CI on PR #19). Review is now disabled while the
+  cart is being copied; a mobile test holds the copy open and checks that only fresh carts are
+  quoted (fails without the fix, passes with it).
+- Secret scanning flagged two obviously fake Tap test keys in tests; the tests now assemble fake
+  keys at runtime so gitleaks stays strict.
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.

@@ -222,6 +222,75 @@ describe("C07: checkout", () => {
     expect(screen.queryByTestId("at-Order")).toBeNull();
   });
 
+  it("asks for the next quote on a fresh server cart after a decline", async () => {
+    // Each copy of the device cart makes a new server cart; the declined one is spent.
+    let copies = 0;
+    const cartId = () => `bbbbbbbb-bbbb-4bbb-8bbb-00000000000${copies}`;
+    const base = checkoutHandlers("failed");
+    const calls = mockApi({
+      ...base,
+      "PUT /v1/cart": () => {
+        copies += 1;
+        return {
+          body: {
+            data: { id: cartId(), version: 1, branchId: BRANCH_A, items: [], canCheckout: false },
+          },
+        };
+      },
+      "POST /v1/cart/items": () => ({
+        body: {
+          data: {
+            id: cartId(),
+            version: 2,
+            branchId: BRANCH_A,
+            items: [{ id: "i1", issue: null }],
+            canCheckout: true,
+          },
+        },
+      }),
+    });
+    // Hold the second copy of the cart until the test lets it through.
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const mocked = global.fetch;
+    global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = input instanceof Request ? input.method : (init?.method ?? "GET");
+      if (
+        method === "PUT" &&
+        String(input instanceof Request ? input.url : input).endsWith("/v1/cart") &&
+        copies === 1
+      )
+        await held;
+      return mocked(input, init);
+    }) as typeof fetch;
+    await renderScreen("Checkout", CheckoutScreen as never, undefined, {
+      cart: cartAtA,
+      session: testSession,
+    });
+    const review = await screen.findByTestId("review");
+    await waitFor(() => expect(review.props.accessibilityState?.disabled).toBeFalsy());
+    fireEvent.press(review);
+    fireEvent.press(await screen.findByTestId("pay-decline"));
+    expect(await screen.findByTestId("declined")).toBeTruthy();
+    // While the cart is being copied again, the spent cart must not be quoted.
+    expect(screen.getByTestId("review").props.accessibilityState?.disabled).toBe(true);
+    fireEvent.press(screen.getByTestId("review"));
+    release();
+    await waitFor(() =>
+      expect(screen.getByTestId("review").props.accessibilityState?.disabled).toBeFalsy(),
+    );
+    fireEvent.press(screen.getByTestId("review"));
+    await screen.findByTestId("quote");
+    const quoted = calls
+      .filter((c) => c.path === "/v1/quotes")
+      .map((c) => (c.body as { cartId: string }).cartId);
+    expect(copies).toBe(2);
+    expect(quoted).toEqual([
+      "bbbbbbbb-bbbb-4bbb-8bbb-000000000001",
+      "bbbbbbbb-bbbb-4bbb-8bbb-000000000002",
+    ]);
+  });
+
   it("blocks review while ordering is paused", async () => {
     mockApi({
       ...checkoutHandlers("captured"),
