@@ -1,3 +1,4 @@
+import { loyaltyAr, loyaltyEn } from "./i18n-loyalty";
 import { commonDictionaries, mergeDictionaries, type Dictionary, type Locale } from "@beans/web";
 
 /**
@@ -982,5 +983,8 @@ const ar: Dictionary = {
   "tablet.noReports": "لم تبلّغ عن أي شيء.",
 };
 
-export const portalDictionaries: Record<Locale, Dictionary> = { en, ar };
+export const portalDictionaries: Record<Locale, Dictionary> = {
+  en: { ...en, ...loyaltyEn },
+  ar: { ...ar, ...loyaltyAr },
+};
 export const dictionaries = mergeDictionaries(commonDictionaries, portalDictionaries);

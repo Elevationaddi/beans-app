@@ -14,8 +14,10 @@ import { OrdersScreen } from "../screens/OrdersScreen";
 import { ProductScreen } from "../screens/ProductScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { ReceiptScreen } from "../screens/ReceiptScreen";
+import { RewardsScreen } from "../screens/RewardsScreen";
 import { SignInScreen } from "../screens/SignInScreen";
 import { SupportScreen, TicketScreen } from "../screens/SupportScreen";
+import { TableScreen } from "../screens/TableScreen";
 import { VehiclesScreen } from "../screens/VehiclesScreen";
 import { useAppState } from "../state/app-state";
 import type { RootParams, TabParams } from "./types";
@@ -103,6 +105,16 @@ export function RootNavigator() {
             name="Notifications"
             component={NotificationsScreen}
             options={{ title: t("notifications.title") }}
+          />
+          <Stack.Screen
+            name="Rewards"
+            component={RewardsScreen}
+            options={{ title: t("rewards.title") }}
+          />
+          <Stack.Screen
+            name="Table"
+            component={TableScreen}
+            options={{ title: t("table.title") }}
           />
         </>
       ) : (

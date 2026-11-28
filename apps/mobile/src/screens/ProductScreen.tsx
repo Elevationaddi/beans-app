@@ -8,6 +8,7 @@ import {
   Button,
   Chip,
   ConfirmDialog,
+  FailureText,
   Heading,
   RemoteState,
   Screen,
@@ -24,7 +25,11 @@ import {
 } from "../lib/customizer";
 import { formatFils } from "../lib/money";
 import { useRemote } from "../lib/use-remote";
-import type { RootScreen } from "../navigation/types";
+import type { RootParams, RootScreen } from "../navigation/types";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useAction } from "../lib/use-action";
+import { newIdempotencyKey } from "../lib/session";
 import { useAppState } from "../state/app-state";
 import type { AddRequest } from "../state/cart";
 
@@ -255,6 +260,7 @@ function Customizer({
         disabled={!ready || priced === null}
         onPress={add}
       />
+      {product.available ? <GiftButton productId={product.id} /> : null}
 
       <ConfirmDialog
         visible={pending !== null}
@@ -268,6 +274,36 @@ function Customizer({
         }}
         onCancel={() => setPending(null)}
       />
+    </View>
+  );
+}
+
+/** Sandbox gift: the customer gets a one-time code to share; nothing is charged. */
+function GiftButton({ productId }: { productId: string }) {
+  const { t } = useI18n();
+  const { signedIn } = useAppState();
+  const navigation = useNavigation<NativeStackNavigationProp<RootParams>>();
+  const send = useAction(async () => {
+    const result = await call(
+      api.POST("/v1/gifts", {
+        params: { header: { "Idempotency-Key": newIdempotencyKey() } },
+        body: { productId },
+      }),
+    );
+    navigation.navigate("Rewards", { sentCode: result.data.claimToken });
+  });
+  if (!signedIn) return null;
+  return (
+    <View style={{ gap: 4 }}>
+      <Button
+        testID="send-gift"
+        label={t("gifts.send")}
+        variant="secondary"
+        disabled={send.pending}
+        onPress={() => void send.run()}
+      />
+      <Body muted>{t("gifts.sendHint")}</Body>
+      <FailureText failure={send.failure} />
     </View>
   );
 }

@@ -945,11 +945,37 @@ and sandbox only. Commercial terms below are sandbox values waiting on the found
   `FEATURE_DISABLED`. `fulfillment.int` sweeps with a larger batch, because the shared test
   database holds more than 50 older unaccepted orders.
 
-### Not done yet
+### Screens (2026-11-28, second PR)
 
-- Screens: the portal (stamp card, promotions, tables with printable QR), the admin console
-  (promotion review, gifts), the tablet (table and benefit on the ticket) and the customer app
-  (rewards, promo code, scan table, gifts). Then browser and mobile tests.
+- **Business portal** `/loyalty` ("Loyalty and promotions"). Owners edit the stamp card and
+  create, edit, submit, pause, resume and end promotions, and see the review note. Owners and
+  managers manage tables per branch: a printable QR code for each table (`qrcode` 1.5.4, drawn
+  in the browser), and replace or remove a code. The QR opens the customer app with
+  `?table=<signed token>` (`NEXT_PUBLIC_CUSTOMER_APP_URL`, default `http://localhost:8081`).
+- **Barista tablet and portal orders**: the ticket shows the table and the benefit with its
+  discount.
+- **Admin console** `/promotions` (marketing and operations; only marketing decides). It has a
+  review queue with approve or reject plus a reason, status filters, and a gifts list.
+- **Customer app**:
+  - A "Rewards and gifts" screen shows stamp progress per café, lets the customer claim a
+    gift code, and lists gifts sent and received.
+  - "Send as a gift" on a product gives a one-time code to share.
+  - "Order at a table" checks a scanned or typed code with the server. The web app opens it
+    straight from the QR link.
+  - Checkout adds a "Savings" choice (stamp reward, a gift for this café, or a promo code) and
+    dine-in when a table is chosen. Only IDs and codes are sent. Amounts come from the quote.
+- Camera scanning inside the native app is not built. The phone camera opens the QR link.
+
+### Tests and evidence (screens)
+
+- Mobile `engagement.test.tsx`: 8 tests. Promo code and reward are sent as codes or IDs only,
+  checkout still works with the features off, dine-in sends the signed token, a rejected table
+  code is shown, and gift claim and share are covered. Mobile total: 31 tests passed.
+- Browser `engagement.spec.ts` covers an owner promotion, then marketing approval, then live,
+  plus manager table add, QR, replace and remove. `customer.spec.ts` covers ordering from a
+  table's QR link with `SANDBOX10`, and the café ticket shows table T1 and the promotion. All 23
+  browser tests passed locally.
+- Screenshots: `/mnt/project-files/evidence/phase-9/` (7 PNGs).
 
 ### Open questions for the founder
 

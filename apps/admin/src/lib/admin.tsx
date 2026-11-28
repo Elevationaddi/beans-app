@@ -27,6 +27,7 @@ export const SCREENS: { href: string; key: string; roles: AdminRole[] }[] = [
   { href: "/support", key: "nav.support", roles: ["support", "operations"] },
   { href: "/privacy", key: "nav.privacy", roles: ["support", "security"] },
   { href: "/moderation", key: "nav.moderation", roles: ["operations", "marketing"] },
+  { href: "/promotions", key: "nav.promotions", roles: ["marketing", "operations"] },
   { href: "/homepage", key: "nav.homepage", roles: ["marketing", "super_admin"] },
   { href: "/broadcast", key: "nav.broadcast", roles: ["marketing", "operations"] },
   {

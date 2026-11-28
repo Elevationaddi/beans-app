@@ -70,6 +70,8 @@ const ROUTES: (keyof RootParams)[] = [
   "Support",
   "Ticket",
   "Notifications",
+  "Rewards",
+  "Table",
   "Branch",
   "Tabs",
 ];

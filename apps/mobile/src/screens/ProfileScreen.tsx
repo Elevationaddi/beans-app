@@ -93,6 +93,12 @@ export function ProfileScreen({ navigation }: TabScreen<"Profile">) {
             testID="open-vehicles"
           />
           <Button
+            label={t("rewards.title")}
+            variant="secondary"
+            onPress={() => navigation.navigate("Rewards")}
+            testID="open-rewards"
+          />
+          <Button
             label={t("profile.notifications")}
             variant="secondary"
             onPress={() => navigation.navigate("Notifications")}

@@ -104,6 +104,66 @@ test.describe("Customer app", () => {
     ).toBeVisible();
   });
 
+  test("orders to a table from its QR link with a promo code (sandbox phase 9)", async ({
+    watched: page,
+  }) => {
+    // The printed QR code holds a link with the signed table token (as the portal shows it).
+    const manager = await devToken("manager-a@example.test");
+    const branches = await call<{ id: string; names: { en: string } }[]>(
+      "GET",
+      "/v1/branches?limit=50",
+    );
+    const branch = branches.find((b) => b.names.en === BRANCH)!;
+    const tables = await call<{ label: string; token: string | null }[]>(
+      "GET",
+      `/v1/merchant/branches/${branch.id}/tables`,
+      manager,
+    );
+    const table = tables.find((t) => t.label === "T1" && t.token)!;
+
+    await page.goto(`${APP}/?table=${encodeURIComponent(table.token!)}`);
+    await page.getByTestId("city-abu_dhabi").click();
+    await page.getByTestId("continue-guest").click();
+    await expect(page.getByTestId("table-found")).toContainText("Table T1");
+    await page.getByTestId("table-order").click();
+
+    await page.locator('[data-testid^="product-"]').first().click();
+    const add = page.getByTestId("add-to-cart");
+    await expect(add).toBeVisible();
+    const radios = page.getByRole("radio");
+    for (let i = 0; i < (await radios.count()); i++) {
+      if ((await add.getAttribute("aria-disabled")) !== "true") break;
+      await radios.nth(i).click();
+    }
+    await add.click();
+    await page.getByTestId("view-cart").click();
+    await page.getByTestId("checkout-sign-in").click();
+    await page.getByTestId("dev-account-customer@example.test").click();
+    await page.getByTestId("checkout").click();
+
+    await expect(page.getByTestId("checkout-table")).toHaveText("To table T1");
+    await page.getByTestId("promo-code").fill("SANDBOX10");
+    await page.getByTestId("apply-promo").click();
+    await getQuote(page);
+    await expect(page.getByTestId("quote-discount")).toContainText("Code SANDBOX10");
+    await expect(page.getByTestId("quote")).toContainText("To table T1");
+    await page.getByTestId("pay").click();
+    await expect(page.getByTestId("order-status-text")).toHaveText(
+      "Waiting for the café to accept your order.",
+    );
+
+    // The café sees the table and the discount on the ticket.
+    const customer = await devToken("customer@example.test");
+    const mine = await call<CustomerOrder[]>("GET", "/v1/orders?limit=5", customer);
+    const order = mine.find((o) => o.status === "received")!;
+    const ticket = await call<{
+      table: { label: string } | null;
+      benefit: { kind: string } | null;
+    }>("GET", `/v1/merchant/orders/${order.id}`, await devToken("barista-a@example.test"));
+    expect(ticket.table?.label).toBe("T1");
+    expect(ticket.benefit?.kind).toBe("promotion");
+  });
+
   test("shows Arabic right to left", async ({ watched: page }) => {
     await page.goto(APP);
     await page.getByRole("radio", { name: "العربية" }).click();

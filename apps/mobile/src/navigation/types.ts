@@ -23,6 +23,8 @@ export type RootParams = {
   Support: { orderId?: string } | undefined;
   Ticket: { ticketId: string };
   Notifications: undefined;
+  Rewards: { sentCode?: string } | undefined;
+  Table: { token?: string } | undefined;
 };
 
 export type RootScreen<K extends keyof RootParams> = NativeStackScreenProps<RootParams, K>;

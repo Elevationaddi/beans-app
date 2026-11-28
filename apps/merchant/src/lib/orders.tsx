@@ -12,6 +12,7 @@ import {
   Dialog,
   StatusChip,
   TextField,
+  formatFils,
   formatTime,
   useAction,
   useApi,
@@ -132,6 +133,21 @@ export function OrderCard({
           {order.vehicle.plateRegion ? `(${t(`city.${order.vehicle.plateRegion}`)})` : ""} ·{" "}
           {order.vehicle.color}
           {order.vehicle.model ? ` · ${order.vehicle.model}` : ""}
+        </p>
+      ) : null}
+      {order.table ? (
+        <p className="vehicle" data-testid="table">
+          <strong>{t("benefit.table", { label: order.table.label })}</strong>
+        </p>
+      ) : null}
+      {order.benefit ? (
+        <p className="small" data-testid="benefit">
+          <StatusChip tone="success">
+            {order.benefit.kind === "promotion"
+              ? t("benefit.promotion", { code: order.benefit.code })
+              : t(`benefit.${order.benefit.kind}`)}
+          </StatusChip>{" "}
+          {t("benefit.discount")}: −{formatFils(order.benefit.discountFils, locale)}
         </p>
       ) : null}
       {order.arrival.arrivedAt ? (

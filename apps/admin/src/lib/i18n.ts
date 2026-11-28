@@ -1,3 +1,4 @@
+import { promotionsAr, promotionsEn } from "./i18n-promotions";
 import { commonDictionaries, mergeDictionaries, type Dictionary, type Locale } from "@beans/web";
 
 /**
@@ -919,5 +920,8 @@ const ar: Dictionary = {
   "audit.request": "الطلب {id}",
 };
 
-export const adminDictionaries: Record<Locale, Dictionary> = { en, ar };
+export const adminDictionaries: Record<Locale, Dictionary> = {
+  en: { ...en, ...promotionsEn },
+  ar: { ...ar, ...promotionsAr },
+};
 export const dictionaries = mergeDictionaries(commonDictionaries, adminDictionaries);
