@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { Linking } from "react-native";
 import { setTable } from "../lib/table";
 import { mockApi, renderScreen, testSession } from "../test-utils";
 import { CheckoutScreen } from "./CheckoutScreen";
@@ -306,5 +307,33 @@ describe("C11: sandbox gifts", () => {
       },
     );
     expect(await screen.findByTestId("gift-code")).toHaveTextContent("share-me-123");
+  });
+});
+
+describe("Hosted payment page (Tap sandbox)", () => {
+  it("opens the provider's page when the server asks for a redirect, then tracks the order", async () => {
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
+    mockApi(
+      handlers({
+        "POST /v1/checkout": () => ({
+          status: 201,
+          body: {
+            data: {
+              orderId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+              payment: {
+                status: "pending",
+                clientAction: { type: "redirect", url: "https://checkout.tap.company/pay/chg_1" },
+              },
+            },
+          },
+        }),
+      }),
+    );
+    const review = await openCheckout();
+    fireEvent.press(review);
+    fireEvent.press(await screen.findByTestId("pay"));
+    expect(await screen.findByTestId("at-Order")).toBeTruthy();
+    expect(open).toHaveBeenCalledWith("https://checkout.tap.company/pay/chg_1");
+    open.mockRestore();
   });
 });

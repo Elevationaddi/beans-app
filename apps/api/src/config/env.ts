@@ -62,7 +62,14 @@ export const envSchema = z
       .enum(["true", "false"])
       .default("true")
       .transform((value) => value === "true"),
-    PAYMENT_PROVIDER: z.enum(["fake"]).default("fake"),
+    PAYMENT_PROVIDER: z.enum(["fake", "tap"]).default("fake"),
+    /** Tap test secret key (sk_test_…), only with PAYMENT_PROVIDER=tap. Never commit it. */
+    TAP_SECRET_KEY: z
+      .string()
+      .regex(/^sk_test_[A-Za-z0-9]+$/, "only Tap test keys (sk_test_…) are accepted")
+      .optional(),
+    /** Where Tap's hosted payment page returns the customer (the customer app). */
+    TAP_RETURN_URL: z.url().optional(),
     LIVE_PAYMENTS_ENABLED: booleanFlag,
     /** Webhook signing secret (32+ chars). Random per process when unset outside production. */
     PAYMENT_WEBHOOK_SECRET: z.string().min(32).optional(),
@@ -91,6 +98,19 @@ export const envSchema = z
      * Off by default and refused with NODE_ENV=production.
      */
     DEV_AUTH_ENABLED: booleanFlag,
+  })
+  .superRefine((env, ctx) => {
+    if (env.PAYMENT_PROVIDER === "tap") {
+      for (const key of ["TAP_SECRET_KEY", "TAP_RETURN_URL", "API_PUBLIC_URL"] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: "required with PAYMENT_PROVIDER=tap",
+          });
+        }
+      }
+    }
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== "production") return;

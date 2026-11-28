@@ -85,7 +85,12 @@ function checkoutHandlers(paymentStatus: "captured" | "failed") {
     }),
     "POST /v1/checkout": () => ({
       status: 201,
-      body: { data: { orderId: ORDER_ID, payment: { status: paymentStatus } } },
+      body: {
+        data: {
+          orderId: ORDER_ID,
+          payment: { status: paymentStatus, clientAction: { type: "none" } },
+        },
+      },
     }),
   };
 }

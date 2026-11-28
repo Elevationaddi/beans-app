@@ -250,8 +250,10 @@ export type OrderStatus = z.infer<typeof orderStatusSchema>;
 export const paymentStatusSchema = z.enum(["pending", "captured", "failed"]);
 
 /** What the app must do next for the payment. The fake provider never needs an action. */
+/** "redirect": open the provider's hosted payment page (Tap), then come back to the order. */
 export const paymentClientActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("none") }),
+  z.object({ type: z.literal("redirect"), url: z.url() }),
 ]);
 
 export const paymentSummarySchema = z.object({

@@ -1,6 +1,6 @@
 import type { Quote } from "@beans/contracts";
 import { useState } from "react";
-import { View } from "react-native";
+import { Linking, View } from "react-native";
 import {
   Body,
   Button,
@@ -132,6 +132,12 @@ export function CheckoutScreen({ navigation }: RootScreen<"Checkout">) {
       return;
     }
     clearCart();
+    const action = result.data.payment.clientAction;
+    if (action.type === "redirect") {
+      // The provider's hosted page (Tap) takes the card; the app never sees card details.
+      // The order screen keeps checking until the provider confirms the payment.
+      await Linking.openURL(action.url);
+    }
     navigation.replace("Order", { orderId: result.data.orderId });
   });
 

@@ -7737,10 +7737,17 @@ export interface operations {
                 /** @enum {string} */
                 status: "pending" | "captured" | "failed";
                 retryable: boolean;
-                clientAction: {
-                  /** @constant */
-                  type: "none";
-                };
+                clientAction:
+                  | {
+                      /** @constant */
+                      type: "none";
+                    }
+                  | {
+                      /** @constant */
+                      type: "redirect";
+                      /** Format: uri */
+                      url: string;
+                    };
               };
               /** Format: date-time */
               holdExpiresAt: string;

@@ -12452,6 +12452,21 @@
                                   },
                                   "required": ["type"],
                                   "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "const": "redirect"
+                                    },
+                                    "url": {
+                                      "type": "string",
+                                      "format": "uri"
+                                    }
+                                  },
+                                  "required": ["type", "url"],
+                                  "additionalProperties": false
                                 }
                               ]
                             }

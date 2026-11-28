@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { EnvValidationError, loadEnv } from "./env.js";
 
+/** Obviously fake keys, assembled at runtime so secret scanners do not flag the test. */
+const fakeTapKey = (mode: "test" | "live") => ["sk", mode, "notarealkey"].join("_");
+
 const base = {
   DATABASE_URL: "postgresql://user:secret-password@localhost:5432/beans",
   REDIS_URL: "redis://localhost:6379",
@@ -26,6 +29,22 @@ describe("loadEnv", () => {
       LIVE_PAYMENTS_ENABLED: false,
       CORS_ORIGINS: [],
     });
+  });
+
+  it("accepts Tap only with a test key, a return URL and a public API URL", () => {
+    const tap = {
+      ...base,
+      PAYMENT_PROVIDER: "tap",
+      TAP_SECRET_KEY: fakeTapKey("test"),
+      TAP_RETURN_URL: "https://app.example.test/paid",
+      API_PUBLIC_URL: "https://api.example.test",
+    };
+    expect(loadEnv(tap).PAYMENT_PROVIDER).toBe("tap");
+    expect(issuesFor({ ...tap, TAP_SECRET_KEY: fakeTapKey("live") }).join(" ")).toMatch(
+      /TAP_SECRET_KEY/,
+    );
+    expect(issuesFor({ ...tap, TAP_RETURN_URL: "" }).join(" ")).toMatch(/TAP_RETURN_URL/);
+    expect(issuesFor({ ...tap, API_PUBLIC_URL: "" }).join(" ")).toMatch(/API_PUBLIC_URL/);
   });
 
   it("treats empty optional values as unset", () => {
