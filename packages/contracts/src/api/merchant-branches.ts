@@ -188,6 +188,13 @@ export const branchOptionSchema = z.object({
 export type BranchOptionAvailability = z.infer<typeof branchOptionSchema>;
 export const branchOptionResponseSchema = dataEnvelope(branchOptionSchema);
 
+/**
+ * T06: a barista marks an item or option sold out (or back) at their branch. Changes only the
+ * enabled flag; prices and stock stay with the owner and managers.
+ */
+export const setSoldOutRequestSchema = z.strictObject({ soldOut: z.boolean() });
+export type SetSoldOutRequest = z.infer<typeof setSoldOutRequestSchema>;
+
 /** Everything a branch can sell, with its branch-level availability (B05). */
 export const merchantBranchAvailabilitySchema = z.object({
   branchId: uuidSchema,

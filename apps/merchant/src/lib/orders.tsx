@@ -76,10 +76,13 @@ export function OrderCard({
   order,
   onChanged,
   large,
+  readOnly,
 }: {
   order: MerchantOrder;
   onChanged: () => void;
   large?: boolean;
+  /** Offline: show the cached order without any action (docs/05 T06). */
+  readOnly?: boolean;
 }) {
   const { t, locale } = useI18n();
   const acceptLeft = useCountdown(order.status === "received" ? order.acceptBy : null);
@@ -94,7 +97,9 @@ export function OrderCard({
       aria-label={t("orders.orderNumber", { n: order.publicNumber })}
     >
       <header className="order-head">
-        <h3>#{order.publicNumber}</h3>
+        <h3>
+          <bdi>#{order.publicNumber}</bdi>
+        </h3>
         <StatusChip tone={orderTone[order.status]}>{t(`status.${order.status}`)}</StatusChip>
       </header>
       <div className="row small">
@@ -139,7 +144,11 @@ export function OrderCard({
             : t("orders.arrived", { time: formatTime(order.arrival.arrivedAt, locale) })}
         </p>
       ) : null}
-      <OrderActions order={order} onChanged={onChanged} />
+      {readOnly ? (
+        <p className="muted small">{t("tablet.offlineActions")}</p>
+      ) : (
+        <OrderActions order={order} onChanged={onChanged} />
+      )}
     </article>
   );
 }
