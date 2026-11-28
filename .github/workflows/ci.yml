@@ -46,15 +46,8 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U beans -d beans_test"
           --health-interval 5s --health-timeout 3s --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports: ["6379:6379"]
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s --health-timeout 3s --health-retries 10
     env:
       DATABASE_URL: postgresql://beans:beans@localhost:5432/beans_test
-      REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -88,18 +81,11 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U beans -d beans_e2e"
           --health-interval 5s --health-timeout 3s --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports: ["6379:6379"]
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s --health-timeout 3s --health-retries 10
     env:
       # Fictional seed data and the fake payment provider only. Development sign-in is refused
       # by the API with NODE_ENV=production, so it can never reach a real deployment. NODE_ENV
       # is left unset: the API defaults to development and Next.js builds need their own value.
       DATABASE_URL: postgresql://beans:beans@localhost:5432/beans_e2e
-      REDIS_URL: redis://localhost:6379
       CORS_ORIGINS: http://localhost:3001,http://localhost:3002,http://localhost:8081
       DEV_AUTH_ENABLED: "true"
       RATE_LIMIT_ENABLED: "false"

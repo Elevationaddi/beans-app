@@ -6,7 +6,6 @@ const fakeTapKey = (mode: "test" | "live") => ["sk", mode, "notarealkey"].join("
 
 const base = {
   DATABASE_URL: "postgresql://user:secret-password@localhost:5432/beans",
-  REDIS_URL: "redis://localhost:6379",
 };
 
 function issuesFor(source: NodeJS.ProcessEnv): string[] {
@@ -58,10 +57,21 @@ describe("loadEnv", () => {
     expect(env.CORS_ORIGINS).toEqual(["http://localhost:3001", "http://localhost:3002"]);
   });
 
-  it("requires the database and Redis URLs", () => {
+  it("requires the database URL and no longer needs Redis", () => {
     const issues = issuesFor({});
     expect(issues.some((issue) => issue.startsWith("DATABASE_URL"))).toBe(true);
-    expect(issues.some((issue) => issue.startsWith("REDIS_URL"))).toBe(true);
+    expect(issues.some((issue) => issue.startsWith("REDIS_URL"))).toBe(false);
+  });
+
+  it("needs Supabase settings for shared live updates and a cron secret in production", () => {
+    expect(issuesFor({ ...base, REALTIME_DRIVER: "supabase" }).sort()).toEqual([
+      "REALTIME_CHANNEL_SECRET: required with REALTIME_DRIVER=supabase",
+      "SUPABASE_SERVICE_ROLE_KEY: required with REALTIME_DRIVER=supabase",
+      "SUPABASE_URL: required with REALTIME_DRIVER=supabase",
+    ]);
+    const prod = issuesFor({ ...base, NODE_ENV: "production" }).join("\n");
+    expect(prod).toMatch(/CRON_SECRET: required in production/);
+    expect(prod).toMatch(/REALTIME_DRIVER: in-process live updates/);
   });
 
   it("rejects a non-postgres database URL", () => {
@@ -82,6 +92,11 @@ describe("loadEnv", () => {
       PAYMENT_WEBHOOK_SECRET: "y".repeat(40),
       PICKUP_CODE_SECRET: "p".repeat(40),
       TABLE_TOKEN_SECRET: "t".repeat(40),
+      CRON_SECRET: "c".repeat(40),
+      REALTIME_DRIVER: "supabase",
+      SUPABASE_URL: "https://project.supabase.co",
+      SUPABASE_SERVICE_ROLE_KEY: "service-role-key-for-tests",
+      REALTIME_CHANNEL_SECRET: "r".repeat(40),
     });
     expect(issues.sort()).toEqual([
       "FILE_SCANNER: the basic file checker cannot run with NODE_ENV=production",
@@ -118,7 +133,7 @@ describe("loadEnv", () => {
   });
 
   it("never echoes variable values in error messages", () => {
-    const issues = issuesFor({ ...base, REDIS_URL: "not a url with secret-token" });
+    const issues = issuesFor({ ...base, SUPABASE_URL: "not a url with secret-token" });
     expect(issues.join("\n")).not.toContain("secret-token");
     expect(issues.join("\n")).not.toContain("secret-password");
   });

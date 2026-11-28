@@ -14,7 +14,7 @@ import { ApiError } from "../common/api-error.js";
 import type { ApiRequest, ApiResponse } from "../common/request-context.js";
 import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
-import { RedisService } from "../redis/redis.service.js";
+import { PrismaService } from "../database/prisma.service.js";
 
 export interface RateLimitRule {
   /** Bucket name, shared by routes that should count together. */
@@ -54,7 +54,7 @@ export class RateLimitGuard implements CanActivate {
 
   constructor(
     @Inject(Reflector) private readonly reflector: Reflector,
-    @Inject(RedisService) private readonly redis: RedisService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(ENV) private readonly env: Env,
   ) {}
 
@@ -73,13 +73,17 @@ export class RateLimitGuard implements CanActivate {
     const key = `rl:${rule.name}:${who}:${window}`;
     let count: number;
     try {
-      const client = this.redis.client;
-      if (client.status === "wait" || client.status === "end") await client.connect();
-      const result = await client.multi().incr(key).expire(key, rule.windowSeconds).exec();
-      count = Number(result?.[0]?.[1] ?? 0);
+      // One fixed-window counter row per caller and window, in PostgreSQL (no Redis needed).
+      // The upsert is atomic, so concurrent requests on any number of instances count exactly.
+      const rows = await this.prisma.$queryRaw<{ count: number }[]>`
+        INSERT INTO rate_limit_counters (key, count, expires_at)
+        VALUES (${key}, 1, now() + ${rule.windowSeconds} * interval '1 second')
+        ON CONFLICT (key) DO UPDATE SET count = rate_limit_counters.count + 1
+        RETURNING count`;
+      count = Number(rows[0]?.count ?? 0);
     } catch (error) {
-      // Fail open: an outage of Redis must not stop orders. The outage itself raises the
-      // health check to degraded, which operations watch.
+      // Fail open: a database hiccup on this side table must not stop orders. The request's
+      // own database work will fail loudly if the database is really down.
       this.logger.warn(`rate limit check skipped (${rule.name}): ${(error as Error).message}`);
       return true;
     }
@@ -94,4 +98,9 @@ export class RateLimitGuard implements CanActivate {
     }
     return true;
   }
+}
+
+/** Deletes expired counters. Run by the cron tick; returns how many rows went. */
+export async function purgeRateLimitCounters(prisma: PrismaService): Promise<number> {
+  return prisma.$executeRaw`DELETE FROM rate_limit_counters WHERE expires_at < now()`;
 }

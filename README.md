@@ -57,7 +57,7 @@ cp .env.example apps/api/.env
 pnpm db:migrate                    # applies prisma/migrations
 pnpm db:seed                       # synthetic merchants, branches, menu and staff
 pnpm build && pnpm --filter @beans/api start
-curl http://localhost:3000/health  # {"status":"ok",...,"checks":{"database":"up","redis":"up"}}
+curl http://localhost:3000/health  # {"status":"ok",...,"checks":{"database":"up"}}
 ```
 
 Checks: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration`

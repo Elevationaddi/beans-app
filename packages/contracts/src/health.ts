@@ -15,7 +15,6 @@ export const healthResponseSchema = z.object({
   time: z.iso.datetime(),
   checks: z.object({
     database: dependencyStatusSchema,
-    redis: dependencyStatusSchema,
   }),
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;

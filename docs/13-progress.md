@@ -1271,6 +1271,39 @@ provider.
 - Secret scanning flagged two obviously fake Tap test keys in tests; the tests now assemble fake
   keys at runtime so gitleaks stays strict.
 
+## Cycle 3 — Vercel and free tiers (2026-11-28, in progress)
+
+Founder decision of 2026-11-28 (1:28 PM Dubai): no paid service beyond the existing Vercel,
+ChatGPT and Claude subscriptions. Hosting moves to Vercel with Supabase Free, Resend Free,
+GitHub Free, Expo Free and Firebase Cloud Messaging. Nothing is deployed until the founder
+approves the final infrastructure plan.
+
+### Part 1: no Redis, no background loops
+
+- **Job processing** uses the existing transactional outbox table as the queue. Rows are leased
+  with `FOR UPDATE SKIP LOCKED`, handled in-process, and marked dispatched; a lease left by a
+  frozen serverless instance expires after 60 s and is retried. BullMQ and ioredis are removed.
+- **Dispatch timing**: every successful write request dispatches pending events right after its
+  response (Vercel `waitUntil`), and `GET /v1/internal/cron/tick` (Vercel Cron, every minute,
+  `Authorization: Bearer $CRON_SECRET`, 404 otherwise) drains the rest and runs the money sweep:
+  webhook retries, payment polling, expired holds, acceptance timeouts, refunds and payouts.
+  Accepting after the deadline was already refused at write time, so a late tick only delays
+  the automatic refund. Long-running servers keep their 1 s / 15 s timers (flags).
+- **Rate limits** count in a PostgreSQL table (`rate_limit_counters`, atomic upsert), purged by
+  the tick.
+- **Live updates**: `REALTIME_DRIVER=supabase` broadcasts `{orderId, version, occurredAt}` on
+  Supabase Realtime channels whose names are an HMAC of the order or branch ID. Clients get the
+  channel only from `GET /v1/orders/{id}/live` or `GET /v1/merchant/branches/{id}/live`, after
+  the same checks as the order itself, then refetch through the API. `memory` keeps the
+  event-stream endpoints for local development.
+- **Health** checks only the database.
+- Database pool size per instance is configurable (`DATABASE_POOL_MAX`); migrations read
+  `DIRECT_URL` when set.
+- Tests: `test/serverless.int.test.ts` (cron secret, idempotent ticks, exact concurrent rate
+  limiting, broadcast content and failure retry), frozen-lease retry in `outbox.int.test.ts`,
+  after-write dispatch unit test. API: 209 integration, 74 unit, all passing.
+- Migration `rate_limit_counters` (additive). Rollback: revert the commit; the table can stay.
+
 ## Decision and change log
 
 Record date, author, decision ID, old/new behavior, approval and affected files.

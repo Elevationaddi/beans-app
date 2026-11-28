@@ -6,7 +6,7 @@ describe("healthResponseSchema", () => {
     status: "ok",
     version: "0.0.0",
     time: "2026-11-27T12:00:00.000Z",
-    checks: { database: "up", redis: "up" },
+    checks: { database: "up" },
   };
 
   it("accepts a well-formed health response", () => {
@@ -16,7 +16,7 @@ describe("healthResponseSchema", () => {
   it("rejects an unknown dependency status", () => {
     const result = healthResponseSchema.safeParse({
       ...valid,
-      checks: { database: "maybe", redis: "up" },
+      checks: { database: "maybe" },
     });
     expect(result.success).toBe(false);
   });

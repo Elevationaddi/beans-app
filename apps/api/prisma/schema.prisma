@@ -1522,3 +1522,14 @@ model Gift {
   @@index([recipientId, createdAt])
   @@map("gifts")
 }
+
+/// Fixed-window request counters for rate limiting (docs/10). Replaces Redis so the API runs
+/// on serverless hosting with only PostgreSQL. Expired rows are purged by the cron tick.
+model RateLimitCounter {
+  key       String   @id
+  count     Int
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([expiresAt])
+  @@map("rate_limit_counters")
+}
