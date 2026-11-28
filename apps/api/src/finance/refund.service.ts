@@ -5,6 +5,7 @@ import { ApiError } from "../common/api-error.js";
 import { isCheckViolation } from "../common/db-errors.js";
 import { PrismaService } from "../database/prisma.service.js";
 import type { Prisma, Refund } from "../generated/prisma/client.js";
+import { BenefitsService } from "../engagement/benefits.service.js";
 import { OutboxService } from "../outbox/outbox.service.js";
 import {
   PAYMENT_PROVIDER,
@@ -38,6 +39,7 @@ export class RefundService {
     @Inject(LedgerService) private readonly ledger: LedgerService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(OutboxService) private readonly outbox: OutboxService,
+    @Inject(BenefitsService) private readonly benefits: BenefitsService,
   ) {}
 
   async request(
@@ -278,7 +280,11 @@ export class RefundService {
           failureCode: result.status === "failed" ? (result.failureCode ?? "failed") : null,
         },
       });
-      if (result.status === "succeeded") await this.ledger.postRefund(tx, refund);
+      if (result.status === "succeeded") {
+        await this.ledger.postRefund(tx, refund);
+        // Phase 9: a full refund takes back the stamps the order earned (once).
+        await this.benefits.onRefundSucceeded(tx, refund.orderId);
+      }
       await this.outbox.enqueue(tx, {
         topic: "refund.updated",
         aggregateId: refund.orderId,

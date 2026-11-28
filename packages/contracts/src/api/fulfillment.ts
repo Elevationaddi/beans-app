@@ -8,6 +8,7 @@ import {
   pageQuerySchema,
   uuidSchema,
 } from "./common.js";
+import { benefitSchema, tableSnapshotSchema } from "./engagement.js";
 import { fulfilmentModeSchema } from "./merchant-branches.js";
 import {
   arrivalSchema,
@@ -68,6 +69,10 @@ export const merchantOrderSchema = z.object({
   acceptBy: z.iso.datetime().nullable(),
   items: z.array(merchantOrderLineSchema),
   vehicle: vehicleSnapshotSchema.nullable(),
+  /** Dine-in: the table to bring the order to (from a verified table QR code). */
+  table: tableSnapshotSchema.nullable(),
+  /** Reward, promotion or gift on this order, for the till (discount is merchant-funded). */
+  benefit: benefitSchema.nullable(),
   arrival: arrivalSchema,
   /** The customer asked to cancel; operations will review it. */
   cancellationRequested: z.boolean(),

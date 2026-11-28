@@ -1,6 +1,7 @@
 import { Controller, Get, Inject, Param, Query } from "@nestjs/common";
 import { z } from "zod";
 import {
+  type Benefit,
   type Fulfillment,
   type LocalizedText,
   type OrderDetail,
@@ -131,6 +132,7 @@ export class OrdersController {
         }),
         totals: row.totals as unknown as Totals,
         fulfillment: row.fulfillmentSnapshot as unknown as Fulfillment,
+        benefit: (row.benefit as unknown as Benefit | null) ?? null,
         policyVersion: row.policyVersion,
         payment: payment
           ? {

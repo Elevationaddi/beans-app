@@ -1945,6 +1945,265 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/branches/{id}/stamp-card": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The active stamp card of the branch's café (null when none or switched off) */
+    get: operations["branchStampCard"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/tables/resolve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Branch and table for a scanned table QR token (invalid or rotated tokens 404) */
+    get: operations["resolveTable"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/me/stamps": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Stamp balances per café for the signed-in customer */
+    get: operations["myStamps"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/me/stamps/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Stamp history at one café (earned, reversed, redeemed, released) */
+    get: operations["myStampEvents"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/gifts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Gifts the customer bought or claimed (sandbox) */
+    get: operations["listGifts"];
+    put?: never;
+    /** Buy a sandbox gift of one drink (no payment taken; refused in production) */
+    post: operations["createGift"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/gifts/claim": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Claim a gift with its single-use token (one claimant only) */
+    post: operations["claimGift"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/stamp-card": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The business's stamp card */
+    get: operations["merchantGetStampCard"];
+    /** Create or change the stamp card (new terms version on every change) */
+    put: operations["merchantPutStampCard"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/promotions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The business's promotions, newest first */
+    get: operations["merchantListPromotions"];
+    put?: never;
+    /** Draft a promo code (merchant-funded); it needs admin approval before use */
+    post: operations["merchantCreatePromotion"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/promotions/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /** Change a draft or rejected promotion (stale versions 409) */
+    put: operations["merchantUpdatePromotion"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/promotions/{id}/actions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Submit for review, pause, resume or end a promotion */
+    post: operations["merchantPromotionAction"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/branches/{id}/tables": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Dine-in tables of a branch with their QR tokens */
+    get: operations["merchantListTables"];
+    put?: never;
+    /** Add a dine-in table and its QR token */
+    post: operations["merchantCreateTable"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/merchant/branches/{id}/tables/{tableId}/actions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Rotate a table's QR token (old codes stop working) or retire the table */
+    post: operations["merchantTableAction"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/promotions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Promotions across businesses, for review */
+    get: operations["adminListPromotions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/promotions/{id}/review": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Approve or reject a submitted promotion, with a reason (audited) */
+    post: operations["adminReviewPromotion"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/gifts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Sandbox gifts across the platform (no claim tokens) */
+    get: operations["adminListGifts"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7246,6 +7505,8 @@ export interface operations {
           promoCode?: string;
           /** Format: uuid */
           rewardId?: string;
+          /** Format: uuid */
+          giftId?: string;
         };
       };
     };
@@ -7324,7 +7585,47 @@ export interface operations {
                   color: string;
                   model: string | null;
                 } | null;
+                table?: {
+                  /** Format: uuid */
+                  id: string;
+                  label: string;
+                } | null;
               };
+              benefit:
+                | (
+                    | {
+                        /** @constant */
+                        kind: "reward";
+                        /** Format: uuid */
+                        stampCardId: string;
+                        stamps: number;
+                        label: {
+                          en: string;
+                          ar?: string;
+                        };
+                        discountFils: string;
+                      }
+                    | {
+                        /** @constant */
+                        kind: "promotion";
+                        /** Format: uuid */
+                        promotionId: string;
+                        code: string;
+                        discountFils: string;
+                      }
+                    | {
+                        /** @constant */
+                        kind: "gift";
+                        /** Format: uuid */
+                        giftId: string;
+                        label: {
+                          en: string;
+                          ar?: string;
+                        };
+                        discountFils: string;
+                      }
+                  )
+                | null;
             };
           };
         };
@@ -7704,7 +8005,47 @@ export interface operations {
                   color: string;
                   model: string | null;
                 } | null;
+                table?: {
+                  /** Format: uuid */
+                  id: string;
+                  label: string;
+                } | null;
               };
+              benefit:
+                | (
+                    | {
+                        /** @constant */
+                        kind: "reward";
+                        /** Format: uuid */
+                        stampCardId: string;
+                        stamps: number;
+                        label: {
+                          en: string;
+                          ar?: string;
+                        };
+                        discountFils: string;
+                      }
+                    | {
+                        /** @constant */
+                        kind: "promotion";
+                        /** Format: uuid */
+                        promotionId: string;
+                        code: string;
+                        discountFils: string;
+                      }
+                    | {
+                        /** @constant */
+                        kind: "gift";
+                        /** Format: uuid */
+                        giftId: string;
+                        label: {
+                          en: string;
+                          ar?: string;
+                        };
+                        discountFils: string;
+                      }
+                  )
+                | null;
               policyVersion: string;
               payment: {
                 attempt: number;
@@ -9118,6 +9459,46 @@ export interface operations {
                 color: string;
                 model: string | null;
               } | null;
+              table: {
+                /** Format: uuid */
+                id: string;
+                label: string;
+              } | null;
+              benefit:
+                | (
+                    | {
+                        /** @constant */
+                        kind: "reward";
+                        /** Format: uuid */
+                        stampCardId: string;
+                        stamps: number;
+                        label: {
+                          en: string;
+                          ar?: string;
+                        };
+                        discountFils: string;
+                      }
+                    | {
+                        /** @constant */
+                        kind: "promotion";
+                        /** Format: uuid */
+                        promotionId: string;
+                        code: string;
+                        discountFils: string;
+                      }
+                    | {
+                        /** @constant */
+                        kind: "gift";
+                        /** Format: uuid */
+                        giftId: string;
+                        label: {
+                          en: string;
+                          ar?: string;
+                        };
+                        discountFils: string;
+                      }
+                  )
+                | null;
               arrival: {
                 arrivedAt: string | null;
                 acknowledgedAt: string | null;
@@ -9250,6 +9631,46 @@ export interface operations {
                 color: string;
                 model: string | null;
               } | null;
+              table: {
+                /** Format: uuid */
+                id: string;
+                label: string;
+              } | null;
+              benefit:
+                | (
+                    | {
+                        /** @constant */
+                        kind: "reward";
+                        /** Format: uuid */
+                        stampCardId: string;
+                        stamps: number;
+                        label: {
+                          en: string;
+                          ar?: string;
+                        };
+                        discountFils: string;
+                      }
+                    | {
+                        /** @constant */
+                        kind: "promotion";
+                        /** Format: uuid */
+                        promotionId: string;
+                        code: string;
+                        discountFils: string;
+                      }
+                    | {
+                        /** @constant */
+                        kind: "gift";
+                        /** Format: uuid */
+                        giftId: string;
+                        label: {
+                          en: string;
+                          ar?: string;
+                        };
+                        discountFils: string;
+                      }
+                  )
+                | null;
               arrival: {
                 arrivedAt: string | null;
                 acknowledgedAt: string | null;
@@ -9413,6 +9834,46 @@ export interface operations {
                 color: string;
                 model: string | null;
               } | null;
+              table: {
+                /** Format: uuid */
+                id: string;
+                label: string;
+              } | null;
+              benefit:
+                | (
+                    | {
+                        /** @constant */
+                        kind: "reward";
+                        /** Format: uuid */
+                        stampCardId: string;
+                        stamps: number;
+                        label: {
+                          en: string;
+                          ar?: string;
+                        };
+                        discountFils: string;
+                      }
+                    | {
+                        /** @constant */
+                        kind: "promotion";
+                        /** Format: uuid */
+                        promotionId: string;
+                        code: string;
+                        discountFils: string;
+                      }
+                    | {
+                        /** @constant */
+                        kind: "gift";
+                        /** Format: uuid */
+                        giftId: string;
+                        label: {
+                          en: string;
+                          ar?: string;
+                        };
+                        discountFils: string;
+                      }
+                  )
+                | null;
               arrival: {
                 arrivedAt: string | null;
                 acknowledgedAt: string | null;
@@ -9577,6 +10038,46 @@ export interface operations {
                 color: string;
                 model: string | null;
               } | null;
+              table: {
+                /** Format: uuid */
+                id: string;
+                label: string;
+              } | null;
+              benefit:
+                | (
+                    | {
+                        /** @constant */
+                        kind: "reward";
+                        /** Format: uuid */
+                        stampCardId: string;
+                        stamps: number;
+                        label: {
+                          en: string;
+                          ar?: string;
+                        };
+                        discountFils: string;
+                      }
+                    | {
+                        /** @constant */
+                        kind: "promotion";
+                        /** Format: uuid */
+                        promotionId: string;
+                        code: string;
+                        discountFils: string;
+                      }
+                    | {
+                        /** @constant */
+                        kind: "gift";
+                        /** Format: uuid */
+                        giftId: string;
+                        label: {
+                          en: string;
+                          ar?: string;
+                        };
+                        discountFils: string;
+                      }
+                  )
+                | null;
               arrival: {
                 arrivedAt: string | null;
                 acknowledgedAt: string | null;
@@ -13951,6 +14452,1723 @@ export interface operations {
       };
       /** @description Missing, invalid or expired access token */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  branchStampCard: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              stampsRequired: number;
+              reward: {
+                en: string;
+                ar?: string;
+              };
+              rewardMaxFils: string;
+              active: boolean;
+              termsVersion: number;
+              /** Format: date-time */
+              updatedAt: string;
+            } | null;
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  resolveTable: {
+    parameters: {
+      query: {
+        token: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              branchId: string;
+              brandName: string;
+              branchNames: {
+                en: string;
+                ar?: string;
+              };
+              table: {
+                /** Format: uuid */
+                id: string;
+                label: string;
+              };
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  myStamps: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              balance: number;
+              card: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                merchantId: string;
+                names: {
+                  en: string;
+                  ar?: string;
+                };
+                stampsRequired: number;
+                reward: {
+                  en: string;
+                  ar?: string;
+                };
+                rewardMaxFils: string;
+                active: boolean;
+                termsVersion: number;
+                /** Format: date-time */
+                updatedAt: string;
+              } | null;
+              rewardAvailable: boolean;
+            }[];
+          };
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  myStampEvents: {
+    parameters: {
+      query: {
+        merchantId: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** @enum {string} */
+              kind: "earn" | "reverse" | "redeem" | "release";
+              stamps: number;
+              orderId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  listGifts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              /** Format: uuid */
+              productId: string;
+              productNames: {
+                en: string;
+                ar?: string;
+              };
+              valueFils: string;
+              message: string | null;
+              /** @enum {string} */
+              status: "issued" | "claimed" | "reserved" | "redeemed" | "expired";
+              /** @enum {string} */
+              role: "sent" | "received";
+              /** Format: date-time */
+              expiresAt: string;
+              /** Format: date-time */
+              createdAt: string;
+              /** @constant */
+              sandbox: true;
+            }[];
+          };
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  createGift: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: uuid */
+          productId: string;
+          message?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              gift: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                merchantId: string;
+                brandName: string;
+                /** Format: uuid */
+                productId: string;
+                productNames: {
+                  en: string;
+                  ar?: string;
+                };
+                valueFils: string;
+                message: string | null;
+                /** @enum {string} */
+                status: "issued" | "claimed" | "reserved" | "redeemed" | "expired";
+                /** @enum {string} */
+                role: "sent" | "received";
+                /** Format: date-time */
+                expiresAt: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** @constant */
+                sandbox: true;
+              };
+              claimToken: string;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  claimGift: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          token: string;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              /** Format: uuid */
+              productId: string;
+              productNames: {
+                en: string;
+                ar?: string;
+              };
+              valueFils: string;
+              message: string | null;
+              /** @enum {string} */
+              status: "issued" | "claimed" | "reserved" | "redeemed" | "expired";
+              /** @enum {string} */
+              role: "sent" | "received";
+              /** Format: date-time */
+              expiresAt: string;
+              /** Format: date-time */
+              createdAt: string;
+              /** @constant */
+              sandbox: true;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  merchantGetStampCard: {
+    parameters: {
+      query: {
+        merchantId: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              stampsRequired: number;
+              reward: {
+                en: string;
+                ar?: string;
+              };
+              rewardMaxFils: string;
+              active: boolean;
+              termsVersion: number;
+              /** Format: date-time */
+              updatedAt: string;
+            } | null;
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  merchantPutStampCard: {
+    parameters: {
+      query: {
+        merchantId: string;
+      };
+      header: {
+        "Idempotency-Key": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          names: {
+            en: string;
+            ar?: string;
+          };
+          stampsRequired: number;
+          reward: {
+            en: string;
+            ar?: string;
+          };
+          rewardMaxFils: string;
+          active: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              stampsRequired: number;
+              reward: {
+                en: string;
+                ar?: string;
+              };
+              rewardMaxFils: string;
+              active: boolean;
+              termsVersion: number;
+              /** Format: date-time */
+              updatedAt: string;
+            } | null;
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  merchantListPromotions: {
+    parameters: {
+      query: {
+        cursor?: string;
+        limit?: number;
+        merchantId: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              code: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              /** @enum {string} */
+              kind: "percent" | "amount";
+              percentBasisPoints: number | null;
+              amountFils: string | null;
+              minSubtotalFils: string;
+              maxDiscountFils: string | null;
+              /** Format: date-time */
+              startsAt: string;
+              /** Format: date-time */
+              endsAt: string;
+              maxRedemptions: number | null;
+              perCustomerLimit: number;
+              redemptions: number;
+              /** @enum {string} */
+              status: "draft" | "pending_review" | "approved" | "rejected" | "paused" | "ended";
+              reviewNote: string | null;
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  merchantCreatePromotion: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: uuid */
+          merchantId: string;
+          code: string;
+          names: {
+            en: string;
+            ar?: string;
+          };
+          /** @enum {string} */
+          kind: "percent" | "amount";
+          percentBasisPoints: number | null;
+          amountFils: string | null;
+          minSubtotalFils: string;
+          maxDiscountFils: string | null;
+          /** Format: date-time */
+          startsAt: string;
+          /** Format: date-time */
+          endsAt: string;
+          maxRedemptions: number | null;
+          perCustomerLimit: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              code: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              /** @enum {string} */
+              kind: "percent" | "amount";
+              percentBasisPoints: number | null;
+              amountFils: string | null;
+              minSubtotalFils: string;
+              maxDiscountFils: string | null;
+              /** Format: date-time */
+              startsAt: string;
+              /** Format: date-time */
+              endsAt: string;
+              maxRedemptions: number | null;
+              perCustomerLimit: number;
+              redemptions: number;
+              /** @enum {string} */
+              status: "draft" | "pending_review" | "approved" | "rejected" | "paused" | "ended";
+              reviewNote: string | null;
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  merchantUpdatePromotion: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          code: string;
+          names: {
+            en: string;
+            ar?: string;
+          };
+          /** @enum {string} */
+          kind: "percent" | "amount";
+          percentBasisPoints: number | null;
+          amountFils: string | null;
+          minSubtotalFils: string;
+          maxDiscountFils: string | null;
+          /** Format: date-time */
+          startsAt: string;
+          /** Format: date-time */
+          endsAt: string;
+          maxRedemptions: number | null;
+          perCustomerLimit: number;
+          expectedVersion: number;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              code: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              /** @enum {string} */
+              kind: "percent" | "amount";
+              percentBasisPoints: number | null;
+              amountFils: string | null;
+              minSubtotalFils: string;
+              maxDiscountFils: string | null;
+              /** Format: date-time */
+              startsAt: string;
+              /** Format: date-time */
+              endsAt: string;
+              maxRedemptions: number | null;
+              perCustomerLimit: number;
+              redemptions: number;
+              /** @enum {string} */
+              status: "draft" | "pending_review" | "approved" | "rejected" | "paused" | "ended";
+              reviewNote: string | null;
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  merchantPromotionAction: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          action: "submit" | "pause" | "resume" | "end";
+          expectedVersion: number;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              code: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              /** @enum {string} */
+              kind: "percent" | "amount";
+              percentBasisPoints: number | null;
+              amountFils: string | null;
+              minSubtotalFils: string;
+              maxDiscountFils: string | null;
+              /** Format: date-time */
+              startsAt: string;
+              /** Format: date-time */
+              endsAt: string;
+              maxRedemptions: number | null;
+              perCustomerLimit: number;
+              redemptions: number;
+              /** @enum {string} */
+              status: "draft" | "pending_review" | "approved" | "rejected" | "paused" | "ended";
+              reviewNote: string | null;
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  merchantListTables: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              branchId: string;
+              label: string;
+              active: boolean;
+              token: string | null;
+              tokenVersion: number;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  merchantCreateTable: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          label: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              branchId: string;
+              label: string;
+              active: boolean;
+              token: string | null;
+              tokenVersion: number;
+              /** Format: date-time */
+              createdAt: string;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  merchantTableAction: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        id: string;
+        tableId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          action: "rotate" | "retire";
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              branchId: string;
+              label: string;
+              active: boolean;
+              token: string | null;
+              tokenVersion: number;
+              /** Format: date-time */
+              createdAt: string;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminListPromotions: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+        status?: "draft" | "pending_review" | "approved" | "rejected" | "paused" | "ended";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              code: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              /** @enum {string} */
+              kind: "percent" | "amount";
+              percentBasisPoints: number | null;
+              amountFils: string | null;
+              minSubtotalFils: string;
+              maxDiscountFils: string | null;
+              /** Format: date-time */
+              startsAt: string;
+              /** Format: date-time */
+              endsAt: string;
+              maxRedemptions: number | null;
+              perCustomerLimit: number;
+              redemptions: number;
+              /** @enum {string} */
+              status: "draft" | "pending_review" | "approved" | "rejected" | "paused" | "ended";
+              reviewNote: string | null;
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminReviewPromotion: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          decision: "approve" | "reject";
+          reason: string;
+          expectedVersion: number;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              code: string;
+              names: {
+                en: string;
+                ar?: string;
+              };
+              /** @enum {string} */
+              kind: "percent" | "amount";
+              percentBasisPoints: number | null;
+              amountFils: string | null;
+              minSubtotalFils: string;
+              maxDiscountFils: string | null;
+              /** Format: date-time */
+              startsAt: string;
+              /** Format: date-time */
+              endsAt: string;
+              maxRedemptions: number | null;
+              perCustomerLimit: number;
+              redemptions: number;
+              /** @enum {string} */
+              status: "draft" | "pending_review" | "approved" | "rejected" | "paused" | "ended";
+              reviewNote: string | null;
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found or outside the caller's scope */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict (stale version or idempotency key reuse) */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Semantically invalid */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminListGifts: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+        status?: "issued" | "claimed" | "reserved" | "redeemed" | "expired";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** Format: uuid */
+              id: string;
+              /** Format: uuid */
+              merchantId: string;
+              brandName: string;
+              /** Format: uuid */
+              productId: string;
+              productNames: {
+                en: string;
+                ar?: string;
+              };
+              valueFils: string;
+              message: string | null;
+              /** @enum {string} */
+              status: "issued" | "claimed" | "reserved" | "redeemed" | "expired";
+              /** Format: date-time */
+              expiresAt: string;
+              /** Format: date-time */
+              createdAt: string;
+              /** @constant */
+              sandbox: true;
+              /** Format: uuid */
+              purchaserId: string;
+              recipientId: string | null;
+              orderId: string | null;
+            }[];
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+      /** @description Malformed request or failed validation */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Missing, invalid or expired access token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Authenticated but not permitted (role, MFA or account status) */
+      403: {
         headers: {
           [name: string]: unknown;
         };

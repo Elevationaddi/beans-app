@@ -119,6 +119,7 @@ jobs:
         run: |
           echo "PAYMENT_WEBHOOK_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "PICKUP_CODE_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "TABLE_TOKEN_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           echo "FILE_SIGNING_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
       - run: pnpm db:migrate
       - run: pnpm db:seed

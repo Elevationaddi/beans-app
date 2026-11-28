@@ -877,16 +877,91 @@ Additive. Rollback: drop the two triggers and `guard_order_transition()`, drop
 
 ### Next step
 
-Phase 09 (rewards, gifts, table QR) stays switched off: D07, D08, D14 and D16 are open.
+Phase 09 (rewards, gifts, table QR) was deferred here, then built in sandbox on 2026-11-28 (see below).
 
-## Phase 09 — Phase-two engagement (deferred, 2026-11-27)
+## Phase 09 — Engagement, sandbox (back end 2026-11-28)
 
-Not built, as the phase prompt says ("default skip for MVP"; gate needs Q19–Q21 plus
-financial and legal approval). Rewards (D07), gifts (D08), table QR / dine-in (D14) and
-platform-funded promotions (D16) are open, and CLAUDE.md forbids gift sales and stored value
-until approved. The API keeps refusing them: `rewardId`, `promoCode`, `tableToken` and
-`dine_in` answer `FEATURE_DISABLED`, and `GET /v1/admin/settings` shows them off. Nothing to
-migrate or roll back.
+Deferred on 2026-11-27. The founder un-deferred it on 2026-11-28 (stamp cards, promotions
+moderated by admin, QR dine-in, sandbox gifting; no reloadable wallet). Built for development
+and sandbox only. Commercial terms below are sandbox values waiting on the founder.
+
+### Scope completed (API)
+
+- **Rules for every benefit.** The server works out each benefit at quote time from what it
+  stores; the client sends only a reward card ID, promo code or gift ID, never an amount. One
+  benefit per order. Every benefit is funded by the merchant (D16 platform funding stays open).
+  A discounted order still charges at least AED 1 (`MIN_CHARGE_FILS`, sandbox). The benefit is
+  snapshotted on the quote and the order. It is held at checkout, confirmed when payment lands
+  (`received`), and released when payment fails, the café rejects, or the order is cancelled.
+- **Stamp cards** (`/v1/merchant/stamp-card`, `/v1/branches/:id/stamp-card`, `/v1/me/stamps`,
+  `/v1/me/stamps/events`). One card per business. One stamp per item when an order is
+  completed. A reward takes one item's price off, up to the card's maximum. The ledger
+  (`stamp_events`) is append-only (database trigger), and has at most one earn, redeem,
+  release and reverse per order (unique key), so replays do nothing. A full refund reverses
+  the earned stamps once. The balance can go negative if the stamps were already spent.
+  Owners change the card; each change bumps `termsVersion` and is audited.
+- **Promotions** (`/v1/merchant/promotions…`, `/v1/admin/promotions…`). Owners create
+  percent or fixed codes with a window, minimum, cap, total limit and per-customer limit.
+  Codes go draft → submit → pending review → approved or rejected (marketing admins, with a
+  reason, audited). Approved codes can be paused, resumed and ended. Redemptions are counted
+  under a row lock and the database rejects going over the limit.
+- **Dine-in tables** (`/v1/merchant/branches/:id/tables…`, `/v1/tables/resolve`). Branch
+  managers add, rotate and retire tables. A QR token is `t1.<table>.<version>.<HMAC>` signed
+  with `TABLE_TOKEN_SECRET` (required in production). Rotating or retiring bumps the version, so
+  printed codes stop working at once. Forged, rotated, retired or other-branch codes are
+  refused. The table is snapshotted on the order and shown to staff.
+- **Sandbox gifts** (`/v1/gifts`, `/v1/gifts/claim`, `/v1/admin/gifts`). A customer issues a
+  gift for one published product. Nothing is charged and nothing is posted to the journal. The
+  claim token is shown once and only its SHA-256 hash is stored. Exactly one person can claim a
+  gift (conditional update), and the buyer cannot claim their own. The recipient uses it once,
+  for that product at that business, within 30 days (sandbox). Gifts are refused whenever
+  `NODE_ENV=production`, whatever the feature flag says.
+- **Feature flags.** `features.stampCards`, `promotions`, `dineIn` and `sandboxGifts` default to
+  off. The sandbox seed turns them on and adds a stamp card for café A (5 stamps, up to AED
+  25), the approved code `SANDBOX10` (10%, up to AED 10) and table T1 at the Corniche branch,
+  which now offers dine-in.
+
+### Files
+
+- Contracts: `packages/contracts/src/api/engagement.ts` (new), plus `ordering.ts` (`giftId`,
+  `benefit`, `fulfillment.table`), `fulfillment.ts`, `routes.ts` (20 routes) and `openapi.json`.
+- API: `src/engagement/` (`benefits.service.ts`, `table-tokens.ts`, controllers, modules),
+  plus hooks in `quote.service.ts`, `checkout.service.ts`, `payment-reconciler.service.ts`,
+  `refund.service.ts`, `pricing.ts`, `order-views.ts` and `orders.controller.ts`, `env.ts`
+  (`TABLE_TOKEN_SECRET`) and `prisma/seed.ts`.
+- Migration `20261128081058_engagement`: seven tables (stamp cards, accounts and events,
+  promotions and redemptions, branch tables, gifts), `benefit` JSON on quotes and orders,
+  CHECK constraints, the append-only trigger, the redemption limit check and a partial unique
+  index on active table labels.
+
+### Commands and results (2026-11-28)
+
+- `npx vitest run --project integration`: 23 files, 201 tests passed, including
+  `test/engagement.int.test.ts` (5 tests: Q19, Q20 twice, Q21, promotion review and limits).
+- `npx vitest run --project unit`: 14 files, 61 tests passed. `tsc --noEmit` and `eslint .` are
+  clean.
+- Changed existing tests, with no coverage removed. `checkout.int` now expects a table code on a
+  pickup order to be a validation error, while dine-in with the feature off is still
+  `FEATURE_DISABLED`. `fulfillment.int` sweeps with a larger batch, because the shared test
+  database holds more than 50 older unaccepted orders.
+
+### Not done yet
+
+- Screens: the portal (stamp card, promotions, tables with printable QR), the admin console
+  (promotion review, gifts), the tablet (table and benefit on the ticket) and the customer app
+  (rewards, promo code, scan table, gifts). Then browser and mobile tests.
+
+### Open questions for the founder
+
+Minimum charge on a discounted order (AED 1 sandbox). Whether every item earns a stamp.
+Reversal only on a full refund, with negative balances allowed. Gift validity of 30 days.
+Promotions funded only by the merchant (D16). Reward and promo code cannot be combined.
+
+### Rollback
+
+Turn the four feature flags off (no deploy needed). To remove the feature, revert the PR and
+drop the seven new tables, their enums and the two `benefit` columns. Orders that used a
+benefit keep their snapshot only in those columns.
 
 ## Phase 10 — Operations and insights (2026-11-27)
 
@@ -1110,23 +1185,27 @@ ticket lists, `version` on admin orders) are additive.
 
 Record date, author, decision ID, old/new behavior, approval and affected files.
 
-| Date       | Author | Decision | Change                                                                                            | Approval                           |
-| ---------- | ------ | -------- | ------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| 2026-11-27 | Claude | D13      | Neutral working name "Coffee Marketplace" used in all UI; no BEANZ marks                          | Proposed default, not approved     |
-| 2026-11-27 | Claude | D02      | Seeded `commission/sandbox-v1` (10%, sandbox flag, unapproved) for development only               | Proposed default, not approved     |
-| 2026-11-27 | Claude | D12      | Sign-in verified via any Supabase provider; admin routes require aal2 (MFA)                       | Channels and SMS vendor not chosen |
-| 2026-11-27 | Claude | D10      | 15-minute pickup slots, capacity per branch (sandbox values)                                      | Proposed default, not approved     |
-| 2026-11-27 | Claude | —        | Staff invitations expire after 72 hours; no email sent until a provider is approved               | Proposed default, not approved     |
-| 2026-11-27 | Claude | D01      | Customer app defaults to Abu Dhabi; any of the seven emirates can be chosen                       | Proposed default, not approved     |
-| 2026-11-27 | Claude | —        | At most 20 of one item per cart line (sandbox limit)                                              | Proposed default, not approved     |
-| 2026-11-27 | Claude | D06      | Pricing policy `sandbox-v1`: tax-inclusive, sample 5% VAT, no fee, no discount                    | Proposed default, not approved     |
-| 2026-11-27 | Claude | —        | Quotes valid 5 minutes; checkout holds slot and stock 10 minutes for payment                      | Proposed default, not approved     |
-| 2026-11-27 | Claude | D02      | Commission posted at completion on amount paid less refunds (sandbox 10%)                         | Proposed default, not approved     |
-| 2026-11-27 | Claude | D03      | Payment captured after hold expiry is refunded in full automatically                              | Proposed default, not approved     |
-| 2026-11-27 | Claude | D04      | Payouts drafted manually by maker, approved by a different checker (sandbox)                      | Proposed default, not approved     |
-| 2026-11-27 | Claude | D10      | Branch has 120 s to accept; unaccepted paid orders cancelled and refunded automatically (sandbox) | Proposed default, not approved     |
-| 2026-11-27 | Claude | D05      | Customer cancel: automatic with refund before acceptance; support review after; no no-show rules  | Proposed default, not approved     |
-| 2026-11-27 | Owner  | Process  | Build and merge remaining phases without per-phase approval; one final report                     | Instructed by owner                |
+| Date       | Author | Decision    | Change                                                                                            | Approval                           |
+| ---------- | ------ | ----------- | ------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| 2026-11-27 | Claude | D13         | Neutral working name "Coffee Marketplace" used in all UI; no BEANZ marks                          | Proposed default, not approved     |
+| 2026-11-27 | Claude | D02         | Seeded `commission/sandbox-v1` (10%, sandbox flag, unapproved) for development only               | Proposed default, not approved     |
+| 2026-11-27 | Claude | D12         | Sign-in verified via any Supabase provider; admin routes require aal2 (MFA)                       | Channels and SMS vendor not chosen |
+| 2026-11-27 | Claude | D10         | 15-minute pickup slots, capacity per branch (sandbox values)                                      | Proposed default, not approved     |
+| 2026-11-27 | Claude | —           | Staff invitations expire after 72 hours; no email sent until a provider is approved               | Proposed default, not approved     |
+| 2026-11-27 | Claude | D01         | Customer app defaults to Abu Dhabi; any of the seven emirates can be chosen                       | Proposed default, not approved     |
+| 2026-11-27 | Claude | —           | At most 20 of one item per cart line (sandbox limit)                                              | Proposed default, not approved     |
+| 2026-11-27 | Claude | D06         | Pricing policy `sandbox-v1`: tax-inclusive, sample 5% VAT, no fee, no discount                    | Proposed default, not approved     |
+| 2026-11-27 | Claude | —           | Quotes valid 5 minutes; checkout holds slot and stock 10 minutes for payment                      | Proposed default, not approved     |
+| 2026-11-27 | Claude | D02         | Commission posted at completion on amount paid less refunds (sandbox 10%)                         | Proposed default, not approved     |
+| 2026-11-27 | Claude | D03         | Payment captured after hold expiry is refunded in full automatically                              | Proposed default, not approved     |
+| 2026-11-27 | Claude | D04         | Payouts drafted manually by maker, approved by a different checker (sandbox)                      | Proposed default, not approved     |
+| 2026-11-27 | Claude | D10         | Branch has 120 s to accept; unaccepted paid orders cancelled and refunded automatically (sandbox) | Proposed default, not approved     |
+| 2026-11-27 | Claude | D05         | Customer cancel: automatic with refund before acceptance; support review after; no no-show rules  | Proposed default, not approved     |
+| 2026-11-27 | Owner  | Process     | Build and merge remaining phases without per-phase approval; one final report                     | Instructed by owner                |
+| 2026-11-28 | Owner  | D07/D08/D14 | Phase 9 un-deferred for sandbox: stamp cards, moderated promotions, QR dine-in, sandbox gifts     | Instructed by owner (sandbox only) |
+| 2026-11-28 | Claude | D07         | One stamp per item on completion; reward = one item up to card maximum; reversed on full refund   | Proposed default, not approved     |
+| 2026-11-28 | Claude | D16         | Promotions funded by the merchant only; one benefit per order; AED 1 minimum charge               | Proposed default, not approved     |
+| 2026-11-28 | Claude | D08         | Gifts: sandbox only, no charge, one claimant, valid 30 days, refused in production                | Proposed default, not approved     |
 
 ## Phase handoff template
 

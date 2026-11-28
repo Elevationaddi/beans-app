@@ -463,15 +463,21 @@ describe("phase 6: cart, quotes, checkout with the sandbox provider, orders", ()
       for (const [field, value] of [
         ["promoCode", "SAVE10"],
         ["rewardId", randomUUID()],
-        ["tableToken", "t"],
       ] as const) {
         const res = await world.post("/v1/quotes", me.token, { ...ok, [field]: value }).expect(422);
         expect(errorOf(res.body).code).toBe("FEATURE_DISABLED");
       }
-      const dineIn = await world
-        .post("/v1/quotes", me.token, { ...ok, mode: "dine_in" })
+      // A table code only goes with dine-in, which is off by default (phase 9).
+      const tableOnPickup = await world
+        .post("/v1/quotes", me.token, { ...ok, tableToken: "t" })
         .expect(422);
-      expect(errorOf(dineIn.body).code).toBe("FEATURE_DISABLED");
+      expect(errorOf(tableOnPickup.body).code).toBe("VALIDATION_FAILED");
+      for (const extra of [{}, { tableToken: "t" }]) {
+        const dineIn = await world
+          .post("/v1/quotes", me.token, { ...ok, mode: "dine_in", ...extra })
+          .expect(422);
+        expect(errorOf(dineIn.body).code).toBe("FEATURE_DISABLED");
+      }
       await world.post("/v1/quotes", me.token, { ...ok, slotId: randomUUID() }).expect(404);
       // Another branch's slot is not found here.
       await world

@@ -47,7 +47,8 @@ export class SettingsService {
         invitationHours: 72,
       },
       pause: { ordersPaused: false, message: null },
-      // Off until each phase 9 feature is built and tested; then a super admin may turn it on.
+      // Phase 9 is built (sandbox). Off by default everywhere; the sandbox seed and a super
+      // admin turn features on. Gifts stay refused in production whatever this says.
       features: { stampCards: false, promotions: false, dineIn: false, sandboxGifts: false },
       homepage: { hero: null, featuredMerchantIds: [] },
     };

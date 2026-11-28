@@ -10,6 +10,7 @@ import {
   uuidSchema,
 } from "./common.js";
 import { MAX_ITEM_QUANTITY } from "./discovery.js";
+import { benefitSchema, tableSnapshotSchema } from "./engagement.js";
 import { fulfilmentModeSchema } from "./merchant-branches.js";
 
 // ── Vehicles (curbside pickup) ──────────────────────────────────────────────
@@ -136,8 +137,9 @@ export const deleteCartItemQuerySchema = z.strictObject({
 
 /**
  * Asks the server to price the cart for a pickup. No totals are accepted from the client.
- * Omit slotId for ASAP. Table tokens, promo codes and rewards are phase-two features and are
- * refused with FEATURE_DISABLED until they are approved.
+ * Omit slotId for ASAP. Dine-in needs the table token from the printed QR code. At most one
+ * benefit per order: a promo code, a stamp-card reward (rewardId is the stamp card ID) or a
+ * claimed gift. Each phase 9 feature answers FEATURE_DISABLED while its flag is off.
  */
 export const createQuoteRequestSchema = z.strictObject({
   cartId: uuidSchema,
@@ -148,6 +150,7 @@ export const createQuoteRequestSchema = z.strictObject({
   tableToken: z.string().min(1).max(500).optional(),
   promoCode: z.string().min(1).max(50).optional(),
   rewardId: uuidSchema.optional(),
+  giftId: uuidSchema.optional(),
 });
 export type CreateQuoteRequest = z.infer<typeof createQuoteRequestSchema>;
 
@@ -184,6 +187,8 @@ export const fulfillmentSchema = z.object({
   pickupAt: z.iso.datetime(),
   timezone: z.string(),
   vehicle: vehicleSnapshotSchema.nullable(),
+  /** Dine-in only. Absent on orders placed before dine-in existed. */
+  table: tableSnapshotSchema.nullable().optional(),
 });
 export type Fulfillment = z.infer<typeof fulfillmentSchema>;
 
@@ -208,6 +213,8 @@ export const quoteSchema = totalsSchema.extend({
   menuVersion: z.string(),
   lines: z.array(quoteLineSchema),
   fulfillment: fulfillmentSchema,
+  /** The discount applied by the server (merchant-funded), if any. */
+  benefit: benefitSchema.nullable(),
 });
 export type Quote = z.infer<typeof quoteSchema>;
 export const quoteResponseSchema = dataEnvelope(quoteSchema);
@@ -347,6 +354,7 @@ export const orderDetailSchema = orderSummarySchema.extend({
   items: z.array(orderLineSchema),
   totals: totalsSchema,
   fulfillment: fulfillmentSchema,
+  benefit: benefitSchema.nullable(),
   policyVersion: z.string(),
   payment: paymentSummarySchema.nullable(),
   timeline: z.array(orderEventSchema),

@@ -68,6 +68,12 @@ model User {
   ticketsAssigned       Ticket[]                  @relation("TicketAssignee")
   settingsUpdated       PlatformSetting[]         @relation("SettingUpdater")
   notifications         Notification[]
+  stampAccounts         StampAccount[]
+  stampEvents           StampEvent[]
+  promotionRedemptions  PromotionRedemption[]
+  giftsBought           Gift[]                    @relation("GiftPurchaser")
+  giftsReceived         Gift[]                    @relation("GiftRecipient")
+  promotionsReviewed    Promotion[]               @relation("PromotionReviewer")
   ticketMessages        TicketMessage[]
 
   @@map("users")
@@ -134,6 +140,10 @@ model Merchant {
   favoritedBy    Favorite[]
   journalLines   JournalLine[]
   payouts        Payout[]
+  stampCard      StampCard?
+  stampAccounts  StampAccount[]
+  promotions     Promotion[]
+  gifts          Gift[]
   tickets        Ticket[]
 
   @@index([status, submittedAt])
@@ -176,6 +186,7 @@ model Branch {
   options    BranchOption[]
   carts      Cart[]
   quotes     Quote[]
+  tables     BranchTable[]
   orders     Order[]
 
   @@unique([id, merchantId])
@@ -443,6 +454,8 @@ model Product {
   branches   BranchProduct[]
   cartItems  CartItem[]
   orderItems OrderItem[]
+
+  gifts Gift[]
 
   @@unique([id, merchantId])
   @@index([merchantId, categoryId, status])
@@ -725,6 +738,8 @@ model Quote {
   fulfillment   Json
   menuVersion   String    @map("menu_version")
   policyVersion String    @map("policy_version")
+  /// Reward, promotion or gift applied by the server (phase 9), with its discount.
+  benefit       Json?
   expiresAt     DateTime  @map("expires_at") @db.Timestamptz(6)
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -803,6 +818,8 @@ model Order {
   mode                OrderMode
   fulfillmentSnapshot Json        @map("fulfillment_snapshot")
   totals              Json
+  /// Reward, promotion or gift applied by the server (phase 9), with its discount.
+  benefit             Json?
   policyVersion       String      @map("policy_version")
   /// Salted hash of the handoff code, set when the order is received (docs/10).
   pickupCodeHash      String?     @map("pickup_code_hash")
@@ -830,6 +847,9 @@ model Order {
   refunds              Refund[]
   arrivalAckBy         User?                 @relation("OrderArrivalAck", fields: [arrivalAckById], references: [id], onDelete: Restrict)
   cancellationRequests CancellationRequest[]
+  stampEvents          StampEvent[]
+  promotionRedemption  PromotionRedemption?
+  gift                 Gift?
   tickets              Ticket[]
 
   @@index([branchId, status, createdAt])
@@ -1302,4 +1322,201 @@ model Notification {
 
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+// ── Phase 9: engagement (sandbox) ─────────────────────────────────────────
+
+enum StampEventKind {
+  earn
+  reverse
+  redeem
+  release
+}
+
+/// One merchant-funded stamp card per business. Every change bumps the terms version.
+model StampCard {
+  id             String   @id @default(uuid()) @db.Uuid
+  merchantId     String   @unique @map("merchant_id") @db.Uuid
+  nameEn         String   @map("name_en")
+  nameAr         String?  @map("name_ar")
+  stampsRequired Int      @map("stamps_required")
+  rewardEn       String   @map("reward_en")
+  rewardAr       String?  @map("reward_ar")
+  rewardMaxFils  BigInt   @map("reward_max_fils")
+  active         Boolean  @default(true)
+  termsVersion   Int      @default(1) @map("terms_version")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  merchant Merchant     @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  events   StampEvent[]
+
+  @@map("stamp_cards")
+}
+
+/// Running stamp balance per customer and business. Changed only together with a stamp event.
+model StampAccount {
+  userId     String   @map("user_id") @db.Uuid
+  merchantId String   @map("merchant_id") @db.Uuid
+  /// Can go below zero when stamps already spent are reversed by a refund (never charged).
+  balance    Int      @default(0)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+
+  @@id([userId, merchantId])
+  @@map("stamp_accounts")
+}
+
+/// Append-only stamp history (database trigger). At most one event of each kind per order.
+model StampEvent {
+  id         String         @id @default(uuid()) @db.Uuid
+  userId     String         @map("user_id") @db.Uuid
+  merchantId String         @map("merchant_id") @db.Uuid
+  cardId     String?        @map("card_id") @db.Uuid
+  orderId    String?        @map("order_id") @db.Uuid
+  kind       StampEventKind
+  /// Signed change to the balance.
+  stamps     Int
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  card  StampCard? @relation(fields: [cardId], references: [id], onDelete: Restrict)
+  order Order?     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, kind])
+  @@index([userId, merchantId, createdAt])
+  @@map("stamp_events")
+}
+
+enum PromotionStatus {
+  draft
+  pending_review
+  approved
+  rejected
+  paused
+  ended
+}
+
+enum PromotionKind {
+  percent
+  amount
+}
+
+/// Merchant-funded promo code. Usable only after an admin approves it (A07 moderation).
+model Promotion {
+  id                 String          @id @default(uuid()) @db.Uuid
+  merchantId         String          @map("merchant_id") @db.Uuid
+  code               String
+  nameEn             String          @map("name_en")
+  nameAr             String?         @map("name_ar")
+  kind               PromotionKind
+  percentBasisPoints Int?            @map("percent_basis_points")
+  amountFils         BigInt?         @map("amount_fils")
+  minSubtotalFils    BigInt          @default(0) @map("min_subtotal_fils")
+  maxDiscountFils    BigInt?         @map("max_discount_fils")
+  startsAt           DateTime        @map("starts_at") @db.Timestamptz(6)
+  endsAt             DateTime        @map("ends_at") @db.Timestamptz(6)
+  maxRedemptions     Int?            @map("max_redemptions")
+  perCustomerLimit   Int             @default(1) @map("per_customer_limit")
+  /// Held and confirmed uses; released holds give the place back.
+  redemptions        Int             @default(0)
+  status             PromotionStatus @default(draft)
+  reviewNote         String?         @map("review_note")
+  reviewedById       String?         @map("reviewed_by") @db.Uuid
+  reviewedAt         DateTime?       @map("reviewed_at") @db.Timestamptz(6)
+  version            Int             @default(1)
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  merchant       Merchant              @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  reviewedBy     User?                 @relation("PromotionReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  redemptionRows PromotionRedemption[]
+
+  @@unique([merchantId, code])
+  @@index([status, createdAt])
+  @@map("promotions")
+}
+
+enum RedemptionStatus {
+  held
+  confirmed
+  released
+}
+
+model PromotionRedemption {
+  id          String           @id @default(uuid()) @db.Uuid
+  promotionId String           @map("promotion_id") @db.Uuid
+  userId      String           @map("user_id") @db.Uuid
+  orderId     String           @unique @map("order_id") @db.Uuid
+  status      RedemptionStatus @default(held)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Restrict)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([promotionId, userId])
+  @@map("promotion_redemptions")
+}
+
+enum TableStatus {
+  active
+  retired
+}
+
+/// Dine-in table. Its QR token is signed with a server secret and carries the token version;
+/// rotating bumps the version so earlier printed codes stop working.
+model BranchTable {
+  id           String      @id @default(uuid()) @db.Uuid
+  branchId     String      @map("branch_id") @db.Uuid
+  label        String
+  status       TableStatus @default(active)
+  tokenVersion Int         @default(1) @map("token_version")
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@index([branchId])
+  @@map("branch_tables")
+}
+
+enum GiftStatus {
+  issued
+  claimed
+  reserved
+  redeemed
+  expired
+}
+
+/// Sandbox gift of one drink: an entitlement, not stored value. No payment is taken; the API
+/// refuses gifts in production. The claim token is stored only as a hash and works once.
+model Gift {
+  id             String     @id @default(uuid()) @db.Uuid
+  merchantId     String     @map("merchant_id") @db.Uuid
+  productId      String     @map("product_id") @db.Uuid
+  purchaserId    String     @map("purchaser_id") @db.Uuid
+  recipientId    String?    @map("recipient_id") @db.Uuid
+  valueFils      BigInt     @map("value_fils")
+  message        String?
+  claimTokenHash String     @unique @map("claim_token_hash")
+  status         GiftStatus @default(issued)
+  orderId        String?    @unique @map("order_id") @db.Uuid
+  expiresAt      DateTime   @map("expires_at") @db.Timestamptz(6)
+  claimedAt      DateTime?  @map("claimed_at") @db.Timestamptz(6)
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  merchant  Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  purchaser User     @relation("GiftPurchaser", fields: [purchaserId], references: [id], onDelete: Restrict)
+  recipient User?    @relation("GiftRecipient", fields: [recipientId], references: [id], onDelete: Restrict)
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([purchaserId, createdAt])
+  @@index([recipientId, createdAt])
+  @@map("gifts")
 }

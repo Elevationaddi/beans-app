@@ -19,11 +19,18 @@ export function divideHalfUp(numerator: bigint, denominator: bigint): bigint {
 }
 
 /**
- * Order totals from the sum of line totals (docs/08): no discount in MVP, the tax component
- * is round(gross × rate / (1 + rate)) and is included, never added. Not a legal tax calculation.
+ * Order totals from the sum of line totals (docs/08). A merchant-funded discount (phase 9
+ * reward, promo code or gift) comes off before tax; the tax component is
+ * round(net × rate / (1 + rate)) and is included, never added. Not a legal tax calculation.
  */
-export function totalsFor(subtotalFils: bigint, policy = SANDBOX_PRICING_POLICY): Totals {
-  const discountFils = 0n;
+export function totalsFor(
+  subtotalFils: bigint,
+  discountFils = 0n,
+  policy = SANDBOX_PRICING_POLICY,
+): Totals {
+  if (discountFils < 0n || discountFils > subtotalFils) {
+    throw new RangeError("discount must be between zero and the subtotal");
+  }
   const discounted = subtotalFils - discountFils;
   const taxIncludedFils = divideHalfUp(
     discounted * policy.vatBasisPoints,

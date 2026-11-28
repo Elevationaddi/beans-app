@@ -33,23 +33,23 @@ Legend: **Yes** working and tested (evidence column) · **Part** some of it · *
 
 ## Customer app (docs/02)
 
-| ID  | Screen                         | API  | Screen | Plan                                             | Evidence                                                                                                        |
-| --- | ------------------------------ | ---- | ------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| C01 | Splash, onboarding, sign-in    | Part | Part   | Add sign-in, verification, consent               | Phone/email OTP (Supabase) and dev sign-in; ordering.test C01; e2e customer.spec. Apple/Google need credentials |
-| C02 | Home (featured, reorder, favs) | Yes  | Yes    | Featured from admin content, reorder, favourites | Hero, featured, saved cafés, pause notice; customer walk 2026-11-28                                             |
-| C03 | Explore, nearby, map, filters  | Yes  | Part   | Map view, filters, sort                          |                                                                                                                 |
-| C04 | Shop and branch                | Yes  | Yes    | Favourite toggle, allergens                      | ordering.test C04 saves a café; allergens shown                                                                 |
-| C05 | Product customisation          | Yes  | Yes    | Keep                                             |                                                                                                                 |
-| C06 | Cart (server cart, promo code) | Yes  | Yes    | Server cart when signed in, promo codes          | Synced to server cart at checkout; ordering.test C06. Promo codes wait on phase 9                               |
-| C07 | Checkout, slots, curbside, pay | Yes  | Yes    | Build                                            | ordering.test C07 (quote, pay, decline, pause); e2e customer.spec                                               |
-| C08 | Live order tracking            | Yes  | Yes    | Build with live updates, arrival, pickup code    | 5 s polling; ordering.test C08 arrival; e2e customer.spec to collection                                         |
-| C09 | History, receipt, reorder      | Yes  | Part   | Build                                            | ordering.test C09; receipt in e2e customer.spec; reorder button not built yet                                   |
-| C10 | Rewards and stamp cards        | No   | No     | Phase 9                                          |                                                                                                                 |
-| C11 | Gifts                          | No   | No     | Phase 9, sandbox only                            |                                                                                                                 |
-| C12 | Profile, vehicles, settings    | Yes  | Yes    | Vehicles, payment methods, privacy, deletion     | Name, vehicles, privacy access and deletion requests; no stored cards (fake provider)                           |
-| C13 | Support                        | Yes  | Yes    | Build                                            | Help requests with replies; customer walk 2026-11-28                                                            |
-| —   | QR dine-in                     | No   | No     | Phase 9                                          |                                                                                                                 |
-| —   | Promotions, notifications      | Part | Part   | Phase 9 and notification inbox                   | In-app inbox done; promotions wait on phase 9                                                                   |
+| ID  | Screen                         | API  | Screen | Plan                                             | Evidence                                                                                                                  |
+| --- | ------------------------------ | ---- | ------ | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| C01 | Splash, onboarding, sign-in    | Part | Part   | Add sign-in, verification, consent               | Phone/email OTP (Supabase) and dev sign-in; ordering.test C01; e2e customer.spec. Apple/Google need credentials           |
+| C02 | Home (featured, reorder, favs) | Yes  | Yes    | Featured from admin content, reorder, favourites | Hero, featured, saved cafés, pause notice; customer walk 2026-11-28                                                       |
+| C03 | Explore, nearby, map, filters  | Yes  | Part   | Map view, filters, sort                          |                                                                                                                           |
+| C04 | Shop and branch                | Yes  | Yes    | Favourite toggle, allergens                      | ordering.test C04 saves a café; allergens shown                                                                           |
+| C05 | Product customisation          | Yes  | Yes    | Keep                                             |                                                                                                                           |
+| C06 | Cart (server cart, promo code) | Yes  | Part   | Server cart when signed in, promo codes          | Synced to server cart at checkout; ordering.test C06. Promo code API done (engagement.int); field on checkout screen next |
+| C07 | Checkout, slots, curbside, pay | Yes  | Yes    | Build                                            | ordering.test C07 (quote, pay, decline, pause); e2e customer.spec                                                         |
+| C08 | Live order tracking            | Yes  | Yes    | Build with live updates, arrival, pickup code    | 5 s polling; ordering.test C08 arrival; e2e customer.spec to collection                                                   |
+| C09 | History, receipt, reorder      | Yes  | Part   | Build                                            | ordering.test C09; receipt in e2e customer.spec; reorder button not built yet                                             |
+| C10 | Rewards and stamp cards        | Yes  | No     | Phase 9 screens next                             | engagement.int Q19 (earn, redeem, release, reverse once)                                                                  |
+| C11 | Gifts                          | Yes  | No     | Phase 9 screens next, sandbox only               | engagement.int Q20 (one claimant, used once, refused in production)                                                       |
+| C12 | Profile, vehicles, settings    | Yes  | Yes    | Vehicles, payment methods, privacy, deletion     | Name, vehicles, privacy access and deletion requests; no stored cards (fake provider)                                     |
+| C13 | Support                        | Yes  | Yes    | Build                                            | Help requests with replies; customer walk 2026-11-28                                                                      |
+| —   | QR dine-in                     | Yes  | No     | Phase 9 screens next                             | engagement.int Q21 (signed, rotated and retired codes)                                                                    |
+| —   | Promotions, notifications      | Yes  | Part   | Phase 9 screens next                             | In-app inbox done; promotion API with admin review done (engagement.int)                                                  |
 
 ## Business portal (docs/03)
 
@@ -62,7 +62,7 @@ Legend: **Yes** working and tested (evidence column) · **Part** some of it · *
 | B05 | Availability and inventory         | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
 | B06 | Orders (incoming, scheduled, done) | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
 | B07 | Staff and permissions              | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
-| B08 | Loyalty, stamp cards, promotions   | No   | No     | Phase 9                          |                                                                            |
+| B08 | Loyalty, stamp cards, promotions   | Yes  | No     | Phase 9 screens next             | engagement.int: stamp card, promotions, tables (owner and manager rules)   |
 | B09 | Finance, transactions, payouts     | Yes  | Yes    | Merchant finance API and screens | PR #12; finance.int B09 test                                               |
 | B10 | Analytics                          | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
 | B11 | Support, refund requests           | Yes  | Yes    | Build                            | PR #12; portal walk 2026-11-28                                             |
@@ -70,28 +70,28 @@ Legend: **Yes** working and tested (evidence column) · **Part** some of it · *
 
 ## Barista tablet (docs/05)
 
-| ID  | Screen                                      | API | Screen | Plan                                 | Evidence                                                              |
-| --- | ------------------------------------------- | --- | ------ | ------------------------------------ | --------------------------------------------------------------------- |
-| T01 | Staff sign-in, branch choice                | Yes | Yes    | Build                                | cycle-2-tablet; tablet.int + browser walk                             |
-| T02 | New orders, alerts, accept and reject       | Yes | Yes    | Build with live stream and sound cue | cycle-2-tablet; tablet.int + browser walk                             |
-| T03 | Preparing, timers, scheduled queue          | Yes | Yes    | Build                                | cycle-2-tablet; tablet.int + browser walk                             |
-| T04 | Ready, arrival, vehicle, table, pickup code | Yes | Part   | Build (table after phase 9)          | cycle-2-tablet; tablet.int + browser walk; table number after phase 9 |
-| T05 | Completed                                   | Yes | Yes    | Build                                | cycle-2-tablet; tablet.int + browser walk                             |
-| T06 | Issues, delays, offline, unavailable items  | Yes | Yes    | Build; issue report as ticket        | cycle-2-tablet; tablet.int + browser walk                             |
+| ID  | Screen                                      | API | Screen | Plan                                 | Evidence                                                                     |
+| --- | ------------------------------------------- | --- | ------ | ------------------------------------ | ---------------------------------------------------------------------------- |
+| T01 | Staff sign-in, branch choice                | Yes | Yes    | Build                                | cycle-2-tablet; tablet.int + browser walk                                    |
+| T02 | New orders, alerts, accept and reject       | Yes | Yes    | Build with live stream and sound cue | cycle-2-tablet; tablet.int + browser walk                                    |
+| T03 | Preparing, timers, scheduled queue          | Yes | Yes    | Build                                | cycle-2-tablet; tablet.int + browser walk                                    |
+| T04 | Ready, arrival, vehicle, table, pickup code | Yes | Part   | Show table and benefit on ticket     | cycle-2-tablet; tablet.int + browser walk; table in API (engagement.int Q21) |
+| T05 | Completed                                   | Yes | Yes    | Build                                | cycle-2-tablet; tablet.int + browser walk                                    |
+| T06 | Issues, delays, offline, unavailable items  | Yes | Yes    | Build; issue report as ticket        | cycle-2-tablet; tablet.int + browser walk                                    |
 
 ## Admin console (docs/04)
 
-| ID  | Screen                                         | API  | Screen | Plan                                 | Evidence                                                                 |
-| --- | ---------------------------------------------- | ---- | ------ | ------------------------------------ | ------------------------------------------------------------------------ |
-| —   | Admin sign-in with mandatory two-step check    | Yes  | Yes    | Build                                | e2e admin.spec "requires two-step verification"; role-scoped navigation  |
-| A01 | Platform overview                              | Yes  | Yes    | Build                                | e2e admin.spec "overview"; live figures and alerts from the API          |
-| A02 | Merchants, verification, branches              | Yes  | Yes    | Build; suspend                       | PR #14 platform.int; review, documents, suspend and restore screen       |
-| A03 | Customers                                      | Yes  | Yes    | API and screen                       | PR #14 platform.int; search, audited detail, suspend and restore         |
-| A04 | Order monitoring                               | Yes  | Yes    | Admin order list API and screen      | e2e admin.spec "cancel an order"; cancellation requests tab              |
-| A05 | Finance, refunds, payouts, reconciliation      | Yes  | Yes    | Build; disputes and chargebacks      | e2e admin.spec "maker and a different checker"; disputes (sandbox)       |
-| A06 | Customer and merchant support                  | Yes  | Yes    | Build                                | e2e admin.spec "support replies"; internal notes, assignment             |
-| A07 | Promotions, gifts, loyalty, homepage, featured | Part | Part   | Phase 9 and content API              | e2e admin.spec "homepage"; promotions, gifts and loyalty wait on phase 9 |
-| A08 | Reports and exports                            | Yes  | Yes    | Build                                | Browser walk 2026-11-28; audited per view                                |
-| A09 | Settings, commission, feature flags, pause     | Yes  | Yes    | Writable, audited settings and flags | e2e admin.spec "emergency pause", "order timers"; commission read only   |
-| A10 | Audit, security logs, admin permissions        | Yes  | Yes    | Build; admin roles API               | e2e admin.spec "audit log", "grants and removes a role"                  |
-| —   | Menu moderation, announcements, privacy        | Yes  | Yes    | Build                                | e2e admin.spec "moderation", "announcements"; privacy export (audited)   |
+| ID  | Screen                                         | API  | Screen | Plan                                 | Evidence                                                                            |
+| --- | ---------------------------------------------- | ---- | ------ | ------------------------------------ | ----------------------------------------------------------------------------------- |
+| —   | Admin sign-in with mandatory two-step check    | Yes  | Yes    | Build                                | e2e admin.spec "requires two-step verification"; role-scoped navigation             |
+| A01 | Platform overview                              | Yes  | Yes    | Build                                | e2e admin.spec "overview"; live figures and alerts from the API                     |
+| A02 | Merchants, verification, branches              | Yes  | Yes    | Build; suspend                       | PR #14 platform.int; review, documents, suspend and restore screen                  |
+| A03 | Customers                                      | Yes  | Yes    | API and screen                       | PR #14 platform.int; search, audited detail, suspend and restore                    |
+| A04 | Order monitoring                               | Yes  | Yes    | Admin order list API and screen      | e2e admin.spec "cancel an order"; cancellation requests tab                         |
+| A05 | Finance, refunds, payouts, reconciliation      | Yes  | Yes    | Build; disputes and chargebacks      | e2e admin.spec "maker and a different checker"; disputes (sandbox)                  |
+| A06 | Customer and merchant support                  | Yes  | Yes    | Build                                | e2e admin.spec "support replies"; internal notes, assignment                        |
+| A07 | Promotions, gifts, loyalty, homepage, featured | Part | Part   | Phase 9 admin screens next           | e2e admin.spec "homepage"; promotion review and gift list API done (engagement.int) |
+| A08 | Reports and exports                            | Yes  | Yes    | Build                                | Browser walk 2026-11-28; audited per view                                           |
+| A09 | Settings, commission, feature flags, pause     | Yes  | Yes    | Writable, audited settings and flags | e2e admin.spec "emergency pause", "order timers"; commission read only              |
+| A10 | Audit, security logs, admin permissions        | Yes  | Yes    | Build; admin roles API               | e2e admin.spec "audit log", "grants and removes a role"                             |
+| —   | Menu moderation, announcements, privacy        | Yes  | Yes    | Build                                | e2e admin.spec "moderation", "announcements"; privacy export (audited)              |
