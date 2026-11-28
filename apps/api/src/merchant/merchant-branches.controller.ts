@@ -23,8 +23,8 @@ import {
   type CreateBranchRequest,
   createBranchRequestSchema,
   type MerchantBranch,
-  type PageQuery,
-  pageQuerySchema,
+  type MerchantBranchListQuery,
+  merchantBranchListQuerySchema,
   type PutBranchExceptionRequest,
   putBranchExceptionRequestSchema,
   type PutBranchOptionRequest,
@@ -34,6 +34,7 @@ import {
   type UpdateBranchRequest,
   updateBranchRequestSchema,
   uuidSchema,
+  type MerchantBranchAvailability,
 } from "@beans/contracts";
 import { z } from "zod";
 import { AuditService } from "../audit/audit.service.js";
@@ -101,13 +102,14 @@ export class MerchantBranchesController {
   @Get()
   async list(
     @CurrentActor() actor: Actor,
-    @Query(new ZodValidationPipe(pageQuerySchema)) query: PageQuery,
+    @Query(new ZodValidationPipe(merchantBranchListQuerySchema)) query: MerchantBranchListQuery,
   ): Promise<{ data: MerchantBranch[]; meta: { nextCursor: string | null } }> {
     const cursor = decodeCursor(query.cursor);
     const rows = await this.prisma.branch.findMany({
       where: {
         AND: [
           this.access.branchScope(actor.userId),
+          query.merchantId ? { merchantId: query.merchantId } : {},
           cursor
             ? {
                 OR: [
@@ -372,6 +374,69 @@ export class MerchantBranchesController {
           reserved: s.reserved,
           confirmed: s.confirmed,
         })),
+      },
+    };
+  }
+
+  /** B05: every product and option with this branch's availability (defaults: enabled, untracked). */
+  @Get(":id/availability")
+  async availability(
+    @CurrentActor() actor: Actor,
+    @Param(new ZodValidationPipe(z.strictObject({ id: z.uuid() }))) params: { id: string },
+  ): Promise<{ data: MerchantBranchAvailability }> {
+    const access = await this.access.requireBranch(actor.userId, params.id);
+    const [products, branchProducts, groups, branchOptions] = await Promise.all([
+      this.prisma.product.findMany({
+        where: { merchantId: access.merchantId, status: { not: "archived" } },
+        orderBy: [{ createdAt: "asc" }],
+        take: 500,
+      }),
+      this.prisma.branchProduct.findMany({ where: { branchId: params.id } }),
+      this.prisma.modifierGroup.findMany({
+        where: { merchantId: access.merchantId },
+        include: { options: { where: { active: true }, orderBy: { createdAt: "asc" } } },
+        orderBy: { sort: "asc" },
+        take: 200,
+      }),
+      this.prisma.branchOption.findMany({ where: { branchId: params.id } }),
+    ]);
+    const bp = new Map(branchProducts.map((r) => [r.productId, r]));
+    const bo = new Map(branchOptions.map((r) => [r.optionId, r]));
+    const names = (json: unknown) => {
+      const v = json as { en: string; ar?: string };
+      return { en: v.en, ...(v.ar ? { ar: v.ar } : {}) };
+    };
+    return {
+      data: {
+        branchId: params.id,
+        products: products.map((p) => {
+          const row = bp.get(p.id);
+          return {
+            productId: p.id,
+            categoryId: p.categoryId,
+            names: names(p.names),
+            basePriceFils: p.baseFils.toString(),
+            productStatus: p.status,
+            enabled: row?.enabled ?? true,
+            priceOverrideFils: fils(row?.priceOverrideFils ?? null),
+            stockOnHand: row?.stockOnHand ?? null,
+            stockReserved: row?.stockReserved ?? 0,
+          };
+        }),
+        options: groups.flatMap((g) =>
+          g.options.map((o) => {
+            const row = bo.get(o.id);
+            return {
+              optionId: o.id,
+              groupId: g.id,
+              groupNames: names(g.name),
+              names: names(o.name),
+              baseDeltaFils: o.deltaFils.toString(),
+              enabled: row?.enabled ?? true,
+              deltaOverrideFils: fils(row?.deltaOverrideFils ?? null),
+            };
+          }),
+        ),
       },
     };
   }

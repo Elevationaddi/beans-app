@@ -2,7 +2,13 @@ import { HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { ApiError } from "../common/api-error.js";
 import { PrismaService } from "../database/prisma.service.js";
 import type { Prisma } from "../generated/prisma/client.js";
-import { assertBalanced, commissionFor, type PostingLine, splitRefund } from "./ledger.js";
+import {
+  assertBalanced,
+  commissionBase,
+  commissionFor,
+  type PostingLine,
+  splitRefund,
+} from "./ledger.js";
 
 export interface Posting {
   sourceType: "payment" | "refund" | "order" | "payout";
@@ -91,7 +97,19 @@ export class LedgerService {
         "No effective commission policy; completion cannot be posted",
       );
     }
-    const commission = commissionFor(net, BigInt(rate));
+    // D02 (2026-11-28 sandbox default): policies with `vatExcluded: true` charge commission on
+    // the kept amount without VAT; older policy versions keep charging on the full amount.
+    const vatExcluded = (policy.configuration as { vatExcluded?: unknown }).vatExcluded === true;
+    const totals = order.totals as { totalFils?: string; taxIncludedFils?: string };
+    const base = commissionBase(
+      net,
+      {
+        totalFils: BigInt(totals.totalFils ?? "0"),
+        taxIncludedFils: BigInt(totals.taxIncludedFils ?? "0"),
+      },
+      vatExcluded ? "net_of_vat" : "gross_of_vat",
+    );
+    const commission = commissionFor(base, BigInt(rate));
     const lines: PostingLine[] = [
       { account: "customer_order_liability", debitFils: net },
       { account: "merchant_payable", merchantId: order.merchantId, creditFils: net - commission },

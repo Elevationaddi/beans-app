@@ -45,6 +45,7 @@ export const LIMITS = {
   privacy: { name: "privacy", limit: 5, windowSeconds: 3600 },
   export: { name: "export", limit: 30, windowSeconds: 60 },
   webhook: { name: "webhook", limit: 600, windowSeconds: 60 },
+  devAuth: { name: "dev-auth", limit: 60, windowSeconds: 60 },
 } satisfies Record<string, RateLimitRule>;
 
 @Injectable()

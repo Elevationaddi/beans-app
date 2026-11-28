@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { assertBalanced, commissionFor, splitRefund, UnbalancedPostingError } from "./ledger.js";
+import {
+  assertBalanced,
+  commissionBase,
+  commissionFor,
+  splitRefund,
+  UnbalancedPostingError,
+} from "./ledger.js";
 
 describe("ledger rules", () => {
   it("accepts balanced postings only", () => {
@@ -45,5 +51,32 @@ describe("ledger rules", () => {
     expect(() => splitRefund(2201n, { payableFils: 1980n, commissionFils: 220n })).toThrow(
       RangeError,
     );
+  });
+});
+
+describe("commission base (D02 sandbox default, 2026-11-28)", () => {
+  it("removes the VAT inside the kept amount when the policy excludes VAT", () => {
+    // AED 21.00 including AED 1.00 VAT (5% of 20.00): base is 20.00.
+    expect(commissionBase(2100n, { totalFils: 2100n, taxIncludedFils: 100n }, "net_of_vat")).toBe(
+      2000n,
+    );
+    // After a partial refund the kept amount carries a proportional share of the VAT.
+    expect(commissionBase(1050n, { totalFils: 2100n, taxIncludedFils: 100n }, "net_of_vat")).toBe(
+      1000n,
+    );
+    expect(commissionFor(2000n, 1000n)).toBe(200n);
+  });
+
+  it("keeps the full amount for older policy versions and VAT-free orders", () => {
+    expect(commissionBase(2100n, { totalFils: 2100n, taxIncludedFils: 100n }, "gross_of_vat")).toBe(
+      2100n,
+    );
+    expect(commissionBase(2000n, { totalFils: 2000n, taxIncludedFils: 0n }, "net_of_vat")).toBe(
+      2000n,
+    );
+  });
+
+  it("never goes below zero", () => {
+    expect(commissionBase(1n, { totalFils: 2n, taxIncludedFils: 2n }, "net_of_vat")).toBe(0n);
   });
 });

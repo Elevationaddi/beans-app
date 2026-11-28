@@ -1,4 +1,16 @@
 import { z } from "zod";
+import {
+  devAccountListResponseSchema,
+  devSessionRequestSchema,
+  devSessionResponseSchema,
+  devSignUpRequestSchema,
+} from "./dev-auth.js";
+import {
+  merchantFinanceQuerySchema,
+  merchantFinanceResponseSchema,
+  merchantPayoutListResponseSchema,
+  merchantPayoutQuerySchema,
+} from "./merchant-finance.js";
 import { healthResponseSchema, livenessResponseSchema } from "../health.js";
 import { auditListResponseSchema, auditQuerySchema } from "./admin-audit.js";
 import {
@@ -118,6 +130,8 @@ import {
 import { profileResponseSchema, updateProfileRequestSchema } from "./me.js";
 import {
   branchExceptionParamsSchema,
+  merchantBranchAvailabilityResponseSchema,
+  merchantBranchListQuerySchema,
   branchExceptionResponseSchema,
   branchOptionParamsSchema,
   branchOptionResponseSchema,
@@ -204,7 +218,7 @@ const MERCHANT_INSIGHTS = {
   note: "owner, manager or analyst; only branches in their scope",
 } as const;
 
-const privacyRequestResponseSchema = z.object({
+export const privacyRequestResponseSchema = z.object({
   data: z.object({
     ticketId: uuidSchema,
     kind: privacyRequestKindSchema,
@@ -268,7 +282,7 @@ export const apiRoutes = [
       kind: "merchant",
       note: "Owners see every branch of their merchants; other roles see assigned branches.",
     },
-    query: pageQuerySchema,
+    query: merchantBranchListQuerySchema,
     success: { status: 200, schema: merchantBranchListResponseSchema },
     errors: [400, 401, 403],
   },
@@ -1408,6 +1422,82 @@ export const apiRoutes = [
     access: { kind: "admin", roles: ["operations", "security", "super_admin"] as const },
     success: { status: 200, schema: adminSettingsResponseSchema },
     errors: [401, 403],
+  },
+  {
+    method: "get",
+    path: "/v1/dev-auth/accounts",
+    operationId: "devListAccounts",
+    summary: "Development only: fictional accounts to sign in as (404 unless DEV_AUTH_ENABLED)",
+    tag: "Development sign-in",
+    access: { kind: "public" },
+    success: { status: 200, schema: devAccountListResponseSchema },
+    errors: [404],
+  },
+  {
+    method: "post",
+    path: "/v1/dev-auth/sessions",
+    operationId: "devCreateSession",
+    summary: "Development only: a one-hour token for a fictional account",
+    tag: "Development sign-in",
+    access: { kind: "public" },
+    body: devSessionRequestSchema,
+    success: { status: 200, schema: devSessionResponseSchema },
+    errors: [400, 404, 429],
+  },
+  {
+    method: "post",
+    path: "/v1/dev-auth/accounts",
+    operationId: "devSignUp",
+    summary: "Development only: create a fictional customer and sign in",
+    tag: "Development sign-in",
+    access: { kind: "public" },
+    body: devSignUpRequestSchema,
+    success: { status: 201, schema: devSessionResponseSchema },
+    errors: [400, 404, 429],
+  },
+  {
+    method: "get",
+    path: "/v1/merchant/branches/{id}/availability",
+    operationId: "getBranchAvailability",
+    summary: "Products and options with this branch's availability, price overrides and stock",
+    tag: "Merchant branches",
+    access: { kind: "signed_in" },
+    params: idParams,
+    success: { status: 200, schema: merchantBranchAvailabilityResponseSchema },
+    errors: [400, 401, 403, 404],
+  },
+  {
+    method: "get",
+    path: "/v1/merchant/finance",
+    operationId: "getMerchantFinance",
+    summary: "Sales, refunds, commission and payable balance for one merchant (owner or analyst)",
+    tag: "Merchant finance",
+    access: { kind: "signed_in" },
+    query: merchantFinanceQuerySchema,
+    success: { status: 200, schema: merchantFinanceResponseSchema },
+    errors: [400, 401, 403, 404],
+  },
+  {
+    method: "get",
+    path: "/v1/merchant/finance/statement",
+    operationId: "exportMerchantStatement",
+    summary: "Download the merchant statement for a period as CSV (audited)",
+    tag: "Merchant finance",
+    access: { kind: "signed_in" },
+    query: merchantFinanceQuerySchema,
+    success: { status: 200, binary: true },
+    errors: [400, 401, 403, 404, 429],
+  },
+  {
+    method: "get",
+    path: "/v1/merchant/finance/payouts",
+    operationId: "listMerchantPayouts",
+    summary: "Sandbox payout history for one merchant",
+    tag: "Merchant finance",
+    access: { kind: "signed_in" },
+    query: merchantPayoutQuerySchema,
+    success: { status: 200, schema: merchantPayoutListResponseSchema },
+    errors: [400, 401, 403, 404],
   },
 ] as const satisfies readonly RouteContract[];
 

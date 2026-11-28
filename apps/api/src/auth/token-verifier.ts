@@ -1,7 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { createRemoteJWKSet, errors, jwtVerify, type JWTVerifyGetKey } from "jose";
+import { createRemoteJWKSet, decodeJwt, errors, jwtVerify, type JWTVerifyGetKey } from "jose";
 import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
+import { DEV_ISSUER, DevIssuer, FICTIONAL_SUBJECT } from "./dev-issuer.js";
 
 /** Key source for signature verification. Tests provide a local key set. */
 export const JWKS = Symbol("JWKS");
@@ -31,15 +32,26 @@ export class TokenVerifier {
   constructor(
     @Inject(ENV) private readonly env: Env,
     @Inject(JWKS) private readonly keys: JWTVerifyGetKey | null,
+    @Inject(DevIssuer) private readonly dev: DevIssuer,
   ) {}
 
   async verify(token: string): Promise<VerifiedToken> {
-    if (!this.keys || !this.env.SUPABASE_JWT_ISSUER) {
+    let issuer: string | undefined;
+    try {
+      issuer = decodeJwt(token).iss;
+    } catch {
+      throw new TokenRejectedError("malformed token");
+    }
+    // Development tokens are only considered when development sign-in is switched on.
+    const isDev = this.dev.enabled && issuer === DEV_ISSUER;
+    const keys = isDev ? await this.dev.jwks() : this.keys;
+    const expectedIssuer = isDev ? DEV_ISSUER : this.env.SUPABASE_JWT_ISSUER;
+    if (!keys || !expectedIssuer) {
       throw new TokenRejectedError("token verification is not configured");
     }
     try {
-      const { payload } = await jwtVerify(token, this.keys, {
-        issuer: this.env.SUPABASE_JWT_ISSUER,
+      const { payload } = await jwtVerify(token, keys, {
+        issuer: expectedIssuer,
         audience: this.env.SUPABASE_JWT_AUDIENCE,
         algorithms: ["RS256", "ES256", "EdDSA"],
         requiredClaims: ["sub", "exp"],
@@ -47,6 +59,9 @@ export class TokenVerifier {
       });
       if (typeof payload.sub !== "string" || payload.sub.length === 0) {
         throw new TokenRejectedError("token has no subject");
+      }
+      if (isDev && !FICTIONAL_SUBJECT.test(payload.sub)) {
+        throw new TokenRejectedError("development tokens are only for fictional accounts");
       }
       return {
         subject: payload.sub,

@@ -120,6 +120,45 @@ describe("tenant isolation and role revocation (merchant branches)", () => {
     expect(await listIds(await issuer.token({ sub: user.authSubject }))).toEqual([]);
   });
 
+  it("narrows the list to one business with merchantId, never widening the caller's scope", async () => {
+    const { token, user: owner } = await member("owner", tenantA.merchant.id);
+    await addMember(prisma, {
+      userId: owner.id,
+      merchantId: tenantB.merchant.id,
+      role: "manager",
+      branchIds: [tenantB.branch1.id],
+    });
+    const ids = async (query: string) =>
+      merchantBranchListResponseSchema
+        .parse(
+          (
+            await http()
+              .get(`/v1/merchant/branches${query}`)
+              .set("Authorization", `Bearer ${token}`)
+              .expect(200)
+          ).body,
+        )
+        .data.map((b) => b.id)
+        .sort();
+    expect(await ids("")).toEqual(
+      [tenantA.branch1.id, tenantA.branch2.id, tenantB.branch1.id].sort(),
+    );
+    expect(await ids(`?merchantId=${tenantA.merchant.id}`)).toEqual(
+      [tenantA.branch1.id, tenantA.branch2.id].sort(),
+    );
+    expect(await ids(`?merchantId=${tenantB.merchant.id}`)).toEqual([tenantB.branch1.id]);
+    const stranger = await member("owner", tenantB.merchant.id);
+    const strangerIds = merchantBranchListResponseSchema.parse(
+      (
+        await http()
+          .get(`/v1/merchant/branches?merchantId=${tenantA.merchant.id}`)
+          .set("Authorization", `Bearer ${stranger.token}`)
+          .expect(200)
+      ).body,
+    ).data;
+    expect(strangerIds).toEqual([]);
+  });
+
   it("paginates with an opaque cursor and validates query input", async () => {
     const { token } = await member("owner", tenantA.merchant.id);
     const first = merchantBranchListResponseSchema.parse(

@@ -8,8 +8,8 @@
  *   translations and must not be used as production copy.
  * - The commission policy is a sandbox value (decision D02 is not approved) and is left
  *   unapproved (approved_by is null).
- * - auth_subject values are fake. To sign in locally, create users in a local/test Supabase
- *   project and point these rows at their user IDs (see docs/13-progress.md).
+ * - auth_subject values are fake. Sign in as these accounts locally with development sign-in
+ *   (DEV_AUTH_ENABLED=true, never in production), or point them at a test Supabase project.
  *
  * Safe to re-run: every row has a fixed ID and is upserted.
  * Usage: pnpm db:seed (refuses to run with NODE_ENV=production).
@@ -42,6 +42,12 @@ const SEED = {
     ownerB: id(1, 5),
     adminSecurity: id(1, 6),
     adminOps: id(1, 7),
+    adminFinanceMaker: id(1, 8),
+    adminFinanceChecker: id(1, 9),
+    adminSupport: id(1, 10),
+    adminMarketing: id(1, 11),
+    adminSuper: id(1, 12),
+    customer2: id(1, 13),
   },
   merchants: { a: id(2, 1), b: id(2, 2) },
   branches: { a1: id(3, 1), a2: id(3, 2), b1: id(3, 3), b2: id(3, 4) },
@@ -95,6 +101,43 @@ async function upsertUsers() {
       displayName: "Test Operations Admin",
       email: "ops@example.test",
     },
+    {
+      id: SEED.users.adminFinanceMaker,
+      authSubject: "seed-admin-finance-maker",
+      displayName: "Test Finance Maker",
+      email: "finance-maker@example.test",
+    },
+    {
+      id: SEED.users.adminFinanceChecker,
+      authSubject: "seed-admin-finance-checker",
+      displayName: "Test Finance Checker",
+      email: "finance-checker@example.test",
+    },
+    {
+      id: SEED.users.adminSupport,
+      authSubject: "seed-admin-support",
+      displayName: "Test Support Agent",
+      email: "support@example.test",
+    },
+    {
+      id: SEED.users.adminMarketing,
+      authSubject: "seed-admin-marketing",
+      displayName: "Test Marketing Admin",
+      email: "marketing@example.test",
+    },
+    {
+      id: SEED.users.adminSuper,
+      authSubject: "seed-admin-super",
+      displayName: "Test Super Admin",
+      email: "super@example.test",
+    },
+    {
+      id: SEED.users.customer2,
+      authSubject: "seed-customer-2",
+      displayName: "Test Customer Two",
+      phone: "+971500000002",
+      locale: "ar",
+    },
   ];
   for (const user of users) {
     await prisma.user.upsert({ where: { id: user.id! }, create: user, update: {} });
@@ -102,6 +145,12 @@ async function upsertUsers() {
   for (const [userId, role] of [
     [SEED.users.adminSecurity, "security"],
     [SEED.users.adminOps, "operations"],
+    [SEED.users.adminFinanceMaker, "finance_maker"],
+    [SEED.users.adminFinanceChecker, "finance_checker"],
+    [SEED.users.adminSupport, "support"],
+    [SEED.users.adminMarketing, "marketing"],
+    [SEED.users.adminSuper, "super_admin"],
+    [SEED.users.adminSuper, "security"],
   ] as const) {
     await prisma.adminRole.upsert({
       where: { userId_role: { userId, role } },
@@ -409,6 +458,30 @@ async function upsertSandboxPolicy() {
         notice: "SANDBOX ONLY. Decision D02 (commission basis, rate and VAT) is not approved.",
         rateBasisPoints: 1000,
         basis: "merchandise_net_of_merchant_funded_discount",
+      },
+    },
+    update: {},
+  });
+  // Founder decision D02, 2026-11-28 (development and sandbox only): 10% on net merchandise value
+  // excluding VAT and refunded amounts; no registration, subscription or customer service fee.
+  await prisma.policy.upsert({
+    where: { type_version: { type: "commission", version: "sandbox-v2" } },
+    create: {
+      type: "commission",
+      version: "sandbox-v2",
+      effectiveAt: new Date("2026-11-28T00:00:00Z"),
+      configuration: {
+        sandbox: true,
+        notice:
+          "SANDBOX DEFAULT (founder decision D02, 2026-11-28). Not approved for real transactions.",
+        rateBasisPoints: 1000,
+        vatExcluded: true,
+        basis: "net_merchandise_excluding_vat_and_refunds",
+        registrationFeeFils: 0,
+        subscriptionFeeFils: 0,
+        customerServiceFeeFils: 0,
+        payoutSchedule: "weekly",
+        reserveBasisPoints: 0,
       },
     },
     update: {},

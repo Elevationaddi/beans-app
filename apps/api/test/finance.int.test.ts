@@ -3,6 +3,8 @@ import {
   cartRequiredResponseSchema,
   checkoutResponseSchema,
   errorResponseSchema,
+  merchantFinanceResponseSchema,
+  merchantPayoutListResponseSchema,
   payoutResponseSchema,
   publicSlotsResponseSchema,
   quoteResponseSchema,
@@ -673,6 +675,100 @@ describe("phase 7: webhooks, ledger, refunds, reconciliation and payouts (sandbo
       expect(net("platform_commission_revenue")).toBe(-(240n - 30n));
       expect(net("customer_order_liability")).toBe(-1200n); // the uncompleted order
       expect(lines.reduce((sum, l) => sum + l.debitFils - l.creditFils, 0n)).toBe(0n);
+    });
+  });
+  describe("merchant finance views (B09)", () => {
+    it("shows a business only its own sales, refunds, commission and payouts", async () => {
+      const s = await shop();
+      const other = await shop();
+      const a = await order(s, 2); // 2400
+      await complete(a.result.orderId);
+      const o = await order(other, 1);
+      await complete(o.result.orderId);
+      const refund = refundResponseSchema.parse(
+        (
+          await post("/v1/admin/refunds", maker.token, {
+            paymentId: a.payment.id,
+            amountFils: "600",
+            reason: "Cold coffee",
+          }).expect(201)
+        ).body,
+      ).data;
+      await post(`/v1/admin/refunds/${refund.id}/approve`, checker.token, {
+        reason: "Checked",
+      }).expect(200);
+
+      const owner = await world.person({ merchantId: s.merchant.id, role: "owner" });
+      const analyst = await world.person({ merchantId: s.merchant.id, role: "analyst" });
+      const barista = await world.person({
+        merchantId: s.merchant.id,
+        role: "barista",
+        branchIds: [s.branch.id],
+      });
+      const outsider = await world.person({ merchantId: other.merchant.id, role: "owner" });
+      const from = new Date(Date.now() - 86_400_000).toISOString();
+      const to = new Date(Date.now() + 60_000).toISOString();
+      const q = `merchantId=${s.merchant.id}&from=${from}&to=${to}`;
+
+      const view = merchantFinanceResponseSchema.parse(
+        (await get(`/v1/merchant/finance?${q}`, owner.token).expect(200)).body,
+      ).data;
+      expect(view).toMatchObject({
+        salesFils: "2400",
+        refundsFils: "600",
+        commissionFils: "180",
+        netPayableFils: "1620",
+        balanceFils: "1620",
+        paidOutFils: "0",
+      });
+      expect(view.transactions.map((t) => t.kind).sort()).toEqual(["refund", "sale"]);
+      expect(view.transactions.every((t) => t.orderId === a.result.orderId)).toBe(true);
+
+      await get(`/v1/merchant/finance?${q}`, analyst.token).expect(200);
+      await get(`/v1/merchant/finance?${q}`, barista.token).expect(403);
+      await get(`/v1/merchant/finance?${q}`, outsider.token).expect(404);
+      await get(
+        `/v1/merchant/finance?merchantId=${s.merchant.id}&from=${to}&to=${from}`,
+        owner.token,
+      ).expect(400);
+
+      const csv = await get(`/v1/merchant/finance/statement?${q}`, owner.token).expect(200);
+      expect(csv.headers["content-type"]).toContain("text/csv");
+      expect(csv.text).toContain("sale");
+      expect(
+        await world.prisma.auditEvent.count({
+          where: { action: "merchant.statement_exported", targetId: s.merchant.id },
+        }),
+      ).toBe(1);
+
+      const payout = payoutResponseSchema.parse(
+        (
+          await post("/v1/admin/payouts", maker.token, {
+            merchantId: s.merchant.id,
+            periodEnd: new Date().toISOString(),
+          }).expect(201)
+        ).body,
+      ).data;
+      await post(`/v1/admin/payouts/${payout.id}/approve`, checker.token, {
+        reason: "Weekly run",
+      }).expect(200);
+      const payouts = merchantPayoutListResponseSchema.parse(
+        (
+          await get(`/v1/merchant/finance/payouts?merchantId=${s.merchant.id}`, owner.token).expect(
+            200,
+          )
+        ).body,
+      ).data;
+      expect(payouts).toEqual([
+        expect.objectContaining({ id: payout.id, status: "paid", amountFils: "1620" }),
+      ]);
+      await get(`/v1/merchant/finance/payouts?merchantId=${s.merchant.id}`, outsider.token).expect(
+        404,
+      );
+      const after = merchantFinanceResponseSchema.parse(
+        (await get(`/v1/merchant/finance?${q}`, owner.token).expect(200)).body,
+      ).data;
+      expect(after).toMatchObject({ balanceFils: "0", paidOutFils: "1620" });
     });
   });
 });

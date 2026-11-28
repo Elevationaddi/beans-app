@@ -84,6 +84,11 @@ export const envSchema = z
       .enum(["true", "false"])
       .default("true")
       .transform((value) => value === "true"),
+    /**
+     * Local development sign-in for fictional seed accounts (founder decision D12, 2026-11-28).
+     * Off by default and refused with NODE_ENV=production.
+     */
+    DEV_AUTH_ENABLED: booleanFlag,
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== "production") return;
@@ -102,6 +107,13 @@ export const envSchema = z
         code: "custom",
         path: ["STORAGE_DRIVER"],
         message: "local file storage cannot run with NODE_ENV=production",
+      });
+    }
+    if (env.DEV_AUTH_ENABLED) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["DEV_AUTH_ENABLED"],
+        message: "development sign-in cannot run with NODE_ENV=production",
       });
     }
     if (!env.RATE_LIMIT_ENABLED) {
