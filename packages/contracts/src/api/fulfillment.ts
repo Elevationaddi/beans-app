@@ -202,3 +202,20 @@ export const orderUpdatedEventSchema = z.object({
   occurredAt: z.iso.datetime(),
 });
 export type OrderUpdatedEvent = z.infer<typeof orderUpdatedEventSchema>;
+
+/**
+ * How to listen for live updates on serverless hosting: a Supabase Realtime Broadcast channel
+ * whose name only the API hands out, after the same checks as the order or queue itself.
+ * Messages carry `{ orderId, version, occurredAt }`; refetch on each. `null` when this
+ * deployment has no shared live channel: use the event stream (local) or poll.
+ */
+export const liveSubscriptionSchema = z
+  .object({ url: z.url(), channel: z.string().min(1), event: z.literal("order.updated") })
+  .nullable();
+export type LiveSubscription = z.infer<typeof liveSubscriptionSchema>;
+export const liveSubscriptionResponseSchema = dataEnvelope(liveSubscriptionSchema);
+
+/** Result of one scheduler tick (internal, for logs). */
+export const cronTickResponseSchema = dataEnvelope(
+  z.object({ dispatched: z.number().int(), purgedRateLimits: z.number().int(), ms: z.number() }),
+);

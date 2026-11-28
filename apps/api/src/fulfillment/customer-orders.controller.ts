@@ -167,6 +167,16 @@ export class CustomerOrdersController {
     };
   }
 
+  @Get(":id/live")
+  async live(@CurrentActor() actor: Actor, @Param(idParams) params: { id: string }) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: params.id, userId: actor.userId },
+      select: { id: true },
+    });
+    if (!order) throw ApiError.notFound("Order not found");
+    return { data: this.realtime.subscription("order", params.id) };
+  }
+
   @Sse(":id/events")
   async events(
     @CurrentActor() actor: Actor,
@@ -179,7 +189,6 @@ export class CustomerOrdersController {
           if (!order) throw ApiError.notFound("Order not found");
         });
     await own();
-    await this.realtime.ensureSubscribed();
     return liveStream(
       this.realtime.stream((signal) => signal.orderId === params.id),
       own,

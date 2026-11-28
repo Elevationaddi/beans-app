@@ -1,13 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { INestApplication } from "@nestjs/common";
-import { Queue } from "bullmq";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaService } from "../src/database/prisma.service.js";
 import {
-  BullMqOutboxPublisher,
   OUTBOX_PUBLISHER,
-  jobIdFor,
-  queueForTopic,
   OutboxRelayService,
   type OutboxPublisher,
 } from "../src/outbox/outbox-relay.service.js";
@@ -120,10 +116,10 @@ describe("transactional outbox", () => {
   it("backs off after a publish failure and records the error", async () => {
     const e = entry();
     await prisma.$transaction((tx) => outbox.enqueue(tx, e));
-    publisher.failWith = new Error("redis unavailable");
+    publisher.failWith = new Error("handler unavailable");
     expect(await relay.dispatchBatch()).toBe(0);
     const row = await prisma.outboxMessage.findUniqueOrThrow({ where: { dedupeKey: e.dedupeKey } });
-    expect(row).toMatchObject({ state: "pending", attempts: 1, lastError: "redis unavailable" });
+    expect(row).toMatchObject({ state: "pending", attempts: 1, lastError: "handler unavailable" });
     expect(row.nextRunAt.getTime()).toBeGreaterThan(Date.now());
     // Not retried before the backoff expires.
     publisher.failWith = null;
@@ -131,29 +127,42 @@ describe("transactional outbox", () => {
   });
 });
 
-describe("BullMQ publisher", () => {
-  it("adds one job per dedupe key even when published twice", async () => {
-    const env = testEnv();
-    const publisher = new BullMqOutboxPublisher(env.REDIS_URL);
-    const queue = new Queue(queueForTopic("test.event"), { connection: { url: env.REDIS_URL } });
-    const dedupeKey = `bullmq-test:${randomUUID()}`;
+describe("a lease left by a frozen instance", () => {
+  it("is picked up again once it expires, so no event is lost", async () => {
+    const app = await createTestApp(testEnv(), {
+      overrides: [{ provide: OUTBOX_PUBLISHER, useValue: new FakePublisher() }],
+    });
     try {
-      const message = {
-        topic: "test.event",
-        dedupeKey,
-        aggregateId: randomUUID(),
-        payload: { n: 1 },
-      };
-      await publisher.publish(message);
-      await publisher.publish(message);
-      const job = await queue.getJob(jobIdFor(dedupeKey));
-      expect(job?.name).toBe("test.event");
-      const waiting = await queue.getJobs(["waiting"]);
-      expect(waiting.filter((j) => j.id === jobIdFor(dedupeKey))).toHaveLength(1);
-      await job?.remove();
+      const prisma = app.get(PrismaService);
+      const relay = app.get(OutboxRelayService);
+      const publisher = app.get<FakePublisher>(OUTBOX_PUBLISHER);
+      await prisma.outboxMessage.updateMany({
+        where: { state: "pending" },
+        data: { state: "failed" },
+      });
+      const dedupeKey = `lease-${randomUUID()}`;
+      await prisma.$transaction((tx) =>
+        app.get(OutboxService).enqueue(tx, {
+          topic: "test.event",
+          aggregateId: randomUUID(),
+          dedupeKey,
+          payload: {},
+        }),
+      );
+      // Simulate an instance that leased the row and was frozen before finishing.
+      await prisma.outboxMessage.update({
+        where: { dedupeKey },
+        data: { attempts: 1, nextRunAt: new Date(Date.now() + 60_000) },
+      });
+      expect(await relay.dispatchBatch()).toBe(0);
+      await prisma.outboxMessage.update({
+        where: { dedupeKey },
+        data: { nextRunAt: new Date(Date.now() - 1_000) },
+      });
+      expect(await relay.dispatchBatch()).toBe(1);
+      expect(publisher.published).toEqual([dedupeKey]);
     } finally {
-      await publisher.close();
-      await queue.close();
+      await app.close();
     }
   });
 });

@@ -135,13 +135,18 @@ export class MerchantOrdersController {
     return { data: await this.view(params.id) };
   }
 
+  @Get("branches/:id/live")
+  async branchLive(@CurrentActor() actor: Actor, @Param(idParams) params: { id: string }) {
+    await this.fulfillment.requireBranchQueue(actor.userId, params.id);
+    return { data: this.realtime.subscription("branch", params.id) };
+  }
+
   @Sse("branches/:id/order-events")
   async branchEvents(
     @CurrentActor() actor: Actor,
     @Param(idParams) params: { id: string },
   ): Promise<Observable<MessageEvent>> {
     await this.fulfillment.requireBranchQueue(actor.userId, params.id);
-    await this.realtime.ensureSubscribed();
     return liveStream(
       this.realtime.stream((signal) => signal.branchId === params.id),
       () => this.fulfillment.requireBranchQueue(actor.userId, params.id),

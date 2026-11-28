@@ -701,12 +701,9 @@ describe("file check runs through the outbox and worker", () => {
   it("moves a completed upload from quarantined to clean without manual steps", async () => {
     const issuer = await TestIssuer.create();
     const prisma = testPrisma();
-    const app = await createTestApp(
-      testEnv({ OUTBOX_RELAY_ENABLED: "true", OUTBOX_WORKER_ENABLED: "true" }),
-      {
-        overrides: [{ provide: JWKS, useValue: issuer.jwks }],
-      },
-    );
+    const app = await createTestApp(testEnv({ OUTBOX_RELAY_ENABLED: "true" }), {
+      overrides: [{ provide: JWKS, useValue: issuer.jwks }],
+    });
     try {
       const user = await createUser(prisma);
       const token = await issuer.token({ sub: user.authSubject });

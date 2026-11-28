@@ -22,10 +22,11 @@ export const envSchema = z
       .string()
       .url()
       .refine((value) => /^postgres(ql)?:\/\//.test(value), "must be a postgres:// URL"),
-    REDIS_URL: z
-      .string()
-      .url()
-      .refine((value) => /^rediss?:\/\//.test(value), "must be a redis:// or rediss:// URL"),
+    /**
+     * Most connections one API instance opens. On Vercel each function instance has its own
+     * pool, so keep this small (1–3) and connect through Supabase's transaction pooler.
+     */
+    DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
     CORS_ORIGINS: z
       .string()
       .default("")
@@ -43,7 +44,36 @@ export const envSchema = z
     SUPABASE_JWT_ISSUER: z.string().min(1).optional(),
     /** Expected "aud" claim. Supabase uses "authenticated" for signed-in users. */
     SUPABASE_JWT_AUDIENCE: z.string().min(1).default("authenticated"),
-    /** Poll the outbox and publish to BullMQ from this process. */
+    /**
+     * Server-only Supabase key, used to broadcast live order signals (REALTIME_DRIVER=supabase)
+     * and for the Supabase Storage driver. Never put it in a web or mobile build.
+     */
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
+    /**
+     * Where live order signals go. "memory": this process only (local development and tests;
+     * the event-stream endpoints read it). "supabase": Supabase Realtime Broadcast, for
+     * serverless hosting where instances share no memory. Clients always refetch the order.
+     */
+    REALTIME_DRIVER: z.enum(["memory", "supabase"]).default("memory"),
+    /** HMAC secret that makes live-update channel names unguessable (32+ chars). */
+    REALTIME_CHANNEL_SECRET: z.string().min(32).optional(),
+    /**
+     * Bearer secret the scheduler (Vercel Cron) sends to /v1/internal/cron/tick (32+ chars).
+     * Without it the endpoint answers 404. Required in production.
+     */
+    CRON_SECRET: z.string().min(32).optional(),
+    /**
+     * Dispatch pending outbox events right after each successful write request (default on).
+     * This is what makes live updates prompt on serverless hosting.
+     */
+    OUTBOX_KICK_ENABLED: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true"),
+    /**
+     * Run the outbox relay every second in this process (long-running servers). On Vercel set it
+     * to false: each write request dispatches its own events and the cron tick catches the rest.
+     */
     OUTBOX_RELAY_ENABLED: z
       .enum(["true", "false"])
       .default("true")
@@ -57,11 +87,6 @@ export const envSchema = z
     FILE_SIGNING_SECRET: z.string().min(32).optional(),
     /** Uploaded-file check. Only the basic development checker exists so far. */
     FILE_SCANNER: z.enum(["basic"]).default("basic"),
-    /** Consume outbox jobs (file checks) in this process. */
-    OUTBOX_WORKER_ENABLED: z
-      .enum(["true", "false"])
-      .default("true")
-      .transform((value) => value === "true"),
     PAYMENT_PROVIDER: z.enum(["fake", "tap"]).default("fake"),
     /** Tap test secret key (sk_test_…), only with PAYMENT_PROVIDER=tap. Never commit it. */
     TAP_SECRET_KEY: z
@@ -83,7 +108,10 @@ export const envSchema = z
     PICKUP_CODE_SECRET: z.string().min(32).optional(),
     /** HMAC secret for dine-in table QR tokens (32+ chars). Random per process when unset outside production. */
     TABLE_TOKEN_SECRET: z.string().min(32).optional(),
-    /** Run the checkout sweep (poll pending payments, release expired holds) in this process. */
+    /**
+     * Run the money sweep every 15 s in this process (long-running servers). On Vercel set it to
+     * false and let the cron tick run the same sweep every minute.
+     */
     CHECKOUT_SWEEP_ENABLED: z
       .enum(["true", "false"])
       .default("true")
@@ -160,10 +188,18 @@ export const envSchema = z
       "PAYMENT_WEBHOOK_SECRET",
       "PICKUP_CODE_SECRET",
       "TABLE_TOKEN_SECRET",
+      "CRON_SECRET",
     ] as const) {
       if (!env[key]) {
         ctx.addIssue({ code: "custom", path: [key], message: "required in production" });
       }
+    }
+    if (env.REALTIME_DRIVER === "memory") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["REALTIME_DRIVER"],
+        message: "in-process live updates cannot reach other instances; use supabase in production",
+      });
     }
     if (env.CORS_ORIGINS.length === 0) {
       ctx.addIssue({
@@ -171,6 +207,23 @@ export const envSchema = z
         path: ["CORS_ORIGINS"],
         message: "an explicit CORS allowlist is required in production",
       });
+    }
+  })
+  .superRefine((env, ctx) => {
+    if (env.REALTIME_DRIVER === "supabase") {
+      for (const key of [
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "REALTIME_CHANNEL_SECRET",
+      ] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: "required with REALTIME_DRIVER=supabase",
+          });
+        }
+      }
     }
   })
   .superRefine((env, ctx) => {

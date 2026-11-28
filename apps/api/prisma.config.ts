@@ -11,6 +11,8 @@ export default defineConfig({
   },
   datasource: {
     // Read lazily so `prisma generate` works without a database (for example in CI lint jobs).
-    url: process.env.DATABASE_URL ?? "",
+    // Migrations need a direct or session-mode connection (DIRECT_URL); the app itself uses
+    // DATABASE_URL, which on Vercel points at Supabase's transaction pooler.
+    url: process.env.DIRECT_URL || process.env.DATABASE_URL || "",
   },
 });

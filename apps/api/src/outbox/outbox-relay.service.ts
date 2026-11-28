@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   Inject,
   Injectable,
@@ -6,34 +5,11 @@ import {
   type OnApplicationBootstrap,
   type OnModuleDestroy,
 } from "@nestjs/common";
-import { Queue } from "bullmq";
+import { waitUntil } from "@vercel/functions";
 import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
 import { PrismaService } from "../database/prisma.service.js";
 
-/**
- * One BullMQ queue per topic domain ("file.scan_requested" → "outbox.file"), so a consumer
- * only receives its own domain and events without a consumer yet wait in their own queue.
- */
-export function queueForTopic(topic: string): string {
-  return `outbox.${topic.split(".")[0]}`;
-}
-
-/** BullMQ job IDs may not contain ":"; derive a stable, safe ID from the dedupe key. */
-export function jobIdFor(dedupeKey: string): string {
-  return createHash("sha256").update(dedupeKey).digest("hex");
-}
-
-export function redisConnection(redisUrl: string) {
-  const url = new URL(redisUrl);
-  return {
-    host: url.hostname,
-    port: Number(url.port || 6379),
-    ...(url.username && { username: decodeURIComponent(url.username) }),
-    ...(url.password && { password: decodeURIComponent(url.password) }),
-    ...(url.protocol === "rediss:" && { tls: {} }),
-  };
-}
 const LEASE_MS = 60_000;
 const MAX_ATTEMPTS = 10;
 
@@ -46,7 +22,10 @@ interface ClaimedRow {
   attempts: number;
 }
 
-/** Publisher used by the relay. BullMQ in production; tests can substitute a fake. */
+/**
+ * Where the relay hands each event. In production this runs the handler in the same process
+ * (the database is the queue: no Redis or paid queue service); tests can substitute a fake.
+ */
 export interface OutboxPublisher {
   publish(message: {
     topic: string;
@@ -59,54 +38,14 @@ export interface OutboxPublisher {
 
 export const OUTBOX_PUBLISHER = Symbol("OUTBOX_PUBLISHER");
 
-export class BullMqOutboxPublisher implements OutboxPublisher {
-  private readonly queues = new Map<string, Queue>();
-  private readonly logger = new Logger("BullMqOutboxPublisher");
-
-  constructor(private readonly redisUrl: string) {}
-
-  async publish(message: {
-    topic: string;
-    dedupeKey: string;
-    aggregateId: string;
-    payload: unknown;
-  }) {
-    // jobId derived from the dedupe key: BullMQ ignores a second add with the same id, so a relay crash
-    // between publish and marking the row cannot create a duplicate job.
-    await this.queue(queueForTopic(message.topic)).add(
-      message.topic,
-      { aggregateId: message.aggregateId, payload: message.payload },
-      { jobId: jobIdFor(message.dedupeKey) },
-    );
-  }
-
-  async close() {
-    await Promise.all([...this.queues.values()].map((queue) => queue.close()));
-    this.queues.clear();
-  }
-
-  private queue(name: string): Queue {
-    let queue = this.queues.get(name);
-    if (!queue) {
-      queue = new Queue(name, {
-        // Fail a publish after one retry instead of hanging; the relay backs off and retries.
-        connection: { ...redisConnection(this.redisUrl), maxRetriesPerRequest: 1 },
-        defaultJobOptions: { removeOnComplete: 1000, removeOnFail: 5000 },
-      });
-      queue.on("error", (error: Error) =>
-        this.logger.warn(`Queue ${name} connection error: ${error.message}`),
-      );
-      this.queues.set(name, queue);
-    }
-    return queue;
-  }
-}
-
 /**
- * Moves pending outbox rows to BullMQ. Rows are leased in a short transaction (FOR UPDATE
- * SKIP LOCKED, so several API instances can run relays), published outside the transaction,
- * then marked dispatched. Failures back off exponentially; after MAX_ATTEMPTS a row is
- * marked failed for operator attention.
+ * Database-backed job processing. Pending outbox rows are leased in a short statement
+ * (FOR UPDATE SKIP LOCKED, so any number of serverless instances, cron ticks and request
+ * kicks can run at once without handling a row twice), handled outside the transaction, then
+ * marked dispatched. Failures back off exponentially; after MAX_ATTEMPTS a row is marked
+ * failed for operator attention. A lease that is never completed (the instance was frozen
+ * or killed) expires after LEASE_MS and the row is picked up again, so handlers must be
+ * idempotent.
  */
 @Injectable()
 export class OutboxRelayService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -137,6 +76,18 @@ export class OutboxRelayService implements OnApplicationBootstrap, OnModuleDestr
     if (this.timer) clearInterval(this.timer);
     await this.running;
     await this.publisher.close();
+  }
+
+  /**
+   * Dispatches what a request just committed without delaying its response. On Vercel,
+   * waitUntil keeps the function alive until the pass finishes; elsewhere the promise simply
+   * runs. A pass that is skipped or fails is caught by the next cron tick.
+   */
+  kick(): void {
+    const pass = this.dispatchBatch(20).catch((error: Error) =>
+      this.logger.warn(`Outbox kick failed: ${error.message}`),
+    );
+    waitUntil(pass);
   }
 
   /** One relay pass. Returns how many rows were dispatched. */

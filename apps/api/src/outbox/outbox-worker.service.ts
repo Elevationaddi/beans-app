@@ -1,80 +1,38 @@
-import {
-  Inject,
-  Injectable,
-  Logger,
-  type OnApplicationBootstrap,
-  type OnModuleDestroy,
-} from "@nestjs/common";
-import { type Job, Worker } from "bullmq";
-import { ENV } from "../config/config.module.js";
-import type { Env } from "../config/env.js";
+import { Inject, Injectable } from "@nestjs/common";
 import { FILE_SCAN_TOPIC, FilesService } from "../files/files.service.js";
 import { parseSignal, RealtimeService } from "../realtime/realtime.service.js";
-import { queueForTopic, redisConnection } from "./outbox-relay.service.js";
+import type { OutboxPublisher } from "./outbox-relay.service.js";
 
 export const ORDER_UPDATED_TOPIC = "order.updated";
 
-interface OutboxJobData {
-  aggregateId: string;
-  payload: unknown;
-}
-
 /**
- * Consumes outbox jobs this process knows how to handle. Handlers must be idempotent: a job
- * can run more than once (retries, redelivery after a crash).
+ * Runs outbox events in this process. Handlers must be idempotent: a row can be handled more
+ * than once (a retry, or a lease that expired on a frozen serverless instance).
  */
 @Injectable()
-export class OutboxWorkerService implements OnApplicationBootstrap, OnModuleDestroy {
-  private readonly logger = new Logger(OutboxWorkerService.name);
-  private readonly workers: Worker[] = [];
-
+export class OutboxWorkerService implements OutboxPublisher {
   constructor(
-    @Inject(ENV) private readonly env: Env,
     @Inject(FilesService) private readonly files: FilesService,
     @Inject(RealtimeService) private readonly realtime: RealtimeService,
   ) {}
 
-  /** Topic → handler. Each topic's domain queue gets one worker. */
-  private handlers(): Record<string, (job: Job<OutboxJobData>) => Promise<void>> {
-    return {
-      [FILE_SCAN_TOPIC]: (job) => this.files.scan(job.data.aggregateId),
-      [ORDER_UPDATED_TOPIC]: (job) => this.publishOrderUpdate(job.data.payload),
-    };
+  async publish(message: { topic: string; aggregateId: string; payload: unknown }): Promise<void> {
+    switch (message.topic) {
+      case FILE_SCAN_TOPIC:
+        return this.files.scan(message.aggregateId);
+      case ORDER_UPDATED_TOPIC:
+        return this.publishOrderUpdate(message.payload);
+      default:
+        throw new Error(`No handler for topic ${message.topic}`);
+    }
   }
 
-  /** Committed order change → live streams. Re-publishing is harmless (clients refetch). */
+  /** Committed order change → live updates. Re-publishing is harmless (clients refetch). */
   async publishOrderUpdate(payload: unknown): Promise<void> {
     const signal = parseSignal(payload);
     if (!signal) throw new Error("order.updated payload is missing fields");
     await this.realtime.publish(signal);
   }
 
-  onApplicationBootstrap(): void {
-    if (!this.env.OUTBOX_WORKER_ENABLED) return;
-    const handlers = this.handlers();
-    const queues = new Set(Object.keys(handlers).map(queueForTopic));
-    for (const queue of queues) {
-      const worker = new Worker<OutboxJobData>(
-        queue,
-        async (job) => {
-          const handler = handlers[job.name];
-          if (!handler) throw new Error(`No handler for topic ${job.name}`);
-          await handler(job);
-        },
-        {
-          connection: { ...redisConnection(this.env.REDIS_URL), maxRetriesPerRequest: null },
-          concurrency: 4,
-        },
-      );
-      worker.on("failed", (job, error) =>
-        this.logger.error(`Job ${job?.name ?? "?"} ${job?.id ?? "?"} failed: ${error.message}`),
-      );
-      worker.on("error", (error) => this.logger.warn(`Worker ${queue} error: ${error.message}`));
-      this.workers.push(worker);
-    }
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await Promise.all(this.workers.map((worker) => worker.close()));
-  }
+  async close(): Promise<void> {}
 }

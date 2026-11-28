@@ -5,7 +5,6 @@ import { PassthroughHttpException } from "../common/http-exception.filter.js";
 import { ENV } from "../config/config.module.js";
 import type { Env } from "../config/env.js";
 import { PrismaService } from "../database/prisma.service.js";
-import { RedisService } from "../redis/redis.service.js";
 
 @Public()
 @Controller("health")
@@ -13,7 +12,6 @@ export class HealthController {
   constructor(
     @Inject(ENV) private readonly env: Env,
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(RedisService) private readonly redis: RedisService,
   ) {}
 
   /** Liveness: the process is up. Does not touch dependencies. */
@@ -22,16 +20,16 @@ export class HealthController {
     return { status: "ok" };
   }
 
-  /** Readiness: database and Redis both reachable. Answers 503 when either is down. */
+  /** Readiness: the database is reachable. Answers 503 when it is down. */
   @Get()
   async check(): Promise<HealthResponse> {
-    const [database, redis] = await Promise.all([this.prisma.isHealthy(), this.redis.isHealthy()]);
-    const healthy = database && redis;
+    const database = await this.prisma.isHealthy();
+    const healthy = database;
     const body: HealthResponse = {
       status: healthy ? "ok" : "degraded",
       version: this.env.API_VERSION,
       time: new Date().toISOString(),
-      checks: { database: database ? "up" : "down", redis: redis ? "up" : "down" },
+      checks: { database: database ? "up" : "down" },
     };
     if (!healthy) {
       // Sent unchanged with HTTP 503 so load balancers can read which dependency is down.

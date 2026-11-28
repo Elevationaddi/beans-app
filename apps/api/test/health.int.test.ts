@@ -5,8 +5,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/bootstrap.js";
 import { testEnv } from "./env.js";
 
-// Needs the local PostgreSQL and Redis from docker-compose.yml (or CI service containers).
-describe("GET /health with real PostgreSQL and Redis", () => {
+// Needs the local PostgreSQL from docker-compose.yml (or the CI service container).
+describe("GET /health with real PostgreSQL", () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -18,11 +18,11 @@ describe("GET /health with real PostgreSQL and Redis", () => {
     await app.close();
   });
 
-  it("reports ok when the database and Redis are reachable", async () => {
+  it("reports ok when the database is reachable", async () => {
     const response = await request(app.getHttpServer()).get("/health").expect(200);
     const body = healthResponseSchema.parse(response.body);
     expect(body.status).toBe("ok");
-    expect(body.checks).toEqual({ database: "up", redis: "up" });
+    expect(body.checks).toEqual({ database: "up" });
   });
 
   it("answers liveness without checking dependencies", async () => {
@@ -31,12 +31,14 @@ describe("GET /health with real PostgreSQL and Redis", () => {
   });
 });
 
-describe("GET /health when Redis is unreachable", () => {
+describe("GET /health when the database is unreachable", () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    // Port 1 is reserved and never runs Redis, so the connection is refused.
-    app = await createApp(testEnv({ REDIS_URL: "redis://127.0.0.1:1" }));
+    // Port 1 is reserved and never runs PostgreSQL, so the connection is refused.
+    app = await createApp(
+      testEnv({ DATABASE_URL: "postgresql://beans:beans@127.0.0.1:1/beans_test" }),
+    );
     await app.init();
   });
 
@@ -48,6 +50,6 @@ describe("GET /health when Redis is unreachable", () => {
     const response = await request(app.getHttpServer()).get("/health").expect(503);
     const body = healthResponseSchema.parse(response.body);
     expect(body.status).toBe("degraded");
-    expect(body.checks).toEqual({ database: "up", redis: "down" });
+    expect(body.checks).toEqual({ database: "down" });
   });
 });

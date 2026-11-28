@@ -23,7 +23,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { FulfillmentService } from "../src/fulfillment/fulfillment.service.js";
 import type { AdminRoleName } from "../src/generated/prisma/client.js";
 import { OutboxWorkerService } from "../src/outbox/outbox-worker.service.js";
-import { RealtimeService } from "../src/realtime/realtime.service.js";
 import { dubaiDate, MerchantWorld } from "./merchant-world.js";
 
 const allWeek = [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({
@@ -814,7 +813,6 @@ describe("phase 8: fulfilment (queue, staff steps, curbside, handoff, cancellati
     }
 
     it("pushes version signals without personal data to the branch and the customer", async () => {
-      await world.app.get(RealtimeService).ensureSubscribed();
       const { person, orderId, version } = await paidOrder();
       const branchStream = await open(
         `/v1/merchant/branches/${shop.branch.id}/order-events`,

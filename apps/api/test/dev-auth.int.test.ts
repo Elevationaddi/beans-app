@@ -48,7 +48,6 @@ describe("development sign-in (D12, local only)", () => {
     expect(() =>
       loadEnv({
         DATABASE_URL: "postgresql://x@localhost/x",
-        REDIS_URL: "redis://localhost:6379",
         NODE_ENV: "production",
         DEV_AUTH_ENABLED: "true",
       }),

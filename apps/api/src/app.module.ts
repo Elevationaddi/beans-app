@@ -21,8 +21,8 @@ import { OnboardingModule } from "./onboarding/onboarding.module.js";
 import { OperationsModule } from "./operations/operations.module.js";
 import { OrderingModule } from "./ordering/ordering.module.js";
 import { OutboxModule } from "./outbox/outbox.module.js";
+import { SchedulerModule } from "./scheduler/scheduler.module.js";
 import { RealtimeModule } from "./realtime/realtime.module.js";
-import { RedisModule } from "./redis/redis.module.js";
 import { StaffModule } from "./staff/staff.module.js";
 import { WebhooksModule } from "./webhooks/webhooks.module.js";
 import { TenancyModule } from "./tenancy/tenancy.module.js";
@@ -36,7 +36,6 @@ export class AppModule {
       imports: [
         ConfigModule.forRoot(env),
         DatabaseModule,
-        RedisModule,
         RealtimeModule,
         AuthModule,
         TenancyModule,
@@ -55,6 +54,7 @@ export class AppModule {
         FulfillmentModule,
         OperationsModule,
         WebhooksModule,
+        SchedulerModule,
         OnboardingModule,
         AdminModule,
         PlatformModule,

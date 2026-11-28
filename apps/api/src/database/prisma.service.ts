@@ -9,7 +9,11 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
 
   constructor(@Inject(ENV) env: Env) {
-    super({ adapter: new PrismaPg({ connectionString: env.DATABASE_URL }) });
+    // A small pool per instance: on serverless hosting every instance has its own pool, so the
+    // database (through Supabase's transaction pooler) sees instances × DATABASE_POOL_MAX.
+    super({
+      adapter: new PrismaPg({ connectionString: env.DATABASE_URL, max: env.DATABASE_POOL_MAX }),
+    });
   }
 
   /** True when the database answers a trivial query. Never throws. */
