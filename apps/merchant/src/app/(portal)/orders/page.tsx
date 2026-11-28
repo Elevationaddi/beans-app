@@ -13,12 +13,13 @@ import {
   Tabs,
   formatDateTime,
   useApi,
-  useEventStream,
+  livePollMs,
+  useLiveUpdates,
   useI18n,
   usePaged,
   useQuery,
 } from "@beans/web";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { branchName, orderTone, useBranches } from "../../../lib/data";
 import { OrderCard } from "../../../lib/orders";
 
@@ -33,6 +34,12 @@ export default function OrdersPage() {
   // Until someone picks a branch, show the first one they can see.
   const branchId = chosenBranch || branches.data?.[0]?.id || "";
   const [tab, setTab] = useState<Tab>("incoming");
+  const reload = useRef(() => {});
+  const stream = useLiveUpdates({
+    livePath: branchId ? `/v1/merchant/branches/${branchId}/live` : null,
+    streamPath: branchId ? `/v1/merchant/branches/${branchId}/order-events` : null,
+    onChange: () => reload.current(),
+  });
   const live = useQuery(
     async (signal) =>
       (
@@ -44,13 +51,12 @@ export default function OrdersPage() {
         )
       ).data,
     [branchId],
-    { enabled: Boolean(branchId), pollMs: 60_000 },
+    { enabled: Boolean(branchId), pollMs: livePollMs(stream, 60_000, 15_000) },
   );
-  const stream = useEventStream(
-    branchId ? `/v1/merchant/branches/${branchId}/order-events` : null,
-    () => live.reload(),
-    live.reload,
-  );
+  const reloadOrders = live.reload;
+  useEffect(() => {
+    reload.current = reloadOrders;
+  }, [reloadOrders]);
   const all = live.data ?? [];
   const incoming = all.filter((o) => o.status === "received");
   const active = all.filter((o) => o.status !== "received");

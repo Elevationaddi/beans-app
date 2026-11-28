@@ -30,7 +30,8 @@ import {
   useAction,
   useApi,
   useAuth,
-  useEventStream,
+  livePollMs,
+  useLiveUpdates,
   useI18n,
   useOnline,
   usePaged,
@@ -151,6 +152,12 @@ function Board({ branch, onChangeBranch }: { branch: MerchantBranch; onChangeBra
   const api = useApi();
   const online = useOnline();
   const [tab, setTab] = useState<Tab>("new");
+  const reloadRef = useRef(() => {});
+  const stream = useLiveUpdates({
+    livePath: `/v1/merchant/branches/${branch.id}/live`,
+    streamPath: `/v1/merchant/branches/${branch.id}/order-events`,
+    onChange: () => reloadRef.current(),
+  });
   const live = useQuery(
     async (signal) =>
       (
@@ -162,14 +169,13 @@ function Board({ branch, onChangeBranch }: { branch: MerchantBranch; onChangeBra
         )
       ).data,
     [branch.id],
-    { pollMs: 15_000 },
+    // A barista must never miss an order: 10 s polling whenever the live channel is down.
+    { pollMs: livePollMs(stream, 30_000, 10_000) },
   );
   const reload = live.reload;
-  const stream = useEventStream(
-    `/v1/merchant/branches/${branch.id}/order-events`,
-    () => reload(),
-    reload,
-  );
+  useEffect(() => {
+    reloadRef.current = reload;
+  }, [reload]);
   const all = useMemo(() => live.data ?? [], [live.data]);
   const now = useNow(30_000);
   const groups = useMemo(() => {

@@ -46,6 +46,8 @@ interface AuthValue {
   api: ApiClient;
   config: AuthConfig;
   supabaseReady: boolean;
+  /** Public Supabase client (anon key), also used for live order signals. Null when unset. */
+  supabase: SupabaseClient | null;
   devAccounts: () => Promise<DevAccount[]>;
   signInDev: (userId: string, mfa: boolean) => Promise<void>;
   signInPassword: (email: string, password: string) => Promise<void>;
@@ -179,6 +181,7 @@ export function AuthProvider({ config, children }: { config: AuthConfig; childre
       api,
       config,
       supabaseReady: Boolean(supabase),
+      supabase,
       devAccounts: async () =>
         (await api.get("/v1/dev-auth/accounts", devAccountListResponseSchema)).data,
       signInDev: async (userId, mfa) => {
